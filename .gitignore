@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+*.vsix
+*.tsbuildinfo
+
+# Test / coverage
+.vscode-test/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local env
+.env
+.env.local
+
+# wrktree's own per-worktree chat storage
+.vscode/wrktree/
