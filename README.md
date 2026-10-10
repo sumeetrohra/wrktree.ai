@@ -1,63 +1,60 @@
-# wrktree
+# Agentdeck
 
-**Run your coding agents in parallel, inside VS Code.**
+**Drive the coding agents running on your machine from your phone.**
 
-A VS Code sidebar where each row is a task being worked on by an agent, backed by a git
-worktree, showing live agent state — `idle`, `running`, `waiting-input`, `done`, `failed`.
-Click a row and the whole window re-points at that worktree. No reload, no new window,
-no app switching.
+Agentdeck runs `claude`, `codex`, `gemini` and other ACP-speaking agents on your own
+computer, each task in its own git worktree, and lets you start tasks, answer permission
+prompts, read diffs, browse files, open a live preview and ship a PR from an iOS, Android
+or web app. Your code, your agent subscriptions and your credentials stay on your machine;
+the relay in between only ever sees encrypted frames.
 
-wrktree is agent-agnostic. It never ships an agent of its own; it drives the CLI you
-already use — `claude`, `codex`, and whatever comes next — through a thin adapter
-interface, so your existing subscription, config, MCP servers, and hooks keep working.
+> This repo started as **wrktree**, a VS Code extension for parallel agent worktrees. That
+> plan is superseded; its PRD and Phase 0 study live in [`docs/archive/`](docs/archive/).
 
-## Why
+## How it fits together
 
-Running four coding agents in parallel means four isolated contexts. Today every option
-asks you to either leave your editor (Conductor, Superset, Pane) or adopt someone else's
-agent (Agent HQ, Pochi, Kilo). The existing VS Code worktree extensions are git tools —
-they list and switch worktrees, but none of them know whether an agent is running in one,
-blocked waiting for your input, or finished twenty minutes ago.
+One TypeScript monorepo builds three deployables that share one protocol package:
 
-That missing layer — agent-session state as the primary object, worktrees as the
-substrate, in-place window switching as the mechanic — is what wrktree is.
+| Deployable | Runs on | Job |
+|---|---|---|
+| **Daemon** (`apps/daemon`) | Your machine (Node 22) | Owns repos, worktrees, agent sessions over ACP, git, files, previews. SQLite + append-only JSONL event logs. |
+| **Relay** (`apps/relay`) | Cloudflare Workers + Durable Objects (self-host: Node + Docker) | A dumb, durable mailbox: one Durable Object per account forwards sealed frames, buffers for offline devices, sends content-free push wake-ups. |
+| **App** (`apps/mobile`) | iOS, Android, web (Expo) | Thin, cache-first client. The web build doubles as the desktop UI, served by the daemon on localhost. |
+
+Phone and daemon pair by QR code and talk end-to-end encrypted (libsodium X25519 +
+XChaCha20-Poly1305, per-connection ephemeral keys). Multiple agent accounts are first-class
+"profiles" (isolated `CLAUDE_CONFIG_DIR` / `CODEX_HOME`), with hand-off to another profile
+when one hits its usage limit.
 
 ## Status
 
-Phase 0 (reference study) complete; no extension code yet. The plan lives in
-[`docs/prd.md`](docs/prd.md); the Phase 0 findings and the decisions they lock in are in
-[`docs/phase-0-reference-study.md`](docs/phase-0-reference-study.md).
+Design complete; no product code yet. Next up is **Phase 0: spikes** — multi-account
+credential isolation, an ACP client against `claude-agent-acp` and `codex-acp`, a Durable
+Object WebSocket hello world, and cross-platform libsodium.
 
-Roadmap at a glance:
-
-| Phase | What | State |
+| Phase | What | Rough timing |
 |---|---|---|
-| 0 | Reference study — reuse, native VS Code coverage, structured CLI output | ✅ done |
-| 1 | Worktree switching MVP — sidebar + in-place window swap | next |
-| 1.5 | Git state enrichment via the built-in `vscode.git` API | |
-| 2 | **Agent sessions** — multi-chat per worktree, live agent state on rows | |
-| 3 | PR wiring — thin, delegating to the GitHub Pull Requests extension | |
-| 4 | Polish — status bar, settings, command palette parity | |
+| 0 | Spikes: kill the three biggest unknowns | 2 evenings — **next** |
+| 1 | Daemon core, usable from a local CLI client | weeks 1–3 |
+| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | weeks 4–7 |
+| 3 | Review, code, preview — judge an agent's work without a laptop | weeks 8–10 |
+| 4 | Multi-account power features and public launch | weeks 11–14 |
+| 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | — |
 
-Phase 1 is table stakes. Phase 2 is where wrktree actually starts.
-
-Phase 0 settled the one question that decides the architecture: both `claude` and `codex`
-expose structured JSON streaming, so Phase 2 is a proper chat panel rather than a fragile
-ANSI scraper — and `claude`'s permission protocol gives a real, machine-detectable
-`waiting-input` state, the feature the whole product hangs on. Full findings, plus
-corrections to the PRD's assumptions, in
-[`docs/phase-0-reference-study.md`](docs/phase-0-reference-study.md).
-
-## Non-goals
-
-Local-only: no cloud sandboxes, no multiplayer, no mobile. No agent of our own. No custom
-diff UI, terminal UI, or worktree-CRUD UI — VS Code already has those. No monetization;
-this ships MIT as a personal/OSS tool.
+Each phase has a task checklist and acceptance criteria in the spec, written so it can be
+handed to a coding agent as a standalone unit.
 
 ## Docs
 
-- [`docs/prd.md`](docs/prd.md) — product requirements, competitive analysis, phased plan
+- [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation
+  plan: protocol, data model, daemon, chat lifecycle, relay, pairing and encryption,
+  preview tunnelling, mobile app, packaging, testing, phases, open questions. Snapshot of
+  the [Agentdeck spec doc](https://claude.ai/artifact/E9gkgcyhW2XNyMYmtFYBq1), which stays
+  the source of truth.
+- [`docs/archive/`](docs/archive/) — the superseded wrktree VS Code extension PRD and
+  Phase 0 reference study.
 
 ## License
 
-[MIT](LICENSE)
+Currently [MIT](LICENSE). The spec's default for launch is Apache-2.0 for the daemon and
+protocol and AGPL for the relay, to be decided before open-sourcing in Phase 4.

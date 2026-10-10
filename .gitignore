@@ -2,28 +2,29 @@
 node_modules/
 
 # Build output
-out/
 dist/
-*.vsix
+out/
+.turbo/
 *.tsbuildinfo
-
-# Test / coverage
-.vscode-test/
 coverage/
 
-# Logs
-*.log
-npm-debug.log*
-yarn-error.log*
+# Expo / React Native
+.expo/
+web-build/
 
-# Editor / OS
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Env and logs
+.env
+.env.*
+!.env.example
+*.log
+
+# OS / editor
 .DS_Store
 Thumbs.db
 *.swp
-
-# Local env
-.env
-.env.local
-
-# wrktree's own per-worktree chat storage
-.vscode/wrktree/
+.vscode/*
+!.vscode/extensions.json

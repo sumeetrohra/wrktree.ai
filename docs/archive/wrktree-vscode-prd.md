@@ -1,5 +1,7 @@
 # PRD: wrktree
 
+> **Superseded.** This is the original wrktree VS Code extension plan. The project now follows the Agentdeck design in [`../tech-spec.md`](../tech-spec.md); this file is kept for history only.
+
 **Author:** Sumeet Rohra
 **Status:** Final — v3
 **Date:** August 24, 2026

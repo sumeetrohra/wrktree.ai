@@ -1,9 +1,11 @@
 # Phase 0 — Reference Study
 
+> **Superseded.** This is the original wrktree VS Code extension plan. The project now follows the Agentdeck design in [`../tech-spec.md`](../tech-spec.md); this file is kept for history only.
+
 **Status:** Complete (desk research); one hands-on item open — see §7.
 **Date:** August 24, 2026
 **Owner:** Sumeet Rohra
-**Relates to:** [`prd.md`](./prd.md) §9 (Phase 0), §13 (Immediate next action)
+**Relates to:** [`wrktree-vscode-prd.md`](./wrktree-vscode-prd.md) §9 (Phase 0), §13 (Immediate next action)
 
 ---
 
