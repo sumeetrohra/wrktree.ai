@@ -8,9 +8,6 @@ prompts, read diffs, browse files, open a live preview and ship a PR from an iOS
 or web app. Your code, your agent subscriptions and your credentials stay on your machine;
 the relay in between only ever sees encrypted frames.
 
-> This repo started as **wrktree**, a VS Code extension for parallel agent worktrees. That
-> plan is superseded; its PRD and Phase 0 study live in [`docs/archive/`](docs/archive/).
-
 ## How it fits together
 
 One TypeScript monorepo builds three deployables that share one protocol package:
@@ -51,8 +48,6 @@ handed to a coding agent as a standalone unit.
   preview tunnelling, mobile app, packaging, testing, phases, open questions. Snapshot of
   the [Agentdeck spec doc](https://claude.ai/artifact/E9gkgcyhW2XNyMYmtFYBq1), which stays
   the source of truth.
-- [`docs/archive/`](docs/archive/) — the superseded wrktree VS Code extension PRD and
-  Phase 0 reference study.
 
 ## License
 
