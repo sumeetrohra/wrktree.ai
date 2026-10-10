@@ -74,7 +74,7 @@
       card(
         `<div class="kicker">Scenario ${e.n} of ${pb.total}</div>` +
           `<h1>${esc(e.title)}</h1><p>${esc(e.summary)}</p>` +
-          `<div class="covers">Spec acceptance: ${e.covers.map(esc).join("<br>")}</div>`,
+          `<div class="covers">From the tech spec: ${e.covers.map(esc).join("<br>")}</div>`,
       );
     },
     play() {
