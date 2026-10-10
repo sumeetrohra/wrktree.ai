@@ -1,0 +1,19 @@
+[
+  {
+    "tool": {
+      "id": "e1",
+      "title": "Edit {{file|app.txt}}",
+      "kind": "edit",
+      "locations": ["{{file|app.txt}}"]
+    }
+  },
+  {
+    "permission": {
+      "toolId": "e1",
+      "title": "Edit {{file|app.txt}}",
+      "kind": "edit",
+      "path": "{{file|app.txt}}"
+    }
+  },
+  { "write": { "path": "{{file|app.txt}}", "content": "{{content|first}}\n", "toolId": "e1" } }
+]

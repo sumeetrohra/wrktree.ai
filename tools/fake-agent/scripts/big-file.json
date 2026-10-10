@@ -1,0 +1,11 @@
+[
+  {
+    "tool": {
+      "id": "b1",
+      "title": "Generate {{file|big.txt}}",
+      "kind": "edit",
+      "locations": ["{{file|big.txt}}"]
+    }
+  },
+  { "write": { "path": "{{file|big.txt}}", "bytes": "{{bytes|120000}}", "toolId": "b1" } }
+]

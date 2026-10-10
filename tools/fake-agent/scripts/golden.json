@@ -1,0 +1,49 @@
+[
+  { "thought": "The user wants {{file|NOTES.md}} updated. I'll read the README first." },
+  {
+    "plan": [
+      { "text": "Read README.md", "status": "in_progress" },
+      { "text": "Write {{file|NOTES.md}}", "status": "pending" }
+    ]
+  },
+  { "tool": { "id": "read_1", "title": "Read README.md", "kind": "read", "locations": ["README.md"] } },
+  { "read": { "path": "README.md" } },
+  { "toolUpdate": { "id": "read_1", "status": "completed" } },
+  { "echoAttachments": true },
+  {
+    "plan": [
+      { "text": "Read README.md", "status": "completed" },
+      { "text": "Write {{file|NOTES.md}}", "status": "in_progress" }
+    ]
+  },
+  {
+    "tool": {
+      "id": "edit_1",
+      "title": "Write {{file|NOTES.md}}",
+      "kind": "edit",
+      "locations": ["{{file|NOTES.md}}"]
+    }
+  },
+  {
+    "permission": {
+      "toolId": "edit_1",
+      "title": "Write {{file|NOTES.md}}",
+      "kind": "edit",
+      "path": "{{file|NOTES.md}}"
+    }
+  },
+  {
+    "write": {
+      "path": "{{file|NOTES.md}}",
+      "content": "# Notes\n\nWritten by the fake agent.\nLine three.\n",
+      "toolId": "edit_1"
+    }
+  },
+  {
+    "plan": [
+      { "text": "Read README.md", "status": "completed" },
+      { "text": "Write {{file|NOTES.md}}", "status": "completed" }
+    ]
+  },
+  { "text": "Done." }
+]

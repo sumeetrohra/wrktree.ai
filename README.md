@@ -25,24 +25,48 @@ when one hits its usage limit.
 
 ## Status
 
-Design complete; no product code yet. Next up is **Phase 0: spikes** — multi-account
-credential isolation, an ACP client against `claude-agent-acp` and `codex-acp`, a Durable
-Object WebSocket hello world, and cross-platform libsodium.
+**Phase 1 (daemon core) is built**: the daemon runs agents over ACP in worktrees and is fully
+usable from the `agentdeck` CLI, with no relay or app yet. 7 end-to-end scenarios and 67 unit
+tests pass on every push; see [`docs/phase-1.md`](docs/phase-1.md).
 
-| Phase | What | Rough timing |
+| Phase | What | State |
 |---|---|---|
-| 0 | Spikes: kill the three biggest unknowns | 2 evenings — **next** |
-| 1 | Daemon core, usable from a local CLI client | weeks 1–3 |
-| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | weeks 4–7 |
-| 3 | Review, code, preview — judge an agent's work without a laptop | weeks 8–10 |
-| 4 | Multi-account power features and public launch | weeks 11–14 |
-| 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | — |
+| 0 | Spikes: kill the three biggest unknowns | partly done, see [`docs/spikes.md`](docs/spikes.md) |
+| 1 | Daemon core, usable from a local CLI client | ✅ built |
+| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | next |
+| 3 | Review, code, preview — judge an agent's work without a laptop | |
+| 4 | Multi-account power features and public launch | |
+| 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.
 
+## Develop
+
+Needs Node 22+, pnpm 10 and git.
+
+```sh
+pnpm install
+pnpm build
+pnpm test          # unit tests
+pnpm test:e2e      # end-to-end: real daemon + CLI + scripted ACP agent
+pnpm e2e:record    # same run, rendered to artifacts/phase-1-e2e.mp4 (needs ffmpeg + Chromium)
+```
+
+Try it by hand with the scripted agent:
+
+```sh
+export AGENTDECK_HOME=/tmp/agentdeck AGENTDECK_DEV_AGENTS=1
+node apps/cli/dist/index.js daemon &
+node apps/cli/dist/index.js dev watch &
+node apps/cli/dist/index.js repo add ~/src/my-repo
+node apps/cli/dist/index.js profile add fake --name Personal
+```
+
 ## Docs
 
+- [`docs/phase-1.md`](docs/phase-1.md) — what Phase 1 built, its E2E suite and the video
+- [`docs/spikes.md`](docs/spikes.md) — pinned versions and open Phase 0 questions
 - [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation
   plan: protocol, data model, daemon, chat lifecycle, relay, pairing and encryption,
   preview tunnelling, mobile app, packaging, testing, phases, open questions. Snapshot of

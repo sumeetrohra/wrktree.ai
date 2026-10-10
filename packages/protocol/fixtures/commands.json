@@ -1,0 +1,389 @@
+{
+  "sync.hello": {
+    "args": {
+      "deviceName": "cli",
+      "appVersion": "0.1.0",
+      "cursors": {
+        "global": 0,
+        "chat:*": 3
+      }
+    },
+    "result": {
+      "daemonId": "d1",
+      "daemonVersion": "0.1.0",
+      "topics": {
+        "global": 4
+      }
+    }
+  },
+  "repo.list": {
+    "args": {},
+    "result": [
+      {
+        "id": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "path": "/home/me/src/app",
+        "name": "app",
+        "defaultBase": "main",
+        "createdAt": 1791600000000
+      }
+    ]
+  },
+  "repo.add": {
+    "args": {
+      "path": "/home/me/src/app"
+    },
+    "result": {
+      "id": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "path": "/home/me/src/app",
+      "name": "app",
+      "defaultBase": "main",
+      "createdAt": 1791600000000
+    }
+  },
+  "repo.remove": {
+    "args": {
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
+  },
+  "fs.browse": {
+    "args": {
+      "root": "allowlist",
+      "path": "/home/me/src"
+    },
+    "result": {
+      "path": "/home/me/src",
+      "entries": [
+        {
+          "name": "app",
+          "path": "/home/me/src/app",
+          "isGitRepo": true
+        }
+      ]
+    }
+  },
+  "profile.list": {
+    "args": {},
+    "result": [
+      {
+        "id": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "agent": "claude",
+        "name": "Claude Work",
+        "color": null,
+        "createdAt": 1791600000000
+      }
+    ]
+  },
+  "profile.create": {
+    "args": {
+      "agent": "claude",
+      "name": "Claude Work"
+    },
+    "result": {
+      "id": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "agent": "claude",
+      "name": "Claude Work",
+      "color": null,
+      "createdAt": 1791600000000
+    }
+  },
+  "profile.remove": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
+  },
+  "profile.loginStatus": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "loggedIn": true,
+      "account": "me@example.com"
+    }
+  },
+  "profile.loginCommand": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "command": ["claude", "/login"],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/x"
+      }
+    }
+  },
+  "worktree.list": {
+    "args": {
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": [
+      {
+        "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "title": "Fix login",
+        "branch": "fix-login",
+        "baseRef": "main",
+        "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+        "status": "ready",
+        "port": 41000,
+        "setupError": null,
+        "createdAt": 1791600000000,
+        "archivedAt": null
+      }
+    ]
+  },
+  "worktree.create": {
+    "args": {
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "baseRef": "main",
+      "branch": "fix-login",
+      "title": "Fix login"
+    },
+    "result": {
+      "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Fix login",
+      "branch": "fix-login",
+      "baseRef": "main",
+      "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+      "status": "creating",
+      "port": null,
+      "setupError": null,
+      "createdAt": 1791600000000,
+      "archivedAt": null
+    }
+  },
+  "worktree.archive": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Fix login",
+      "branch": "fix-login",
+      "baseRef": "main",
+      "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+      "status": "archived",
+      "port": null,
+      "setupError": null,
+      "createdAt": 1791600000000,
+      "archivedAt": 1791600000000
+    }
+  },
+  "worktree.restore": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Fix login",
+      "branch": "fix-login",
+      "baseRef": "main",
+      "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+      "status": "ready",
+      "port": 41000,
+      "setupError": null,
+      "createdAt": 1791600000000,
+      "archivedAt": null
+    }
+  },
+  "worktree.delete": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
+  },
+  "chat.list": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": [
+      {
+        "id": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "agent": "claude",
+        "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "title": null,
+        "status": "idle",
+        "resumed": false,
+        "queued": 0,
+        "createdAt": 1791600000000,
+        "updatedAt": 1791600000000
+      }
+    ]
+  },
+  "chat.create": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "agent": "claude",
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "agent": "claude",
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": null,
+      "status": "starting",
+      "resumed": false,
+      "queued": 0,
+      "createdAt": 1791600000000,
+      "updatedAt": 1791600000000
+    }
+  },
+  "chat.send": {
+    "args": {
+      "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "text": "Fix the login bug",
+      "attachments": [
+        {
+          "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mime": "image/png",
+          "size": 1234
+        }
+      ]
+    },
+    "result": {
+      "turnId": "turn_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "queued": false
+    }
+  },
+  "chat.cancel": {
+    "args": {
+      "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
+  },
+  "chat.retry": {
+    "args": {
+      "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "agent": "claude",
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": null,
+      "status": "starting",
+      "resumed": false,
+      "queued": 0,
+      "createdAt": 1791600000000,
+      "updatedAt": 1791600000000
+    }
+  },
+  "permission.respond": {
+    "args": {
+      "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "requestId": "perm_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "decision": "deny",
+      "message": "Use the helper instead"
+    },
+    "result": {}
+  },
+  "diff.summary": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "against": "base"
+    },
+    "result": {
+      "against": "main",
+      "files": [
+        {
+          "path": "src/login.ts",
+          "added": 12,
+          "removed": 3,
+          "status": "modified"
+        }
+      ]
+    }
+  },
+  "diff.file": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "path": "src/login.ts"
+    },
+    "result": {
+      "blob": {
+        "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mime": "text/x-diff",
+        "size": 1234
+      }
+    }
+  },
+  "fs.tree": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "entries": [
+        {
+          "name": "src",
+          "path": "src",
+          "type": "dir"
+        },
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "type": "file",
+          "size": 120
+        }
+      ]
+    }
+  },
+  "fs.read": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "path": "README.md"
+    },
+    "result": {
+      "text": "# app\n",
+      "size": 6,
+      "offset": 0,
+      "eof": true
+    }
+  },
+  "fs.search": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "query": "login"
+    },
+    "result": {
+      "matches": [
+        {
+          "path": "src/login.ts",
+          "line": 3,
+          "text": "export function login() {"
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "blob.put": {
+    "args": {
+      "mime": "image/png",
+      "size": 1234,
+      "uploadId": "up_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "mime": "image/png",
+      "size": 1234
+    }
+  },
+  "blob.get": {
+    "args": {
+      "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "result": {
+      "blob": {
+        "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mime": "image/png",
+        "size": 1234
+      },
+      "base64": "aGVsbG8="
+    }
+  }
+}

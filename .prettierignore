@@ -1,0 +1,7 @@
+dist
+node_modules
+artifacts
+pnpm-lock.yaml
+.turbo
+docs/tech-spec.md
+*.md

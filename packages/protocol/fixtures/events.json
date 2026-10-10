@@ -1,0 +1,161 @@
+[
+  {
+    "type": "worktree.updated",
+    "worktree": {
+      "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Fix login",
+      "branch": "fix-login",
+      "baseRef": "main",
+      "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+      "status": "ready",
+      "port": 41000,
+      "setupError": null,
+      "createdAt": 1791600000000,
+      "archivedAt": null
+    }
+  },
+  {
+    "type": "worktree.removed",
+    "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+  },
+  {
+    "type": "chat.status",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "status": "limited",
+    "resetAt": 1791600000000
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "user",
+      "id": "item_1",
+      "at": 1791600000000,
+      "text": "hi",
+      "attachments": [
+        {
+          "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "mime": "image/png",
+          "size": 1234
+        }
+      ]
+    }
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "agent_text",
+      "id": "item_2",
+      "at": 1791600000000,
+      "text": "Hello"
+    }
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "thought",
+      "id": "item_3",
+      "at": 1791600000000,
+      "text": "Thinking"
+    }
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "tool",
+      "id": "call_1",
+      "at": 1791600000000,
+      "title": "Edit login.ts",
+      "toolKind": "edit",
+      "status": "running",
+      "locations": ["src/login.ts"]
+    }
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "plan",
+      "id": "item_4",
+      "at": 1791600000000,
+      "entries": [
+        {
+          "text": "Read code",
+          "status": "done"
+        },
+        {
+          "text": "Fix",
+          "status": "in_progress"
+        }
+      ]
+    }
+  },
+  {
+    "type": "chat.item",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "item": {
+      "kind": "system",
+      "id": "item_5",
+      "at": 1791600000000,
+      "text": "Agent restarted",
+      "level": "warn"
+    }
+  },
+  {
+    "type": "chat.itemPatch",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "itemId": "item_2",
+    "patch": {
+      "text": "Hello there"
+    }
+  },
+  {
+    "type": "permission.requested",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "request": {
+      "requestId": "perm_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "toolCallId": "call_1",
+      "title": "Edit login.ts",
+      "toolKind": "edit",
+      "locations": ["src/login.ts"],
+      "options": [
+        {
+          "optionId": "allow",
+          "name": "Allow",
+          "kind": "allow_once"
+        }
+      ],
+      "at": 1791600000000
+    }
+  },
+  {
+    "type": "permission.resolved",
+    "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "requestId": "perm_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "decision": "allow_once",
+    "auto": false
+  },
+  {
+    "type": "usage.updated",
+    "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "usage": {
+      "limitHit": true,
+      "resetAt": 1791600000000
+    }
+  },
+  {
+    "type": "proc.output",
+    "procId": "proc_1",
+    "chunk": "ready in 300ms\n"
+  },
+  {
+    "type": "preview.status",
+    "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "status": "ready",
+    "url": "https://x.preview.example"
+  }
+]

@@ -1,0 +1,4 @@
+[
+  { "tool": { "id": "w1", "title": "Write {{path}}", "kind": "edit", "locations": [] } },
+  { "write": { "path": "{{path}}", "content": "escaped\n", "toolId": "w1" } }
+]

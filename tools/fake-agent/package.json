@@ -1,0 +1,26 @@
+{
+  "name": "@agentdeck/fake-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scripted ACP agent for tests: deterministic, no tokens.",
+  "type": "module",
+  "bin": {
+    "fake-acp-agent": "./dist/index.js",
+    "fake-acp-login": "./dist/login.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/paths.d.ts",
+      "default": "./dist/paths.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.8.0",
+    "zod": "4.6.5"
+  }
+}

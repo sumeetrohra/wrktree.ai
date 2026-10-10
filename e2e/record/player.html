@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agentdeck Phase 1 E2E</title>
+    <style>
+      /*XTERM_CSS*/
+    </style>
+    <style>
+      :root {
+        --bg: #0b0d12;
+        --panel: #11141b;
+        --line: #232836;
+        --text: #e6e8ee;
+        --muted: #8a92a6;
+        --accent: #7aa2ff;
+        --ok: #4ade80;
+        --bad: #f87171;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      }
+      header {
+        height: 92px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        padding: 0 28px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+      .brand span {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .scenario {
+        flex: 1;
+        min-width: 0;
+      }
+      .scenario .name {
+        font-size: 24px;
+        font-weight: 650;
+      }
+      .scenario .step {
+        font-size: 18px;
+        color: var(--accent);
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .progress {
+        display: flex;
+        gap: 8px;
+      }
+      .progress i {
+        width: 34px;
+        height: 8px;
+        border-radius: 4px;
+        background: var(--line);
+      }
+      .progress i.done {
+        background: var(--ok);
+      }
+      .progress i.fail {
+        background: var(--bad);
+      }
+      .progress i.cur {
+        background: var(--accent);
+      }
+      main {
+        display: grid;
+        grid-template-columns: 820px 680px 1fr;
+        gap: 14px;
+        padding: 14px;
+        height: calc(1080px - 92px);
+      }
+      .pane {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .pane h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .term {
+        flex: 1;
+        padding: 8px 4px 8px 10px;
+        min-height: 0;
+      }
+      .checks {
+        flex: 1;
+        overflow: hidden;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .check {
+        font-size: 16px;
+        line-height: 1.3;
+        display: flex;
+        gap: 10px;
+        animation: pop 0.25s ease-out;
+      }
+      .check b {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        color: #0b0d12;
+        background: var(--ok);
+      }
+      .check.fail b {
+        background: var(--bad);
+      }
+      .check .detail {
+        color: var(--bad);
+        font-size: 13px;
+        display: block;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+      .card {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(1200px 700px at 30% 30%, #18213a 0%, var(--bg) 70%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 180px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.35s ease;
+      }
+      .card.show {
+        opacity: 1;
+      }
+      .card .kicker {
+        color: var(--accent);
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .card h1 {
+        font-size: 84px;
+        margin: 18px 0 10px;
+        line-height: 1.05;
+      }
+      .card p {
+        font-size: 30px;
+        color: #c9cede;
+        margin: 10px 0;
+        max-width: 1500px;
+        line-height: 1.35;
+      }
+      .card .covers {
+        margin-top: 36px;
+        font-size: 22px;
+        color: var(--muted);
+        border-left: 4px solid var(--accent);
+        padding-left: 18px;
+        max-width: 1400px;
+      }
+      .card table {
+        border-collapse: collapse;
+        font-size: 28px;
+        margin-top: 30px;
+      }
+      .card td {
+        padding: 10px 26px 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .card td.ok {
+        color: var(--ok);
+        font-weight: 700;
+      }
+      .card td.bad {
+        color: var(--bad);
+        font-weight: 700;
+      }
+      .card td.muted {
+        color: var(--muted);
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 22px;
+        margin-top: 34px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">Agentdeck <span>· Phase 1 end-to-end</span></div>
+      <div class="scenario">
+        <div class="name" id="name"></div>
+        <div class="step" id="step"></div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </header>
+    <main>
+      <section class="pane">
+        <h2>agentdeck CLI &mdash; commands</h2>
+        <div class="term" id="cmd"></div>
+      </section>
+      <section class="pane">
+        <h2>agentdeck dev watch &mdash; live daemon events</h2>
+        <div class="term" id="events"></div>
+      </section>
+      <section class="pane">
+        <h2>Assertions</h2>
+        <div class="checks" id="checks"></div>
+      </section>
+    </main>
+    <div class="card" id="card"></div>
+    <script>
+      /*XTERM_JS*/
+    </script>
+    <script>
+      /*FIT_JS*/
+    </script>
+    <script>
+      window.PLAYBACK = /*PLAYBACK*/;
+    </script>
+    <script>
+      /*PLAYER_JS*/
+    </script>
+  </body>
+</html>

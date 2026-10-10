@@ -1,0 +1,19 @@
+{
+  "name": "@agentdeck/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "record": "node --experimental-transform-types --no-warnings record/record.ts"
+  },
+  "dependencies": {
+    "@agentdeck/cli": "workspace:*",
+    "@agentdeck/protocol": "workspace:*",
+    "@agentdeck/shared": "workspace:*",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
+    "playwright-core": "1.56.1"
+  }
+}
