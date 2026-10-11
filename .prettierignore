@@ -5,3 +5,5 @@ pnpm-lock.yaml
 .turbo
 docs/tech-spec.md
 *.md
+apps/mobile/src/shared/components/ui
+apps/mobile/.expo

@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Agentdeck",
+    "slug": "agentdeck",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "agentdeck",
+    "userInterfaceStyle": "automatic",
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-router"],
+    "experiments": { "reactCompiler": true, "typedRoutes": false }
+  }
+}

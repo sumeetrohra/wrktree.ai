@@ -50,6 +50,7 @@ export function optionsFromEnv(home: string): TDaemonOptions {
       ? env.AGENTDECK_RESTART_BACKOFF_MS.split(",").map(Number)
       : DEFAULT_BACKOFF_MS,
     patchIntervalMs: 50,
+    devOrigins: env.AGENTDECK_DEV_ORIGINS ? env.AGENTDECK_DEV_ORIGINS.split(",").map((o) => o.trim()) : [],
   };
 }
 
@@ -124,7 +125,13 @@ export class Daemon {
 
   /** Starts the local transport and resumes chats. `port` 0 picks a free port. */
   async start(port = 0): Promise<number> {
-    this.transport = new LocalTransport(this.rt.bus, this.router, this.rt.log, DAEMON_VERSION);
+    this.transport = new LocalTransport(
+      this.rt.bus,
+      this.router,
+      this.rt.log,
+      DAEMON_VERSION,
+      this.rt.opts.devOrigins,
+    );
     this.port = await this.transport.listen(port);
     const { paths } = this.rt;
     rmSync(paths.localToken, { force: true });

@@ -207,6 +207,7 @@ export class LocalTransport {
     private readonly router: Router,
     private readonly log: ILogger,
     version: string,
+    private readonly devOrigins: readonly string[] = [],
   ) {
     this.server = createServer((req, res) => {
       if (req.url === "/health" && this.hostAllowed(req)) {
@@ -250,7 +251,8 @@ export class LocalTransport {
     if (url.searchParams.has("token")) return "token in url";
     if (!this.hostAllowed(req)) return "host";
     const origin = req.headers.origin;
-    if (origin !== undefined && !this.allowedHosts().some((h) => origin === `http://${h}`)) return "origin";
+    const ownOrigin = this.allowedHosts().some((h) => origin === `http://${h}`);
+    if (origin !== undefined && !ownOrigin && !this.devOrigins.includes(origin)) return "origin";
     const header = req.headers.authorization?.replace(/^Bearer /, "");
     const fromProtocol = (req.headers["sec-websocket-protocol"] ?? "")
       .split(",")

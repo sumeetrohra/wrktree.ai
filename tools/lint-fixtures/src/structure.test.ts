@@ -56,6 +56,7 @@ const LAYOUTS: Record<string, string[]> = {
     "providers/*.tsx",
     "providers/index.ts",
     "shared/components/ui/*.tsx",
+    "shared/components/ui/README.md",
     "shared/{components,hooks,stores,utils,types,constants}/*.{ts,tsx}",
     "shared/i18n/*.ts",
     "shared/i18n/locales/*.json",

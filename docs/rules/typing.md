@@ -2,7 +2,7 @@
 
 | Id | Rule | Enforced by |
 |---|---|---|
-| TY1 | All packages extend `tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables`, `verbatimModuleSyntax`. Packages may not relax them. | `tsc`, `review` |
+| TY1 | All packages extend `tsconfig.strict.json` (Node packages through `tsconfig.base.json`, the app next to `expo/tsconfig.base`): `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables`, `verbatimModuleSyntax`. Packages may not relax them. | `tsc`, `review` |
 | TY2 | Lint runs with type information: `typescript-eslint` `strictTypeChecked` + `stylisticTypeChecked`. | `lint` |
 | TY3 | Exported functions and methods declare their return types. | `lint:@typescript-eslint/explicit-module-boundary-types` |
 | TY4 | `switch` over a union handles every member (or has a typed `default` that proves exhaustiveness). | `lint:@typescript-eslint/switch-exhaustiveness-check` |

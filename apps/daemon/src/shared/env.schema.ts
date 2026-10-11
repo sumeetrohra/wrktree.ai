@@ -18,6 +18,8 @@ export const daemonEnvSchema = z.object({
     .optional(),
   AGENTDECK_LOG_STDERR: flag,
   AGENTDECK_LOCAL_PORT: z.string().regex(/^\d+$/).optional(),
+  /** Development only: comma-separated extra browser origins (e.g. an Expo dev server) allowed to connect. */
+  AGENTDECK_DEV_ORIGINS: z.string().optional(),
   APPDATA: z.string().optional(),
   XDG_DATA_HOME: z.string().optional(),
 });

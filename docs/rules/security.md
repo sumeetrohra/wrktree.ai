@@ -20,7 +20,7 @@
 | SEC1 | Validate every inbound value with zod at the boundary (frames, ACP content, config, files, argv, env). | `review`, `test` |
 | SEC2 | Every path from a client or an agent goes through the worktree's `FileJail` (realpath, must stay inside, `.git` and secret globs hidden). | `test` |
 | SEC3 | The local token travels in the `Authorization` header (or `Sec-WebSocket-Protocol`), never in a URL. | `test` |
-| SEC4 | WebSocket upgrades with a foreign `Origin`, or a `Host` other than `127.0.0.1:<port>` / `localhost:<port>`, are rejected (DNS-rebinding and drive-by protection). | `test` |
+| SEC4 | WebSocket upgrades with a foreign `Origin`, or a `Host` other than `127.0.0.1:<port>` / `localhost:<port>`, are rejected (DNS-rebinding and drive-by protection). The only exception is an origin listed in `AGENTDECK_DEV_ORIGINS`, for development. | `test` |
 | SEC5 | Values passed to `git` that come from clients (branch, base ref, paths) are validated: no leading `-`, `check-ref-format` for refs, `--` before paths. | `test` |
 | SEC6 | Child processes get an allow-listed environment (OS essentials + profile env + `AGENTDECK_*`), never the daemon's full environment. | `test` |
 | SEC7 | `shell: true` is used only in `infra/process` to run a repo's setup/teardown scripts. | `lint:no-restricted-syntax`, `review` |

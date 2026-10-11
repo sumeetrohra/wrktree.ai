@@ -197,6 +197,86 @@ const CASES: TCase[] = [
     file: "apps/daemon/src/modules/badFolder/index.ts",
     code: "export const x = 1;\n",
   },
+
+  // App (docs/rules/react.md, design-system.md, api-calls.md, structure.md)
+  {
+    id: "R6 useEffect",
+    rule: "no-restricted-syntax",
+    file: "apps/mobile/src/modules/repos/hooks/use-bad.ts",
+    code: 'import * as React from "react";\nexport function useBad(): void {\n  React.useEffect(() => undefined, []);\n}\n',
+  },
+  {
+    id: "R9 createContext",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/shared/utils/bad.utils.ts",
+    code: 'import { createContext } from "react";\nexport const C = createContext(null);\n',
+  },
+  {
+    id: "R10 useMemo",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/shared/hooks/use-bad.ts",
+    code: 'import { useMemo } from "react";\nexport const useBad = (): number => useMemo(() => 1, []);\n',
+  },
+  {
+    id: "L10 raw Pressable",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/modules/repos/components/bad.tsx",
+    code: 'import { Pressable } from "react-native";\nexport const X = Pressable;\n',
+  },
+  {
+    id: "I1 hardcoded JSX string",
+    rule: "react/jsx-no-literals",
+    file: "apps/mobile/src/modules/repos/components/bad.tsx",
+    code: 'import { View } from "react-native";\nexport function Bad(): React.JSX.Element {\n  return <View>Hello there</View>;\n}\n',
+  },
+  {
+    id: "I2 new Date",
+    rule: "no-restricted-syntax",
+    file: "apps/mobile/src/shared/utils/bad.utils.ts",
+    code: "export const d = new Date();\n",
+  },
+  {
+    id: "U4 hex colour",
+    rule: "no-restricted-syntax",
+    file: "apps/mobile/src/shared/constants/bad.constants.ts",
+    code: 'export const RED = "#ff0000";\n',
+  },
+  {
+    id: "U4 raw palette class",
+    rule: "no-restricted-syntax",
+    file: "apps/mobile/src/shared/constants/bad.constants.ts",
+    code: 'export const CLS = "p-4 text-red-500";\n',
+  },
+  {
+    id: "L9 WebSocket outside lib/api",
+    rule: "no-restricted-globals",
+    file: "apps/mobile/src/modules/repos/api/bad.queries.ts",
+    code: 'export const ws = new WebSocket("ws://x");\n',
+  },
+  {
+    id: "L7 dayjs outside datetime-utils",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/shared/utils/bad.utils.ts",
+    code: 'import dayjs from "dayjs";\nexport const d = dayjs;\n',
+  },
+  {
+    id: "S4 app module imports another module",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/modules/chats/components/bad.tsx",
+    code: 'import { RepoList } from "@/modules/repos";\nexport const X = RepoList;\n',
+  },
+  {
+    id: "S3 page imports module internals",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/pages/repos/bad.tsx",
+    code: 'import { RepoList } from "@/modules/repos/components/repo-list";\nexport const X = RepoList;\n',
+  },
+  {
+    id: "S6 route imports a module",
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/app/bad.tsx",
+    code: 'export { RepoList as default } from "@/modules/repos";\n',
+  },
 ];
 
 describe("every lint rule still fires", () => {

@@ -96,6 +96,33 @@ describe("LocalTransport upgrade checks (SEC3, SEC4)", () => {
     ws.close();
   });
 
+  it("accepts an explicitly allowed development origin, and only that one", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "transport-dev-"));
+    const db = openDb(join(dir, "db"));
+    const devRouter = new Router(db, handlers(), silentLogger);
+    const dev = new LocalTransport(new EventBus(join(dir, "events"), db), devRouter, silentLogger, "test", [
+      "http://localhost:8081",
+    ]);
+    const devPort = await dev.listen(0);
+    const open = (origin: string): Promise<boolean> =>
+      new Promise((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${String(devPort)}/v1/ws`, {
+          headers: { authorization: `Bearer ${dev.token}`, origin },
+        });
+        ws.once("open", () => {
+          ws.close();
+          resolve(true);
+        });
+        ws.once("unexpected-response", () => {
+          resolve(false);
+        });
+      });
+    expect(await open("http://localhost:8081")).toBe(true);
+    expect(await open("http://localhost:9999")).toBe(false);
+    await dev.close();
+    devRouter.close();
+  });
+
   it("rejects a Host that isn't this listener (DNS rebinding)", async () => {
     const { result } = await attempt("/v1/ws", {
       headers: { ...auth(), host: `evil.example:${String(port)}` },

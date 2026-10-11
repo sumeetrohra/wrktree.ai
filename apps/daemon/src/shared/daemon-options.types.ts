@@ -9,4 +9,6 @@ export type TDaemonOptions = {
   restartBackoffMs: readonly number[];
   /** Coalescing window for streaming patches (≤ 20 per second per chat by default). */
   patchIntervalMs: number;
+  /** Extra browser origins allowed on the local transport (development only; SEC4). */
+  devOrigins: readonly string[];
 };

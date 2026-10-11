@@ -1,0 +1,12 @@
+{
+  "app": {
+    "title": "Agentdeck"
+  },
+  "repos": {
+    "title": "Repositories",
+    "empty": "No repositories yet. Add one with `agentdeck repo add <path>`.",
+    "loadFailed": "Couldn't reach the daemon.",
+    "added": "Added {{when}}",
+    "defaultBranch": "{{branch}}"
+  }
+}
