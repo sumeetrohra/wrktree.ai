@@ -23,7 +23,7 @@ export const c = {
 };
 
 /** `chat_01J9…N8` → `…P9N8`, enough to tell ids apart in a terminal. */
-export const short = (id: string): string => (id.length > 12 ? `…${id.slice(-4)}` : id);
+const short = (id: string): string => (id.length > 12 ? `…${id.slice(-4)}` : id);
 
 const clip = (s: string, n = 70) => {
   const one = s.replace(/\s+/g, " ").trim();

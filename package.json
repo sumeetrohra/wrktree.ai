@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "test": "turbo run test --filter=!@agentdeck/e2e",
     "test:e2e": "turbo run build && pnpm --filter @agentdeck/e2e test",
-    "e2e:record": "turbo run build && pnpm --filter @agentdeck/e2e record"
+    "e2e:record": "turbo run build && pnpm --filter @agentdeck/e2e record",
+    "prepare": "husky",
+    "knip": "knip"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
@@ -27,6 +29,9 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-security": "4.2.0",
     "globals": "17.13.0",
+    "husky": "9.1.7",
+    "knip": "6.41.0",
+    "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "turbo": "2.11.7",
     "typescript": "6.0.3",
@@ -40,5 +45,12 @@
       "@vscode/ripgrep",
       "esbuild"
     ]
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "eslint --max-warnings 0 --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,yml,yaml}": "prettier --write"
   }
 }

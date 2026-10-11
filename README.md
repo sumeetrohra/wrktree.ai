@@ -51,7 +51,14 @@ pnpm build
 pnpm test          # unit tests
 pnpm test:e2e      # end-to-end: real daemon + CLI + scripted ACP agent
 pnpm e2e:record    # same run, rendered to artifacts/phase-1-e2e.mp4 (needs ffmpeg + Chromium)
+pnpm lint && pnpm typecheck   # strict lint (structure, naming, library wrappers) and tsc
+pnpm knip          # no unused files, exports or dependencies
+pnpm --filter @agentdeck/mobile start   # Expo app skeleton (web: export:web)
 ```
+
+The coding rules every change follows live in [`docs/rules/`](docs/rules/README.md) and are
+summarised for agents in [`CLAUDE.md`](CLAUDE.md). A pre-commit hook (husky + lint-staged) runs
+lint, Prettier and the typecheck; CI adds knip, `pnpm audit` and CodeQL.
 
 Try it by hand with the scripted agent:
 
@@ -65,6 +72,8 @@ node apps/cli/dist/index.js profile add fake --name Personal
 
 ## Docs
 
+- [`docs/rules/`](docs/rules/README.md) — typing, naming, structure, library-call, React,
+  data, security and testing rules, each tagged with what enforces it
 - [`docs/phase-1.md`](docs/phase-1.md) — what Phase 1 built, its E2E suite and the video
 - [`docs/spikes.md`](docs/spikes.md) — pinned versions and open Phase 0 questions
 - [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation

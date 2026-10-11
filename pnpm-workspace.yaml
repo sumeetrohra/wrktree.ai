@@ -3,3 +3,9 @@ packages:
   - apps/*
   - tools/*
   - e2e
+
+# Reviewed exceptions to `pnpm audit --audit-level high` (docs/rules/security.md, SEC11).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv # node-forge via @expo/cli: dev-server tooling only, no fixed release
+    - GHSA-vfj7-8cjw-p6xm # braces via eslint-plugin-check-file: expands our own globs only, no fixed release

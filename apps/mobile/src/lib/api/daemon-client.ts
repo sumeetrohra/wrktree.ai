@@ -22,7 +22,7 @@ export type TDaemonCall = <N extends TCommandName>(
  * The app's only connection to the daemon (A1, L9). Commands are typed from the protocol map
  * and every reply is validated against its result schema before it reaches a component (A2).
  */
-export function createDaemonClient(url = DAEMON_URL, token = DAEMON_TOKEN): TDaemonCall {
+function createDaemonClient(url = DAEMON_URL, token = DAEMON_TOKEN): TDaemonCall {
   const pending = new Map<string, TPending>();
   let socket: WebSocket | null = null;
   let ready: Promise<WebSocket> | null = null;

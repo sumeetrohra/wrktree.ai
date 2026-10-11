@@ -29,7 +29,13 @@ pnpm install --frozen-lockfile
 pnpm build && pnpm lint && pnpm typecheck && pnpm test
 pnpm test:e2e        # real daemon + CLI + scripted agent
 pnpm e2e:record      # same, rendered to artifacts/phase-1-e2e.mp4
+pnpm knip            # unused files, exports, dependencies
+pnpm audit --audit-level high   # exceptions are reviewed in docs/rules/security.md
+pnpm --filter @agentdeck/mobile test        # app unit tests (jest-expo)
+pnpm --filter @agentdeck/mobile export:web  # app web build
 ```
+
+The pre-commit hook runs lint-staged and `pnpm typecheck`; never bypass it with `--no-verify`.
 
 A change is done when all of those pass. Don't disable a lint rule to get there; if an exception
 is truly needed, use `// eslint-disable-next-line <rule> -- reason: …`.

@@ -17,12 +17,12 @@ import { DaemonClient, CommandError } from "@agentdeck/cli";
 import type { TCommandName, TCommandResult, TDaemonEvent, TEvtFrame } from "@agentdeck/protocol";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
-export const CLI = join(REPO_ROOT, "apps", "cli", "dist", "main.js");
+const CLI = join(REPO_ROOT, "apps", "cli", "dist", "main.js");
 export const FIXTURES = join(REPO_ROOT, "e2e", "fixtures");
 
 // eslint-disable-next-line no-control-regex -- reason: matching ANSI colour escapes is the point
 const ANSI = /\x1b\[[0-9;]*m/g;
-export const stripAnsi = (s: string) => s.replace(ANSI, "");
+const stripAnsi = (s: string) => s.replace(ANSI, "");
 
 /** Where a harness sends what a viewer of the recording should see. */
 export interface ISink {
@@ -34,7 +34,7 @@ export interface ISink {
 
 const nullSink: ISink = { write: () => undefined, step: () => undefined, check: () => undefined };
 
-export class CheckFailed extends Error {}
+class CheckFailed extends Error {}
 
 type TIds = { repoId: string; profileId: string; worktreeId: string; chatId: string };
 

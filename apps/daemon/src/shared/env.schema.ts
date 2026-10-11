@@ -3,7 +3,7 @@ import { z } from "zod";
 const flag = z.enum(["0", "1"]).optional();
 
 /** Every environment variable the daemon reads, validated once (TY6). */
-export const daemonEnvSchema = z.object({
+const daemonEnvSchema = z.object({
   AGENTDECK_HOME: z.string().min(1).optional(),
   /** Path-list (`:` or `;` on Windows) of folders `fs.browse` and `repo.add` may reach. */
   AGENTDECK_BROWSE_ROOTS: z.string().min(1).optional(),

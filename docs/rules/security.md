@@ -29,3 +29,14 @@
 | SEC10 | No secrets in the repo; `.env*` stays ignored. | `CI`, `review` |
 | SEC11 | Dependencies are pinned, installed with `--frozen-lockfile`, only allow-listed packages may run install scripts, and `pnpm audit --audit-level high` must pass. | `CI` |
 | SEC12 | CodeQL runs on every push to `main` and every PR. | `CI` |
+
+## Reviewed audit exceptions (SEC11)
+
+`pnpm audit --audit-level high` runs in CI. An advisory may be ignored only when no fixed release
+exists and the vulnerable code never handles untrusted input in shipped code. Each one is listed in
+`pnpm-workspace.yaml` by GHSA id and here, and re-checked whenever its parent package is upgraded.
+
+| Advisory | Package (path) | Why it is accepted |
+|---|---|---|
+| GHSA-86w9-cpqp-85rv | node-forge (expo → @expo/cli) | Used by the Expo dev CLI for local dev-server certificates; not bundled into the app or the daemon. No fixed release. |
+| GHSA-vfj7-8cjw-p6xm | braces (eslint-plugin-check-file → micromatch) | Only expands the glob patterns in our own lint config. No fixed release. |

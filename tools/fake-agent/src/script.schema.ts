@@ -20,7 +20,7 @@ const toolStatus = z.enum(["pending", "in_progress", "completed", "failed"]);
 const count = z.coerce.number().int().nonnegative();
 
 /** One step of a fake-agent script (`scripts/<name>.json`), after `{{var}}` substitution. */
-export const stepSchema = z.union([
+const stepSchema = z.union([
   z.object({ text: z.string() }),
   z.object({ stream: z.string(), chunkMs: count.optional(), words: count.optional() }),
   z.object({ thought: z.string() }),

@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  HUSKY: 0
+
 jobs:
   test:
     name: test (${{ matrix.os }})
@@ -37,6 +40,25 @@ jobs:
           GIT_AUTHOR_EMAIL: ci@agentdeck.dev
           GIT_COMMITTER_NAME: CI
           GIT_COMMITTER_EMAIL: ci@agentdeck.dev
+
+  checks:
+    name: knip, audit, app web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Unused files, exports and dependencies
+        run: pnpm knip
+      - name: Dependency audit (high and above)
+        run: pnpm audit --audit-level high
+      - run: pnpm build
+      - name: App web export
+        run: pnpm --filter @agentdeck/mobile export:web
 
   record:
     name: record E2E video

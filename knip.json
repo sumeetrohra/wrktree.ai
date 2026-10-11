@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {},
+    "apps/daemon": {
+      "entry": ["src/main.ts", "src/index.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/cli": {
+      "entry": ["src/main.ts", "src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/mobile": {
+      "entry": ["src/app/**/*.tsx", "src/**/*.test.tsx"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": [
+        "react-native-css-interop",
+        "babel-plugin-react-compiler",
+        "expo-updates",
+        "@rn-primitives/label",
+        "@rn-primitives/portal",
+        "@rn-primitives/separator"
+      ],
+      "ignore": ["src/shared/components/ui/**"],
+      "metro": false
+    },
+    "packages/*": {
+      "entry": ["src/index.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "tools/fake-agent": {
+      "entry": ["src/index.ts", "src/login.ts", "src/paths.constants.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "tools/lint-fixtures": {
+      "project": ["src/**/*.ts"],
+      "entry": ["src/**/*.test.ts"]
+    },
+    "e2e": {
+      "project": ["src/**/*.ts", "record/**/*.ts"],
+      "entry": ["src/**/*.test.ts"]
+    }
+  },
+  "ignoreBinaries": ["ffmpeg"],
+  "rules": {
+    "types": "off",
+    "nsTypes": "off"
+  }
+}
