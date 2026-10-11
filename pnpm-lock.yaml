@@ -167,6 +167,24 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  tools/lint-fixtures:
+    devDependencies:
+      '@types/picomatch':
+        specifier: 4.0.3
+        version: 4.0.3
+      eslint:
+        specifier: 10.12.0
+        version: 10.12.0
+      picomatch:
+        specifier: 4.0.7
+        version: 4.0.7
+      typescript-eslint:
+        specifier: 8.71.1
+        version: 8.71.1(eslint@10.12.0)(typescript@6.0.3)
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
 packages:
 
   '@agentclientprotocol/sdk@1.8.0':

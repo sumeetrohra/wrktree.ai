@@ -193,6 +193,23 @@ function restrictedImports(zone) {
   return ["error", { paths, patterns: zone.patterns }];
 }
 
+/** N1–N5 (docs/rules/naming.md). */
+const NAMING_CONVENTION = [
+  "error",
+  { selector: "typeAlias", format: ["PascalCase"], prefix: ["T"] },
+  { selector: "interface", format: ["PascalCase"], prefix: ["I"] },
+  { selector: "enum", format: ["PascalCase"], prefix: ["E"] },
+  { selector: "enumMember", format: ["UPPER_CASE"] },
+  { selector: "typeParameter", format: ["PascalCase"] },
+  { selector: "class", format: ["PascalCase"] },
+  {
+    selector: "variable",
+    format: ["camelCase", "UPPER_CASE", "PascalCase"],
+    leadingUnderscore: "allow",
+  },
+  { selector: "function", format: ["camelCase", "PascalCase"] },
+];
+
 const zoneConfigs = ZONES.map((zone) => ({
   name: `zone/${zone.name}`,
   files: zone.files,
@@ -264,21 +281,7 @@ export default tseslint.config(
       ],
 
       // Naming (docs/rules/naming.md)
-      "@typescript-eslint/naming-convention": [
-        "error",
-        { selector: "typeAlias", format: ["PascalCase"], prefix: ["T"] },
-        { selector: "interface", format: ["PascalCase"], prefix: ["I"] },
-        { selector: "enum", format: ["PascalCase"], prefix: ["E"] },
-        { selector: "enumMember", format: ["UPPER_CASE"] },
-        { selector: "typeParameter", format: ["PascalCase"] },
-        { selector: "class", format: ["PascalCase"] },
-        {
-          selector: "variable",
-          format: ["camelCase", "UPPER_CASE", "PascalCase"],
-          leadingUnderscore: "allow",
-        },
-        { selector: "function", format: ["camelCase", "PascalCase"] },
-      ],
+      "@typescript-eslint/naming-convention": NAMING_CONVENTION,
       "check-file/filename-naming-convention": [
         "error",
         { "**/*.{ts,tsx,js}": "KEBAB_CASE" },
