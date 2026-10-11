@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { runDaemon } from "./run.js";
+import { runDaemon } from "#src/app/run-daemon.js";
 
 runDaemon().catch((e: unknown) => {
-  process.stderr.write(`agentdeck daemon failed: ${(e as Error).stack ?? String(e)}\n`);
+  process.stderr.write(`agentdeck daemon failed: ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
   process.exit(1);
 });

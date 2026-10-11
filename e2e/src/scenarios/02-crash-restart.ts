@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { newId } from "@agentdeck/shared";
 import { DaemonClient } from "@agentdeck/cli";
-import type { EvtFrame } from "@agentdeck/protocol";
+import type { TEvtFrame } from "@agentdeck/protocol";
 import type { Scenario } from "../scenario.ts";
 
 export const crashRestart: Scenario = {
@@ -63,7 +63,7 @@ export const crashRestart: Scenario = {
     const live = h.events.filter((e) => e.topic === topic);
     const replay = async (from: number) => {
       const c = await DaemonClient.connect(h.home);
-      const got: EvtFrame[] = [];
+      const got: TEvtFrame[] = [];
       c.onEvent((e) => got.push(e));
       const hello = await c.hello({ [topic]: from }, "replayer");
       const end = hello.topics[topic]!;

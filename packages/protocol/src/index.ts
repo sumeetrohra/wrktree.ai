@@ -1,8 +1,8 @@
-export * from "./errors.js";
-export * from "./ids.js";
-export * from "./models.js";
-export * from "./events.js";
-export * from "./envelope.js";
-export * from "./commands.js";
+export * from "./errors.schema.js";
+export * from "./ids.schema.js";
+export * from "./models.schema.js";
+export * from "./events.schema.js";
+export * from "./envelope.schema.js";
+export * from "./commands.schema.js";
 
 export const PROTOCOL_VERSION = 1;

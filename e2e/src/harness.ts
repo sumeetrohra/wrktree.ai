@@ -13,10 +13,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DaemonClient, CommandError } from "@agentdeck/cli";
-import type { CommandName, CommandResult, DaemonEvent, EvtFrame } from "@agentdeck/protocol";
+import type { TCommandName, TCommandResult, TDaemonEvent, TEvtFrame } from "@agentdeck/protocol";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
-export const CLI = join(REPO_ROOT, "apps", "cli", "dist", "index.js");
+export const CLI = join(REPO_ROOT, "apps", "cli", "dist", "main.js");
 export const FIXTURES = join(REPO_ROOT, "e2e", "fixtures");
 
 // eslint-disable-next-line no-control-regex
@@ -50,7 +50,7 @@ export class Harness {
   private watcher: ChildProcess | null = null;
   client!: DaemonClient;
   /** Every event the assertion client has seen, in arrival order. */
-  readonly events: EvtFrame[] = [];
+  readonly events: TEvtFrame[] = [];
   /** Arrival time (ms) of each entry in `events`. */
   readonly arrivals: number[] = [];
   private lastCursor = new Map<string, number>();
@@ -243,11 +243,11 @@ export class Harness {
   }
 
   /** `agentdeck dev send <name> '<args>'`; returns the parsed reply or throws CommandError. */
-  async send<N extends CommandName>(
+  async send<N extends TCommandName>(
     name: N,
     args: unknown,
     opts: { cmdId?: string; quiet?: boolean } = {},
-  ): Promise<CommandResult<N>> {
+  ): Promise<TCommandResult<N>> {
     const cliArgs = ["dev", "send", name, JSON.stringify(args)];
     if (opts.cmdId) cliArgs.push("--cmd-id", opts.cmdId);
     const { code, out, stdout } = await this.cli(cliArgs);
@@ -256,11 +256,11 @@ export class Harness {
       if (m) throw new CommandError({ code: m[1] as never, message: m[2]!, retryable: false });
       throw new Error(`agentdeck dev send ${name} failed: ${out}`);
     }
-    return JSON.parse(stdout) as CommandResult<N>;
+    return JSON.parse(stdout) as TCommandResult<N>;
   }
 
   /** Sends a command that must fail; returns the error code. */
-  async sendError(name: CommandName, args: unknown): Promise<string> {
+  async sendError(name: TCommandName, args: unknown): Promise<string> {
     try {
       await this.send(name, args);
     } catch (e) {
@@ -273,23 +273,23 @@ export class Harness {
   // ---------- waiting on events ----------
 
   /** Resolves with the first event (from `since` on) matching `pred`. */
-  waitFor<T extends DaemonEvent>(
-    pred: (e: DaemonEvent, f: EvtFrame) => e is T,
+  waitFor<T extends TDaemonEvent>(
+    pred: (e: TDaemonEvent, f: TEvtFrame) => e is T,
     what: string,
     opts?: { since?: number; timeoutMs?: number },
   ): Promise<T>;
   waitFor(
-    pred: (e: DaemonEvent, f: EvtFrame) => boolean,
+    pred: (e: TDaemonEvent, f: TEvtFrame) => boolean,
     what: string,
     opts?: { since?: number; timeoutMs?: number },
-  ): Promise<DaemonEvent>;
+  ): Promise<TDaemonEvent>;
   waitFor(
-    pred: (e: DaemonEvent, f: EvtFrame) => boolean,
+    pred: (e: TDaemonEvent, f: TEvtFrame) => boolean,
     what: string,
     opts: { since?: number; timeoutMs?: number } = {},
   ) {
     const since = opts.since ?? 0;
-    return new Promise<DaemonEvent>((resolve, reject) => {
+    return new Promise<TDaemonEvent>((resolve, reject) => {
       let i = since;
       const scan = () => {
         for (; i < this.events.length; i++) {
@@ -440,7 +440,7 @@ export class Harness {
       "worktree setup",
       { since },
     );
-    return (e as Extract<DaemonEvent, { type: "worktree.updated" }>).worktree;
+    return (e as Extract<TDaemonEvent, { type: "worktree.updated" }>).worktree;
   }
 
   /** Repo + logged-in profile + ready worktree + idle chat, the common starting point. */

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import type { DaemonEvent } from "@agentdeck/protocol";
+import type { TDaemonEvent } from "@agentdeck/protocol";
 import type { Scenario } from "../scenario.ts";
 
-type Requested = Extract<DaemonEvent, { type: "permission.requested" }>;
+type Requested = Extract<TDaemonEvent, { type: "permission.requested" }>;
 
 export const permissions: Scenario = {
   n: 5,

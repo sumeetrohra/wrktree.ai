@@ -5,8 +5,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/daemon.d.ts",
-      "default": "./dist/daemon.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "bin": {
@@ -33,5 +33,11 @@
     "@types/better-sqlite3": "7.6.13",
     "@types/picomatch": "4.0.3",
     "@types/ws": "8.18.2"
+  },
+  "imports": {
+    "#src/*": {
+      "types": "./src/*",
+      "default": "./dist/*"
+    }
   }
 }

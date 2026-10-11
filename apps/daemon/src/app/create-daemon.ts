@@ -1,0 +1,147 @@
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+
+import { AgentdeckError } from "@agentdeck/protocol";
+import { newId, now, type ILogger } from "@agentdeck/shared";
+
+import { EventBus } from "#src/infra/bus/index.js";
+import { openDb } from "#src/infra/db/index.js";
+import { Router } from "#src/infra/rpc/index.js";
+import type { TRuntime } from "#src/infra/runtime/index.js";
+import { LocalTransport } from "#src/infra/transport/index.js";
+import { AgentRegistry } from "#src/modules/agents/index.js";
+import { BlobStore } from "#src/modules/blobs/index.js";
+import { FileJail } from "#src/modules/files/index.js";
+import { GitService } from "#src/modules/git/index.js";
+import { ProfilesService } from "#src/modules/profiles/index.js";
+import { ReposService } from "#src/modules/repos/index.js";
+import { SessionManager } from "#src/modules/sessions/index.js";
+import { WorktreesService } from "#src/modules/worktrees/index.js";
+import type { TDaemonOptions } from "#src/shared/daemon-options.types.js";
+import { pathsFor } from "#src/shared/paths.utils.js";
+import { DAEMON_VERSION } from "#src/shared/version.constants.js";
+
+import type { TModules } from "./app.types.js";
+import { createHandlers } from "./handlers/index.js";
+
+const DEFAULT_PORT_RANGE: readonly [number, number] = [41000, 41999];
+const DEFAULT_BACKOFF_MS: readonly number[] = [1000, 4000, 15000];
+
+function portRange(raw: string | undefined): readonly [number, number] {
+  if (raw === undefined) return DEFAULT_PORT_RANGE;
+  const [lo, hi] = raw.split("-").map(Number);
+  if (lo === undefined || hi === undefined || !Number.isInteger(lo) || !Number.isInteger(hi) || lo > hi) {
+    throw new Error(`AGENTDECK_PORT_RANGE must look like 41000-41999, got ${raw}`);
+  }
+  return [lo, hi];
+}
+
+export function optionsFromEnv(home: string): TDaemonOptions {
+  const env = process.env;
+  return {
+    home,
+    browseRoots: env.AGENTDECK_BROWSE_ROOTS
+      ? env.AGENTDECK_BROWSE_ROOTS.split(process.platform === "win32" ? ";" : ":")
+      : [homedir()],
+    portRange: portRange(env.AGENTDECK_PORT_RANGE),
+    devAgents: env.AGENTDECK_DEV_AGENTS === "1",
+    restartBackoffMs: env.AGENTDECK_RESTART_BACKOFF_MS
+      ? env.AGENTDECK_RESTART_BACKOFF_MS.split(",").map(Number)
+      : DEFAULT_BACKOFF_MS,
+    patchIntervalMs: 50,
+  };
+}
+
+/** Composition root: builds infra, wires modules through their ports, registers handlers. */
+export class Daemon {
+  readonly rt: TRuntime;
+  readonly modules: TModules;
+  private readonly router: Router;
+  private transport: LocalTransport | null = null;
+  port = 0;
+
+  constructor(opts: TDaemonOptions, log: ILogger) {
+    const paths = pathsFor(opts.home);
+    // The home folder holds the token and every chat transcript: owner-only (SEC3).
+    mkdirSync(paths.home, { recursive: true, mode: 0o700 });
+    if (process.platform !== "win32") chmodSync(paths.home, 0o700);
+    for (const d of [paths.events, paths.blobs, paths.profiles, paths.shared, paths.logs]) {
+      mkdirSync(d, { recursive: true });
+    }
+    const db = openDb(paths.db);
+    this.rt = { db, bus: new EventBus(paths.events, db), paths, log, opts };
+
+    const agents = new AgentRegistry(opts.devAgents);
+    const repos = new ReposService(this.rt);
+    const profiles = new ProfilesService(this.rt, agents);
+    const worktrees = new WorktreesService(this.rt, repos);
+    const blobs = new BlobStore(paths.blobs);
+    const jailFor = (worktreeId: string): FileJail => {
+      const wt = worktrees.get(worktreeId);
+      if (!existsSync(wt.path)) throw new AgentdeckError("NOT_FOUND", `Worktree folder is missing: ${wt.path}`);
+      return new FileJail(wt.path, repos.hiddenGlobs(repos.get(wt.repoId)));
+    };
+    const sessions = new SessionManager(this.rt, {
+      profiles,
+      worktrees,
+      blobs,
+      files: {
+        filesFor: (worktreeId) => {
+          const jail = jailFor(worktreeId);
+          return {
+            read: (path, line, limit) => jail.agentRead(path, line, limit),
+            write: (path, content) => jail.agentWrite(path, content),
+          };
+        },
+      },
+    });
+    worktrees.hooks = {
+      stopChats: (id) => {
+        sessions.stopWorktree(id);
+      },
+      startChats: (id) => {
+        sessions.startWorktree(id);
+      },
+      deleteChats: (id) => {
+        sessions.deleteWorktreeChats(id);
+      },
+    };
+    this.modules = {
+      daemonId: newId("dev"),
+      bus: this.rt.bus,
+      repos,
+      profiles,
+      worktrees,
+      sessions,
+      blobs,
+      git: new GitService(blobs),
+      jailFor,
+    };
+    this.router = new Router(db, createHandlers(this.modules), log);
+  }
+
+  /** Starts the local transport and resumes chats. `port` 0 picks a free port. */
+  async start(port = 0): Promise<number> {
+    this.transport = new LocalTransport(this.rt.bus, this.router, this.rt.log, DAEMON_VERSION);
+    this.port = await this.transport.listen(port);
+    const { paths } = this.rt;
+    rmSync(paths.localToken, { force: true });
+    writeFileSync(paths.localToken, this.transport.token, { mode: 0o600, flag: "wx" });
+    writeFileSync(
+      paths.daemonJson,
+      JSON.stringify({ pid: process.pid, port: this.port, version: DAEMON_VERSION, startedAt: now() }),
+    );
+    this.modules.sessions.boot();
+    this.rt.log.info({ port: this.port }, "daemon listening");
+    return this.port;
+  }
+
+  async stop(): Promise<void> {
+    this.modules.sessions.shutdown();
+    await this.modules.worktrees.idle();
+    await this.transport?.close();
+    this.router.close();
+    rmSync(this.rt.paths.daemonJson, { force: true });
+    this.rt.db.close();
+  }
+}

@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "bin": {
-    "agentdeck": "./dist/index.js"
+    "agentdeck": "./dist/main.js"
   },
   "exports": {
     ".": {
-      "types": "./dist/client.d.ts",
-      "default": "./dist/client.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./format": {
-      "types": "./dist/format.d.ts",
-      "default": "./dist/format.js"
+      "types": "./dist/shared/output/index.d.ts",
+      "default": "./dist/shared/output/index.js"
     }
   },
   "scripts": {
@@ -25,9 +25,16 @@
     "@agentdeck/daemon": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
     "@agentdeck/shared": "workspace:*",
-    "ws": "8.22.0"
+    "ws": "8.22.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/ws": "8.18.2"
+  },
+  "imports": {
+    "#src/*": {
+      "types": "./src/*",
+      "default": "./dist/*"
+    }
   }
 }

@@ -1,0 +1,22 @@
+import type { EventBus } from "#src/infra/bus/index.js";
+import type { BlobStore } from "#src/modules/blobs/index.js";
+import type { FileJail } from "#src/modules/files/index.js";
+import type { GitService } from "#src/modules/git/index.js";
+import type { ProfilesService } from "#src/modules/profiles/index.js";
+import type { ReposService } from "#src/modules/repos/index.js";
+import type { SessionManager } from "#src/modules/sessions/index.js";
+import type { WorktreesService } from "#src/modules/worktrees/index.js";
+
+/** Everything handlers may use: the wired modules plus a few daemon-level facts. */
+export type TModules = {
+  daemonId: string;
+  bus: EventBus;
+  repos: ReposService;
+  profiles: ProfilesService;
+  worktrees: WorktreesService;
+  sessions: SessionManager;
+  blobs: BlobStore;
+  git: GitService;
+  /** The path jail for one worktree, built from its repo's hidden globs. */
+  jailFor: (worktreeId: string) => FileJail;
+};
