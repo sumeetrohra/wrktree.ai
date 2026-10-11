@@ -54,6 +54,8 @@ export const stepSchema = z.union([
   z.object({ limit: z.object({ resetInMs: count }) }),
   z.object({ echoAttachments: z.literal(true) }),
   z.object({ echo: z.literal(true) }),
+  /** Reports whether an env var reached the agent (never its value). */
+  z.object({ envReport: z.string() }),
 ]);
 export type TStep = z.infer<typeof stepSchema>;
 

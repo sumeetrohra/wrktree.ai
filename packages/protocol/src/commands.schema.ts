@@ -13,6 +13,13 @@ import {
 } from "./models.schema.js";
 
 const Empty = z.object({});
+/** A git branch or ref from a client: never empty, never readable as a git option (SEC5). */
+const gitRefSchema = z
+  .string()
+  .min(1)
+  .max(250)
+  .refine((v) => !v.startsWith("-"), "must not start with '-'");
+
 const WorktreeArgs = z.object({ worktreeId: worktreeIdSchema });
 
 /**
@@ -70,8 +77,8 @@ export const commands = {
   "worktree.create": {
     args: z.object({
       repoId: repoIdSchema,
-      baseRef: z.string().optional(),
-      branch: z.string(),
+      baseRef: gitRefSchema.optional(),
+      branch: gitRefSchema,
       title: z.string(),
     }),
     result: worktreeSchema,

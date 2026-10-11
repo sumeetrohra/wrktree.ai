@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { FIXTURES } from "../harness.ts";
@@ -118,6 +119,23 @@ export const goldenPath: TScenario = {
       const text = Buffer.from(body.base64, "base64").toString();
       assert.match(text, /^\+Written by the fake agent\.$/m);
       assert.equal(diff.blob.mime, "text/x-diff");
+    });
+
+    h.step("The daemon log holds ids and codes, never content");
+    await h.check("no prompt text, file content or token in the daemon log (SEC8)", () => {
+      const logs = readdirSync(join(h.home, "logs"))
+        .map((f) => readFileSync(join(h.home, "logs", f), "utf8"))
+        .join("");
+      const token = readFileSync(join(h.home, "local-token"), "utf8").trim();
+      assert.ok(logs.length > 0, "the daemon wrote a log");
+      for (const secret of [
+        "Write release notes",
+        "Written by the fake agent",
+        "Hello from the work account",
+        token,
+      ]) {
+        assert.equal(logs.includes(secret), false, `log contains ${secret.slice(0, 12)}…`);
+      }
     });
   },
 };

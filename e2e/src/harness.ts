@@ -70,6 +70,8 @@ export class Harness {
       AGENTDECK_DEV_AGENTS: "1",
       AGENTDECK_BROWSE_ROOTS: this.src,
       AGENTDECK_RESTART_BACKOFF_MS: "300,300,300",
+      /** SEC6: must never reach an agent or a setup script. */
+      AGENTDECK_SECRET_CANARY: "sk_live_e2e_canary",
       FORCE_COLOR: "1",
     };
     delete this.env["NO_COLOR"];

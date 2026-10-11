@@ -115,6 +115,18 @@ export const worktreeLifecycle: TScenario = {
       h.waitFor((e) => e.type === "worktree.removed" && e.worktreeId === b.id, "removed", { since }),
     );
 
+    h.step("Refs that git could read as options are refused");
+    await h.check("a base ref like --upload-pack=… is rejected before git runs", async () => {
+      const code = await h.sendError("worktree.create", {
+        repoId: repo.id,
+        branch: "pwn",
+        baseRef: "--upload-pack=touch /tmp/agentdeck-pwned",
+        title: "Injection",
+      });
+      assert.equal(code, "INVALID_ARGS");
+      assert.equal(existsSync("/tmp/agentdeck-pwned"), false);
+    });
+
     h.step("Browsing is limited to the allow-list");
     const roots = await h.send("fs.browse", { root: "allowlist" });
     const inside = await h.send("fs.browse", { root: "allowlist", path: h.src });

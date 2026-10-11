@@ -47,6 +47,10 @@ class Connection {
     ws.on("close", () => {
       this.unlisten();
     });
+    // Oversized or malformed frames surface here; without a listener they would crash the daemon.
+    ws.on("error", (e) => {
+      this.log.warn({ conn: this.id, code: e.name }, "websocket error");
+    });
   }
 
   private send(frame: TInner): void {

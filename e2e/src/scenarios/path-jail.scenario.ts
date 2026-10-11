@@ -7,8 +7,11 @@ import type { TScenario } from "../scenario.ts";
 export const pathJail: TScenario = {
   n: 3,
   title: "Path jail",
-  summary: "Clients and agents stay inside the worktree; .git and secrets stay hidden",
-  covers: ["Path jail tests reject ../, symlink escapes and absolute paths"],
+  summary: "Clients and agents stay inside the worktree; .git, secrets and the daemon's env stay hidden",
+  covers: [
+    "Path jail tests reject ../, symlink escapes and absolute paths",
+    "Security: agents get an allow-listed environment (SEC6)",
+  ],
   async run(h) {
     h.step("Set up, plus a secret file and an outside file");
     const ids = await h.quickstart();
@@ -78,6 +81,23 @@ export const pathJail: TScenario = {
     await h.waitStatus(ids.chatId, "idle", since);
     await h.check("fs/read_text_file of a hidden file is refused", () => {
       assert.match(h.agentText(ids.chatId, since), /Read of \.env\.local was refused: FORBIDDEN_PATH/);
+    });
+
+    h.step("The daemon's own environment doesn't leak to the agent");
+    since = h.mark();
+    await h.send("chat.send", {
+      chatId: ids.chatId,
+      text: "#script:env-report name=AGENTDECK_SECRET_CANARY",
+    });
+    await h.waitStatus(ids.chatId, "idle", since);
+    await h.check("a secret in the daemon's env is not passed to the agent", () => {
+      assert.match(h.agentText(ids.chatId, since), /AGENTDECK_SECRET_CANARY is unset/);
+    });
+    since = h.mark();
+    await h.send("chat.send", { chatId: ids.chatId, text: "#script:env-report name=FAKE_AGENT_HOME" });
+    await h.waitStatus(ids.chatId, "idle", since);
+    await h.check("the agent still gets its profile's config folder", () => {
+      assert.match(h.agentText(ids.chatId, since), /FAKE_AGENT_HOME is set/);
     });
   },
 };

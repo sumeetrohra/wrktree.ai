@@ -233,6 +233,9 @@ export class FakeAgent implements acp.Agent {
         kind: "usage_limit",
         resetAt,
       });
+    } else if ("envReport" in step) {
+      const isSet = Object.hasOwn(process.env, step.envReport);
+      await this.say(turn, `${step.envReport} is ${isSet ? "set" : "unset"}. `);
     } else {
       const imgs = turn.prompt.images;
       const desc = imgs.map((i) => `${i.mimeType} (${String(i.bytes)} bytes)`).join(", ");
