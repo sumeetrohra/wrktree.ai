@@ -1,12 +1,14 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { newId } from "@agentdeck/shared";
 import { describe, expect, it } from "vitest";
 
+import { openDb } from "../db/index.js";
+
 import { EventBus } from "./event-bus.service.js";
 import { topicMatches } from "./topic.utils.js";
-import { openDb } from "../db/index.js";
 
 const IDS: Record<string, string> = { a: newId("chat"), b: newId("chat"), x: newId("chat") };
 const status = (key: string, s: "idle" | "running") => ({

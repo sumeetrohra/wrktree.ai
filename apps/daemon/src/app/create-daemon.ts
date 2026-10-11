@@ -18,6 +18,7 @@ import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
 import { WorktreesService } from "#src/modules/worktrees/index.js";
 import type { TDaemonOptions } from "#src/shared/daemon-options.types.js";
+import { readDaemonEnv } from "#src/shared/env.schema.js";
 import { pathsFor } from "#src/shared/paths.utils.js";
 import { DAEMON_VERSION } from "#src/shared/version.constants.js";
 
@@ -30,14 +31,14 @@ const DEFAULT_BACKOFF_MS: readonly number[] = [1000, 4000, 15000];
 function portRange(raw: string | undefined): readonly [number, number] {
   if (raw === undefined) return DEFAULT_PORT_RANGE;
   const [lo, hi] = raw.split("-").map(Number);
-  if (lo === undefined || hi === undefined || !Number.isInteger(lo) || !Number.isInteger(hi) || lo > hi) {
+  if (lo === undefined || hi === undefined || lo > hi) {
     throw new Error(`AGENTDECK_PORT_RANGE must look like 41000-41999, got ${raw}`);
   }
   return [lo, hi];
 }
 
 export function optionsFromEnv(home: string): TDaemonOptions {
-  const env = process.env;
+  const env = readDaemonEnv();
   return {
     home,
     browseRoots: env.AGENTDECK_BROWSE_ROOTS
@@ -78,7 +79,8 @@ export class Daemon {
     const blobs = new BlobStore(paths.blobs);
     const jailFor = (worktreeId: string): FileJail => {
       const wt = worktrees.get(worktreeId);
-      if (!existsSync(wt.path)) throw new AgentdeckError("NOT_FOUND", `Worktree folder is missing: ${wt.path}`);
+      if (!existsSync(wt.path))
+        throw new AgentdeckError("NOT_FOUND", `Worktree folder is missing: ${wt.path}`);
       return new FileJail(wt.path, repos.hiddenGlobs(repos.get(wt.repoId)));
     };
     const sessions = new SessionManager(this.rt, {

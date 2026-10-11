@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { newId } from "@agentdeck/shared";
+
 import { DaemonClient } from "@agentdeck/cli";
 import type { TEvtFrame } from "@agentdeck/protocol";
-import type { Scenario } from "../scenario.ts";
+import { newId } from "@agentdeck/shared";
 
-export const crashRestart: Scenario = {
+import type { TScenario } from "../scenario.ts";
+
+export const crashRestart: TScenario = {
   n: 2,
   title: "Daemon crash & restart",
   summary: "kill -9 mid-turn: chats come back, the event log replays from any cursor, no command runs twice",
@@ -46,9 +48,9 @@ export const crashRestart: Scenario = {
       assert.equal(chats[0]!.status, "idle");
       assert.equal(chats[0]!.resumed, false, "resumed via session/load, not a fresh session");
     });
-    await h.check("the interrupted turn is reported in the chat", () =>
-      assert.ok(h.systemText(ids.chatId, since).some((t) => t.includes("interrupted"))),
-    );
+    await h.check("the interrupted turn is reported in the chat", () => {
+      assert.ok(h.systemText(ids.chatId, since).some((t) => t.includes("interrupted")));
+    });
 
     h.step("Re-send the same command id");
     const again = await h.send("worktree.create", args, { cmdId });
@@ -74,30 +76,34 @@ export const crashRestart: Scenario = {
     const all = await replay(0);
     const midCursor = Math.floor(all.length / 2);
     const mid = await replay(midCursor);
-    const note = (s: string) => h.sink.write("cmd", `\x1b[90m  ${s}\x1b[0m\r\n`);
+    const note = (s: string) => {
+      h.sink.write("cmd", `\x1b[90m  ${s}\x1b[0m\r\n`);
+    };
     note(
       `sync.hello {${topic.slice(0, 9)}…: 0}  → replayed ${all.length} events (#1…#${all.at(-1)!.cursor})`,
     );
     note(
       `sync.hello {${topic.slice(0, 9)}…: ${midCursor}} → replayed ${mid.length} events (#${mid[0]!.cursor}…#${mid.at(-1)!.cursor})`,
     );
-    await h.check("replay from cursor 0 equals what was streamed live", () =>
+    await h.check("replay from cursor 0 equals what was streamed live", () => {
       assert.deepEqual(
         all.map((e) => [e.cursor, e.event]),
         live.map((e) => [e.cursor, e.event]),
-      ),
-    );
-    await h.check("replay from a middle cursor returns exactly the tail", () =>
-      assert.deepEqual(mid, all.slice(Math.floor(all.length / 2))),
-    );
-    await h.check("no gaps or duplicates across the restart", () => assert.deepEqual(h.gaps, []));
+      );
+    });
+    await h.check("replay from a middle cursor returns exactly the tail", () => {
+      assert.deepEqual(mid, all.slice(Math.floor(all.length / 2)));
+    });
+    await h.check("no gaps or duplicates across the restart", () => {
+      assert.deepEqual(h.gaps, []);
+    });
 
     h.step("The chat keeps working");
     since = h.mark();
     await h.send("chat.send", { chatId: ids.chatId, text: "Are you still there?" });
     await h.waitText(ids.chatId, "You said: Are you still there?", since);
-    await h.check("a new turn runs after the restart", () =>
-      assert.match(h.agentText(ids.chatId, since), /still there/),
-    );
+    await h.check("a new turn runs after the restart", () => {
+      assert.match(h.agentText(ids.chatId, since), /still there/);
+    });
   },
 };

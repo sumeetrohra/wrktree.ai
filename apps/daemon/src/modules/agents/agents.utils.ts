@@ -12,7 +12,8 @@ const usageLimitDataSchema = z.object({ kind: z.literal("usage_limit"), resetAt:
 function errorText(err: unknown): string {
   const e = errorLikeSchema.safeParse(err);
   if (!e.success) return String(err);
-  return `${String(e.data.message ?? "")} ${JSON.stringify(e.data.data ?? "")}`;
+  const message = typeof e.data.message === "string" ? e.data.message : "";
+  return `${message} ${JSON.stringify(e.data.data ?? "")}`;
 }
 
 /** Usage-limit detection by message text: works for agents that report limits only in prose. */
@@ -24,7 +25,8 @@ export function textLimit(err: unknown): TLimitCheck {
 export function structuredLimit(err: unknown): TLimitCheck {
   const e = errorLikeSchema.safeParse(err);
   const data = e.success ? usageLimitDataSchema.safeParse(e.data.data) : undefined;
-  if (data?.success) return data.data.resetAt === undefined ? { hit: true } : { hit: true, resetAt: data.data.resetAt };
+  if (data?.success)
+    return data.data.resetAt === undefined ? { hit: true } : { hit: true, resetAt: data.data.resetAt };
   return textLimit(err);
 }
 

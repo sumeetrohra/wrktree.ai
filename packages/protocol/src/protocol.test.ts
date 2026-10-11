@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { commandNames, commands, daemonEventSchema, innerSchema, type TCommandName } from "./index.js";
 
 const fixture = (name: string): unknown =>

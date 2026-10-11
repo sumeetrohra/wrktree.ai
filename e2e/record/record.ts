@@ -7,11 +7,13 @@
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { arch, platform, release } from "node:os";
 import { join } from "node:path";
-import { createRequire } from "node:module";
+
 import { chromium } from "playwright-core";
-import { Harness, REPO_ROOT, type Sink } from "../src/harness.ts";
+
+import { Harness, REPO_ROOT, type ISink } from "../src/harness.ts";
 import { scenarios } from "../src/scenarios/index.ts";
 
 const require = createRequire(import.meta.url);
@@ -25,14 +27,14 @@ const STEP_PAUSE_MS = 1600;
 const COMMAND_PAUSE_MS = 700;
 const CHECK_PAUSE_MS = 450;
 
-type Rec =
+type TRec =
   | { t: number; kind: "out"; pane: "cmd" | "events"; data: string }
   | { t: number; kind: "step"; text: string }
   | { t: number; kind: "check"; label: string; ok: boolean; detail?: string }
   | { t: number; kind: "scenario"; n: number; title: string; summary: string; covers: string[] }
   | { t: number; kind: "result"; n: number; ok: boolean; error?: string };
 
-type Row = { n: number; title: string; ok: boolean; checks: number; ms: number; error?: string };
+type TRow = { n: number; title: string; ok: boolean; checks: number; ms: number; error?: string };
 
 function gitSha(): string {
   try {
@@ -46,13 +48,13 @@ function gitSha(): string {
   }
 }
 
-async function runScenarios(): Promise<{ recs: Rec[]; rows: Row[]; totalMs: number }> {
-  const recs: Rec[] = [];
-  const rows: Row[] = [];
+async function runScenarios(): Promise<{ recs: TRec[]; rows: TRow[]; totalMs: number }> {
+  const recs: TRec[] = [];
+  const rows: TRow[] = [];
   const t0 = Date.now();
   const t = () => Date.now() - t0;
   let checks = 0;
-  const sink: Sink = {
+  const sink: ISink = {
     write: (pane, data) => recs.push({ t: t(), kind: "out", pane, data }),
     step: (text) => {
       recs.push({ t: t(), kind: "step", text });
@@ -88,7 +90,7 @@ async function runScenarios(): Promise<{ recs: Rec[]; rows: Row[]; totalMs: numb
 }
 
 /** Real time, with idle gaps capped and title cards inserted. */
-function playback(recs: Rec[], rows: Row[], totalMs: number, meta: string) {
+function playback(recs: TRec[], rows: TRow[], totalMs: number, meta: string) {
   const events: Record<string, unknown>[] = [{ at: 0, kind: "intro", meta }];
   let play = INTRO_MS;
   let last = 0;

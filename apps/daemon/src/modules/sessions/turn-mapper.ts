@@ -1,6 +1,6 @@
 import { isAbsolute, relative, sep } from "node:path";
 
-import type { TChatItem, TDaemonEvent } from "@agentdeck/protocol";
+import type { TChatItem, TChatItemPatch, TDaemonEvent } from "@agentdeck/protocol";
 import { newId, now } from "@agentdeck/shared";
 
 import type { TAcpSessionUpdate, TAcpToolCallStatus } from "#src/infra/acp/index.js";
@@ -83,7 +83,9 @@ export class TurnMapper {
     }
     this.open.text += text;
     this.open.dirty = true;
-    this.timer ??= setTimeout(() => this.flushText(), this.intervalMs);
+    this.timer ??= setTimeout(() => {
+      this.flushText();
+    }, this.intervalMs);
   }
 
   handle(update: TAcpSessionUpdate): void {
@@ -114,7 +116,7 @@ export class TurnMapper {
         const id = this.tools.get(update.toolCallId);
         if (!id) return;
         this.closeText();
-        const patch: Record<string, unknown> = {};
+        const patch: TChatItemPatch = {};
         if (update.status) patch.status = toolStatus(update.status);
         if (update.title) patch.title = update.title;
         if (update.locations) patch.locations = update.locations.map((l) => this.rel(l.path));

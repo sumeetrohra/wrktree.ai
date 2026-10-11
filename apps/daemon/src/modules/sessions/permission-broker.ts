@@ -54,7 +54,11 @@ export class PermissionBroker {
       .get(chatId, toolKind, pattern);
   }
 
-  request(chatId: string, params: TAcpPermissionRequest, rel: (p: string) => string) {
+  request(
+    chatId: string,
+    params: TAcpPermissionRequest,
+    rel: (p: string) => string,
+  ): Promise<TAcpPermissionResponse> {
     const tc = params.toolCall;
     const request: TPermissionRequest = {
       requestId: newId("perm"),
@@ -93,7 +97,7 @@ export class PermissionBroker {
 
   respond(chatId: string, requestId: string, decision: TPermissionDecision): void {
     const p = this.pending.get(requestId);
-    if (!p || p.chatId !== chatId)
+    if (p?.chatId !== chatId)
       throw new AgentdeckError("NOT_FOUND", `No pending permission request ${requestId}`);
     const opts = p.options;
     const opt =

@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TDaemonEvent } from "@agentdeck/protocol";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { TurnMapper } from "./turn-mapper.js";
 
 const chunk = (text: string) => ({

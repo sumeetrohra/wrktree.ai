@@ -10,17 +10,18 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/paths.d.ts",
-      "default": "./dist/paths.js"
+      "types": "./dist/paths.constants.d.ts",
+      "default": "./dist/paths.constants.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.8.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@agentdeck/shared": "workspace:*"
   }
 }

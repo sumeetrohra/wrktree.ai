@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import type { Scenario } from "../scenario.ts";
 
-export const streamingBlobs: Scenario = {
+import type { TScenario } from "../scenario.ts";
+
+export const streamingBlobs: TScenario = {
   n: 7,
   title: "Streaming & large payloads",
   summary: "Streaming text is coalesced to ≤ 20 patches/s; replies over 64 KB travel as 256 KB blob parts",
@@ -30,9 +31,9 @@ export const streamingBlobs: Scenario = {
       return e.type === "chat.itemPatch" && e.itemId === itemId;
     });
     const spanMs = h.arrivals[patchIdx.at(-1)!]! - h.arrivals[firstIdx]!;
-    await h.check("every word arrives", () =>
-      assert.equal(h.agentText(chat, since).match(/word\d+/g)?.length, 400),
-    );
+    await h.check("every word arrives", () => {
+      assert.equal(h.agentText(chat, since).match(/word\d+/g)?.length, 400);
+    });
     await h.check(
       `${patchIdx.length} patches over ${(spanMs / 1000).toFixed(1)} s: at most 20 per second`,
       () => {
@@ -50,7 +51,9 @@ export const streamingBlobs: Scenario = {
     await h.send("chat.send", { chatId: chat, text: "#script:big-file bytes=400000" });
     await h.waitSettled(chat);
     const diff = await h.send("diff.file", { worktreeId: ids.worktreeId, path: "big.txt" });
-    await h.check("the diff blob is over 64 KB", () => assert.ok(diff.blob.size > 64 * 1024));
+    await h.check("the diff blob is over 64 KB", () => {
+      assert.ok(diff.blob.size > 64 * 1024);
+    });
 
     h.step("Download it: the reply travels as blob frames");
     const before = h.client.stats.blobFrames;
@@ -67,12 +70,12 @@ export const streamingBlobs: Scenario = {
 
     h.step("Search the new file with ripgrep");
     const found = await h.send("fs.search", { worktreeId: ids.worktreeId, query: "line 001200" });
-    await h.check("the match is on line 1200 of big.txt", () =>
+    await h.check("the match is on line 1200 of big.txt", () => {
       assert.deepEqual(
         found.matches.map((m) => [m.path, m.line]),
         [["big.txt", 1200]],
-      ),
-    );
+      );
+    });
 
     h.step("Upload a 300 KB attachment in parts");
     const bytes = Buffer.alloc(300 * 1024, 7);
@@ -82,6 +85,8 @@ export const streamingBlobs: Scenario = {
       "cmd",
       `\x1b[90m  blob.put ← ${sent} blob frames (256 KB parts) → sha256 ${ref.blobId.slice(0, 12)}…\x1b[0m\r\n`,
     );
-    await h.check("the upload is stored content-addressed", () => assert.equal(ref.size, 300 * 1024));
+    await h.check("the upload is stored content-addressed", () => {
+      assert.equal(ref.size, 300 * 1024);
+    });
   },
 };

@@ -16,7 +16,8 @@ export class AgentRegistry {
   /** The spec for `id`, or UNKNOWN_AGENT. */
   spec(id: string): TAgentSpec {
     const s = this.specs.get(id);
-    if (!s) throw new AgentdeckError("UNKNOWN_AGENT", `Unknown agent: ${id}. Known: ${this.ids().join(", ")}`);
+    if (!s)
+      throw new AgentdeckError("UNKNOWN_AGENT", `Unknown agent: ${id}. Known: ${this.ids().join(", ")}`);
     return s;
   }
 

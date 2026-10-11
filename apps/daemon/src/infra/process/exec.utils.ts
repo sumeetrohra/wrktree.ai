@@ -26,19 +26,28 @@ export function run(
           resolve({ stdout, stderr, code: error.code });
           return;
         }
-        reject(error);
+        reject(new Error(error.message, { cause: error }));
       },
     );
   });
 }
 
 /** `git …` in `cwd`; throws GIT_FAILED with stderr on a non-zero exit unless `allow` lists the code. */
-export async function git(cwd: string, args: readonly string[], allow: readonly number[] = []): Promise<string> {
+export async function git(
+  cwd: string,
+  args: readonly string[],
+  allow: readonly number[] = [],
+): Promise<string> {
   const r = await run("git", args, { cwd });
   if (r.code !== 0 && !allow.includes(r.code)) {
-    throw new AgentdeckError("GIT_FAILED", `git ${args[0] ?? ""} failed: ${r.stderr.trim() || r.stdout.trim()}`, false, {
-      exitCode: r.code,
-    });
+    throw new AgentdeckError(
+      "GIT_FAILED",
+      `git ${args[0] ?? ""} failed: ${r.stderr.trim() || r.stdout.trim()}`,
+      false,
+      {
+        exitCode: r.code,
+      },
+    );
   }
   return r.stdout;
 }
@@ -47,11 +56,14 @@ export async function git(cwd: string, args: readonly string[], allow: readonly 
  * Runs a repo's setup or teardown script through the platform shell, in its own process group
  * (Unix) so `killTree` takes down everything it started. The only place a shell is used.
  */
-export function spawnShell(command: string, opts: { cwd: string; env: Record<string, string> }): ChildProcess {
-  // eslint-disable-next-line no-restricted-syntax -- reason: repo setup scripts are shell command lines by design (SEC7)
+export function spawnShell(
+  command: string,
+  opts: { cwd: string; env: Record<string, string> },
+): ChildProcess {
   return spawn(command, {
     cwd: opts.cwd,
     env: opts.env,
+    // eslint-disable-next-line no-restricted-syntax -- reason: repo setup scripts are shell command lines by design (SEC7)
     shell: true,
     detached: process.platform !== "win32",
     windowsHide: true,

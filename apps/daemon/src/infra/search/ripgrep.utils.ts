@@ -56,7 +56,10 @@ export async function searchFiles(
     if (matches.length >= limit) return { matches, truncated: true };
     const d = parsed.data;
     matches.push({
-      path: (d.path?.text ?? "").replace(/^\.[\\/]/, "").split(sep).join("/"),
+      path: (d.path?.text ?? "")
+        .replace(/^\.[\\/]/, "")
+        .split(sep)
+        .join("/"),
       line: d.line_number ?? 0,
       text: (d.lines?.text ?? "").replace(/\r?\n$/, ""),
     });

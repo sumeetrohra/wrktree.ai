@@ -1,6 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { readDaemonEnv } from "./env.schema.js";
+
 export type TPaths = {
   home: string;
   db: string;
@@ -17,15 +19,15 @@ export type TPaths = {
 
 /** The daemon's data folder. `AGENTDECK_HOME` overrides it (tests, multiple daemons). */
 export function defaultHome(): string {
-  const override = process.env.AGENTDECK_HOME;
-  if (override) return override;
+  const env = readDaemonEnv();
+  if (env.AGENTDECK_HOME !== undefined) return env.AGENTDECK_HOME;
   switch (process.platform) {
     case "darwin":
       return join(homedir(), "Library", "Application Support", "agentdeck");
     case "win32":
-      return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "agentdeck");
+      return join(env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "agentdeck");
     default:
-      return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "agentdeck");
+      return join(env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "agentdeck");
   }
 }
 

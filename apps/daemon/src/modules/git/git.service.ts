@@ -62,7 +62,12 @@ export class GitService {
     };
   }
 
-  async fileDiff(wt: TWorktree, jail: IPathPolicy, path: string, against: TDiffAgainst = "base"): Promise<TBlobRef> {
+  async fileDiff(
+    wt: TWorktree,
+    jail: IPathPolicy,
+    path: string,
+    against: TDiffAgainst = "base",
+  ): Promise<TBlobRef> {
     const { rel } = jail.resolve(path);
     const ref = await this.ref(wt, against);
     let diff = await git(wt.path, ["diff", "--no-renames", ref, "--", rel]);

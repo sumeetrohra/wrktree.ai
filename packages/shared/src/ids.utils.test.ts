@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { hasPrefix, newId } from "./ids.utils.js";
 
 describe("newId", () => {

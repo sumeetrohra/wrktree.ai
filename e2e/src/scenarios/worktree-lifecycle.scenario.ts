@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import type { Scenario } from "../scenario.ts";
 
-export const worktreeLifecycle: Scenario = {
+import type { TDaemonEvent } from "@agentdeck/protocol";
+
+import type { TScenario } from "../scenario.ts";
+
+export const worktreeLifecycle: TScenario = {
   n: 6,
   title: "Worktree lifecycle",
   summary:
@@ -35,19 +38,19 @@ export const worktreeLifecycle: Scenario = {
       await h.waitReady(broken.id, since),
       await h.waitReady(b.id, since),
     ];
-    await h.check("each worktree gets its own port", () =>
-      assert.deepEqual([wa.port, wbroken.port, wb.port], [41000, 41001, 41002]),
-    );
+    await h.check("each worktree gets its own port", () => {
+      assert.deepEqual([wa.port, wbroken.port, wb.port], [41000, 41001, 41002]);
+    });
     await h.check("a failing setup script marks the worktree setup_failed with its output", () => {
       assert.equal(wbroken.status, "setup_failed");
       assert.match(wbroken.setupError ?? "", /missing script: bootstrap/);
     });
-    await h.check("no chat can start in a failed worktree", async () =>
+    await h.check("no chat can start in a failed worktree", async () => {
       assert.equal(
         await h.sendError("chat.create", { worktreeId: broken.id, agent: "fake", profileId }),
         "BAD_STATE",
-      ),
-    );
+      );
+    });
 
     h.step("Work happens in Feature A");
     since = h.mark();
@@ -57,8 +60,12 @@ export const worktreeLifecycle: Scenario = {
       chatId: chat.id,
       text: "#script:edit-twice file=wip.txt content=work-in-progress",
     });
-    const req = await h.waitFor((e) => e.type === "permission.requested", "permission", { since });
-    if (req.type === "permission.requested") {
+    const req = await h.waitFor(
+      (e): e is Extract<TDaemonEvent, { type: "permission.requested" }> => e.type === "permission.requested",
+      "permission",
+      { since },
+    );
+    {
       await h.send("permission.respond", {
         chatId: chat.id,
         requestId: req.request.requestId,
@@ -75,15 +82,17 @@ export const worktreeLifecycle: Scenario = {
       assert.equal(archived.port, null);
       await h.waitStatus(chat.id, "stopped", since);
     });
-    await h.check("uncommitted work is kept on disk", () =>
-      assert.equal(h.readWt(a.id, "wip.txt"), "work-in-progress\n"),
-    );
+    await h.check("uncommitted work is kept on disk", () => {
+      assert.equal(h.readWt(a.id, "wip.txt"), "work-in-progress\n");
+    });
 
     h.step("A new worktree reuses the freed port");
     since = h.mark();
     const c = await h.send("worktree.create", { repoId: repo.id, branch: "feature-c", title: "Feature C" });
     const wc = await h.waitReady(c.id, since);
-    await h.check("Feature C gets port 41000", () => assert.equal(wc.port, 41000));
+    await h.check("Feature C gets port 41000", () => {
+      assert.equal(wc.port, 41000);
+    });
 
     h.step("Restore Feature A");
     since = h.mark();
@@ -109,18 +118,18 @@ export const worktreeLifecycle: Scenario = {
     h.step("Browsing is limited to the allow-list");
     const roots = await h.send("fs.browse", { root: "allowlist" });
     const inside = await h.send("fs.browse", { root: "allowlist", path: h.src });
-    await h.check("the browse root lists the allowed folder", () =>
+    await h.check("the browse root lists the allowed folder", () => {
       assert.deepEqual(
         roots.entries.map((e) => e.path),
         [h.src],
-      ),
-    );
-    await h.check("repos inside it are flagged as git repos", () =>
+      );
+    });
+    await h.check("repos inside it are flagged as git repos", () => {
       assert.deepEqual(
         inside.entries.map((e) => [e.name, e.isGitRepo]),
         [["api", true]],
-      ),
-    );
+      );
+    });
     await h.check("folders outside the allow-list are refused", async () => {
       assert.equal(await h.sendError("fs.browse", { root: "allowlist", path: h.home }), "FORBIDDEN_PATH");
       assert.equal(await h.sendError("repo.add", { path: h.home }), "FORBIDDEN_PATH");

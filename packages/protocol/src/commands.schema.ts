@@ -1,6 +1,16 @@
 import { z } from "zod";
+
 import { chatIdSchema, profileIdSchema, repoIdSchema, worktreeIdSchema } from "./ids.schema.js";
-import { blobRefSchema, chatSchema, diffFileSchema, fsEntrySchema, permissionDecisionSchema, profileSchema, repoSchema, worktreeSchema } from "./models.schema.js";
+import {
+  blobRefSchema,
+  chatSchema,
+  diffFileSchema,
+  fsEntrySchema,
+  permissionDecisionSchema,
+  profileSchema,
+  repoSchema,
+  worktreeSchema,
+} from "./models.schema.js";
 
 const Empty = z.object({});
 const WorktreeArgs = z.object({ worktreeId: worktreeIdSchema });
@@ -58,7 +68,12 @@ export const commands = {
 
   "worktree.list": { args: z.object({ repoId: repoIdSchema }), result: z.array(worktreeSchema) },
   "worktree.create": {
-    args: z.object({ repoId: repoIdSchema, baseRef: z.string().optional(), branch: z.string(), title: z.string() }),
+    args: z.object({
+      repoId: repoIdSchema,
+      baseRef: z.string().optional(),
+      branch: z.string(),
+      title: z.string(),
+    }),
     result: worktreeSchema,
   },
   "worktree.archive": { args: WorktreeArgs, result: worktreeSchema },
@@ -79,7 +94,11 @@ export const commands = {
     result: chatSchema,
   },
   "chat.send": {
-    args: z.object({ chatId: chatIdSchema, text: z.string(), attachments: z.array(blobRefSchema).optional() }),
+    args: z.object({
+      chatId: chatIdSchema,
+      text: z.string(),
+      attachments: z.array(blobRefSchema).optional(),
+    }),
     result: z.object({ turnId: z.string(), queued: z.boolean() }),
   },
   "chat.cancel": { args: z.object({ chatId: chatIdSchema }), result: Empty },
@@ -152,7 +171,7 @@ export type TCommandName = keyof TCommands;
 export type TCommandArgs<N extends TCommandName> = z.input<TCommands[N]["args"]>;
 export type TCommandResult<N extends TCommandName> = z.infer<TCommands[N]["result"]>;
 
-export const commandNames = Object.keys(commands) as TCommandName[];
+export const commandNames: readonly TCommandName[] = Object.keys(commands).filter(isCommandName);
 
 export function isCommandName(name: string): name is TCommandName {
   return Object.hasOwn(commands, name);
@@ -165,7 +184,10 @@ export function isCommandName(name: string): name is TCommandName {
  */
 
 /** Validates a command's args; throws the zod error on mismatch. */
-export function parseCommandArgs<N extends TCommandName>(name: N, args: unknown): z.output<TCommands[N]["args"]> {
+export function parseCommandArgs<N extends TCommandName>(
+  name: N,
+  args: unknown,
+): z.output<TCommands[N]["args"]> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- reason: correlated-union limitation; value is zod-validated
   return commands[name].args.parse(args) as z.output<TCommands[N]["args"]>;
 }

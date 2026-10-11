@@ -1,8 +1,13 @@
 import type { TChatItem, TEvtFrame } from "@agentdeck/protocol";
+import { z } from "zod";
 
-const useColor = process.env.FORCE_COLOR
-  ? process.env.FORCE_COLOR !== "0"
-  : process.stdout.isTTY && !process.env.NO_COLOR;
+const colorEnv = z
+  .object({ FORCE_COLOR: z.string().optional(), NO_COLOR: z.string().optional() })
+  .parse(process.env);
+const useColor =
+  colorEnv.FORCE_COLOR !== undefined
+    ? colorEnv.FORCE_COLOR !== "0"
+    : process.stdout.isTTY && !colorEnv.NO_COLOR;
 const paint = (code: number) => (s: string) => (useColor ? `\x1b[${code}m${s}\x1b[0m` : s);
 
 export const c = {
@@ -18,7 +23,7 @@ export const c = {
 };
 
 /** `chat_01J9…N8` → `…P9N8`, enough to tell ids apart in a terminal. */
-export const short = (id: string) => (id.length > 12 ? `…${id.slice(-4)}` : id);
+export const short = (id: string): string => (id.length > 12 ? `…${id.slice(-4)}` : id);
 
 const clip = (s: string, n = 70) => {
   const one = s.replace(/\s+/g, " ").trim();
@@ -37,13 +42,14 @@ const statusColor = (s: string) =>
 function item(i: TChatItem): string {
   switch (i.kind) {
     case "user": {
-      const att = i.attachments.length ? c.gray(` [+${i.attachments.length} ${i.attachments[0]!.mime}]`) : "";
+      const first = i.attachments[0];
+      const att = first ? c.gray(` [+${i.attachments.length} ${first.mime}]`) : "";
       return `${c.bold("you")}  ${clip(i.text)}${att}`;
     }
     case "agent_text":
       return `${c.magenta("agent")} ${clip(i.text)}`;
     case "thought":
-      return `${c.gray(`thinks ${clip(i.text)}`)}`;
+      return c.gray(`thinks ${clip(i.text)}`);
     case "tool":
       return `${c.blue("tool")}  ${i.title} ${c.gray(`[${i.toolKind}]`)} ${statusColor(i.status)}`;
     case "plan":
@@ -79,7 +85,7 @@ export function formatEvent(f: TEvtFrame): string {
       body = item(e.item);
       break;
     case "chat.itemPatch": {
-      const p = e.patch as { text?: string; status?: string; entries?: { status: string }[] };
+      const p = e.patch;
       body =
         typeof p.text === "string"
           ? c.gray(`  ↳ ${p.text.length} chars …${clip(p.text.slice(-40), 40)}`)
@@ -113,9 +119,10 @@ export function formatEvent(f: TEvtFrame): string {
 
 /** Colorized, indented JSON for command results. */
 export function formatJson(value: unknown): string {
-  const json = JSON.stringify(value, null, 2) ?? "null";
+  const json = JSON.stringify(value ?? null, null, 2);
   if (!useColor) return json;
   return json.replace(
+    // eslint-disable-next-line security/detect-unsafe-regex -- reason: input is our own JSON.stringify output, never untrusted text
     /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g,
     (
       m,

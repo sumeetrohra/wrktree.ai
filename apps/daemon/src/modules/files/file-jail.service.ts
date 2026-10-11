@@ -55,10 +55,14 @@ export class FileJail {
    */
   resolve(p: string, opts: { allowAbsolute?: boolean } = {}): { abs: string; rel: string } {
     if (isAbsolute(p) && opts.allowAbsolute !== true) {
-      throw new AgentdeckError("FORBIDDEN_PATH", "Absolute paths are not allowed; use a path relative to the worktree");
+      throw new AgentdeckError(
+        "FORBIDDEN_PATH",
+        "Absolute paths are not allowed; use a path relative to the worktree",
+      );
     }
     const real = realpathLoose(resolve(this.root, p));
-    if (!isInside(this.root, real)) throw new AgentdeckError("FORBIDDEN_PATH", `Path escapes the worktree: ${p}`);
+    if (!isInside(this.root, real))
+      throw new AgentdeckError("FORBIDDEN_PATH", `Path escapes the worktree: ${p}`);
     const rel = relative(this.root, real).split(sep).join("/");
     if (rel && this.isHidden(rel)) throw new AgentdeckError("FORBIDDEN_PATH", `Path is hidden: ${rel}`);
     return { abs: real, rel };
@@ -66,7 +70,8 @@ export class FileJail {
 
   tree(p = ""): TFsEntry[] {
     const { abs, rel } = this.resolve(p);
-    if (!existsSync(abs) || !statSync(abs).isDirectory()) throw new AgentdeckError("NOT_FOUND", `Not a folder: ${p}`);
+    if (!existsSync(abs) || !statSync(abs).isDirectory())
+      throw new AgentdeckError("NOT_FOUND", `Not a folder: ${p}`);
     const entries: TFsEntry[] = [];
     for (const name of readdirSync(abs)) {
       const childRel = rel ? `${rel}/${name}` : name;
@@ -74,9 +79,13 @@ export class FileJail {
       const st = lstatSync(join(abs, name));
       if (st.isSymbolicLink() && !this.staysInside(childRel)) continue;
       const isDir = st.isDirectory() || (st.isSymbolicLink() && statSync(join(abs, name)).isDirectory());
-      entries.push(isDir ? { name, path: childRel, type: "dir" } : { name, path: childRel, type: "file", size: st.size });
+      entries.push(
+        isDir ? { name, path: childRel, type: "dir" } : { name, path: childRel, type: "file", size: st.size },
+      );
     }
-    return entries.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1));
+    return entries.sort((a, b) =>
+      a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1,
+    );
   }
 
   private staysInside(rel: string): boolean {
@@ -90,7 +99,8 @@ export class FileJail {
 
   async read(p: string, offset = 0, length = READ_CHUNK): Promise<TReadResult> {
     const { abs } = this.resolve(p);
-    if (!existsSync(abs) || !statSync(abs).isFile()) throw new AgentdeckError("NOT_FOUND", `Not a file: ${p}`);
+    if (!existsSync(abs) || !statSync(abs).isFile())
+      throw new AgentdeckError("NOT_FOUND", `Not a file: ${p}`);
     const size = statSync(abs).size;
     const len = Math.min(length, READ_CHUNK, Math.max(0, size - offset));
     const fh = await open(abs, "r");

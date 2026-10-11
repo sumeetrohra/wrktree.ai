@@ -5,14 +5,21 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { LOGIN_FILE } from "./paths.js";
 
-const home = process.env.FAKE_AGENT_HOME;
+import { z } from "zod";
+
+import { LOGIN_FILE } from "./paths.constants.js";
+
+const env = z
+  .object({ FAKE_AGENT_HOME: z.string().optional(), FAKE_ACCOUNT: z.string().optional() })
+  .parse(process.env);
+
+const home = env.FAKE_AGENT_HOME;
 if (!home) {
-  console.error("FAKE_AGENT_HOME is not set");
+  process.stderr.write("FAKE_AGENT_HOME is not set\n");
   process.exit(2);
 }
-const account = process.env.FAKE_ACCOUNT ?? process.argv[2] ?? "dev@fake.local";
+const account = env.FAKE_ACCOUNT ?? process.argv[2] ?? "dev@fake.local";
 mkdirSync(home, { recursive: true });
 writeFileSync(join(home, LOGIN_FILE), JSON.stringify({ account, at: Date.now() }));
-console.log(`Logged in to fake agent as ${account}`);
+process.stdout.write(`Logged in to fake agent as ${account}\n`);

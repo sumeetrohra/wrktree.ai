@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+
 import type { TDaemonEvent } from "@agentdeck/protocol";
-import type { Scenario } from "../scenario.ts";
 
-type Requested = Extract<TDaemonEvent, { type: "permission.requested" }>;
+import type { TScenario } from "../scenario.ts";
 
-export const permissions: Scenario = {
+type TRequested = Extract<TDaemonEvent, { type: "permission.requested" }>;
+
+export const permissions: TScenario = {
   n: 5,
   title: "Permissions",
   summary: "Allow always remembers, deny + message steers the agent, a pending request survives a disconnect",
@@ -15,7 +17,7 @@ export const permissions: Scenario = {
     const chat = ids.chatId;
     const requested = (since: number) =>
       h.waitFor(
-        (e): e is Requested => e.type === "permission.requested" && e.chatId === chat,
+        (e): e is TRequested => e.type === "permission.requested" && e.chatId === chat,
         "permission request",
         { since },
       );
@@ -30,7 +32,9 @@ export const permissions: Scenario = {
       decision: "allow_always",
     });
     await h.waitStatus(chat, "idle", since);
-    await h.check("the first edit lands", () => assert.equal(h.readWt(ids.worktreeId, "app.txt"), "first\n"));
+    await h.check("the first edit lands", () => {
+      assert.equal(h.readWt(ids.worktreeId, "app.txt"), "first\n");
+    });
 
     h.step("The same edit again is approved by the saved rule");
     since = h.mark();
@@ -57,7 +61,9 @@ export const permissions: Scenario = {
     });
     await h.waitText(chat, "You said: Put it in docs/ instead", since);
     await h.waitSettled(chat);
-    await h.check("the edit was not made", () => assert.equal(h.readWt(ids.worktreeId, "config.txt"), null));
+    await h.check("the edit was not made", () => {
+      assert.equal(h.readWt(ids.worktreeId, "config.txt"), null);
+    });
     await h.check("the agent heard the denial, then the message", () => {
       const text = h.agentText(chat, since);
       assert.ok(text.indexOf("Permission denied") < text.indexOf("Put it in docs/ instead"));
@@ -86,8 +92,8 @@ export const permissions: Scenario = {
       decision: "allow_once",
     });
     await h.waitStatus(chat, "idle", since);
-    await h.check("approving it later finishes the turn", () =>
-      assert.equal(h.readWt(ids.worktreeId, "late.txt"), "first\n"),
-    );
+    await h.check("approving it later finishes the turn", () => {
+      assert.equal(h.readWt(ids.worktreeId, "late.txt"), "first\n");
+    });
   },
 };

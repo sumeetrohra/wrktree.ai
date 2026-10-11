@@ -1,4 +1,10 @@
-import { AgentdeckError, type TBlobRef, type TChat, type TChatItem, type TChatStatus } from "@agentdeck/protocol";
+import {
+  AgentdeckError,
+  type TBlobRef,
+  type TChat,
+  type TChatItem,
+  type TChatStatus,
+} from "@agentdeck/protocol";
 import { newId, now } from "@agentdeck/shared";
 
 import {
@@ -162,7 +168,8 @@ export class SessionManager {
 
   create(args: { worktreeId: string; agent: string; profileId: string; title?: string | undefined }): TChat {
     const wt = this.deps.worktrees.get(args.worktreeId);
-    if (wt.status !== "ready") throw new AgentdeckError("BAD_STATE", `Worktree is ${wt.status}, not ready`, true);
+    if (wt.status !== "ready")
+      throw new AgentdeckError("BAD_STATE", `Worktree is ${wt.status}, not ready`, true);
     const profile = this.deps.profiles.get(args.profileId);
     if (profile.agent !== args.agent) {
       throw new AgentdeckError(
@@ -221,7 +228,8 @@ export class SessionManager {
   }
 
   retry(chatId: string): TChat {
-    if (this.status(chatId) !== "crashed") throw new AgentdeckError("BAD_STATE", "Only a crashed chat can be retried");
+    if (this.status(chatId) !== "crashed")
+      throw new AgentdeckError("BAD_STATE", "Only a crashed chat can be retried");
     this.restarts.set(chatId, 0);
     void this.start(chatId);
     return this.get(chatId);
@@ -326,7 +334,11 @@ export class SessionManager {
     if (previousSessionId !== null) {
       live.seed = this.transcriptSummary(live.chatId);
       this.rt.db.prepare("UPDATE chats SET resumed = 1 WHERE id = ?").run(live.chatId);
-      this.system(live.chatId, "Resumed in a fresh agent session, seeded with a summary of this chat.", "warn");
+      this.system(
+        live.chatId,
+        "Resumed in a fresh agent session, seeded with a summary of this chat.",
+        "warn",
+      );
     }
     this.rt.db.prepare("UPDATE chats SET acp_session_id = ? WHERE id = ?").run(res.sessionId, live.chatId);
   }
@@ -336,7 +348,10 @@ export class SessionManager {
     const texts = new Map<string, { role: string; text: string }>();
     for (const { event } of this.rt.bus.replay(`chat:${chatId}`, 0)) {
       if (event.type === "chat.item" && (event.item.kind === "user" || event.item.kind === "agent_text")) {
-        texts.set(event.item.id, { role: event.item.kind === "user" ? "User" : "Agent", text: event.item.text });
+        texts.set(event.item.id, {
+          role: event.item.kind === "user" ? "User" : "Agent",
+          text: event.item.text,
+        });
       } else if (event.type === "chat.itemPatch") {
         const entry = texts.get(event.itemId);
         const text = event.patch.text;
@@ -360,13 +375,17 @@ export class SessionManager {
   private prompt(live: TLive, msg: TQueued): TAcpContentBlock[] {
     const prompt: TAcpContentBlock[] = [];
     if (live.seed !== null) {
-      prompt.push({ type: "text", text: `Context from the earlier session of this chat:\n${live.seed}\n---\n` });
+      prompt.push({
+        type: "text",
+        text: `Context from the earlier session of this chat:\n${live.seed}\n---\n`,
+      });
       live.seed = null;
     }
     prompt.push({ type: "text", text: msg.text });
     for (const a of msg.attachments) {
       const { bytes, ref } = this.deps.blobs.get(a.blobId);
-      if (ref.mime.startsWith("image/")) prompt.push({ type: "image", mimeType: ref.mime, data: bytes.toString("base64") });
+      if (ref.mime.startsWith("image/"))
+        prompt.push({ type: "image", mimeType: ref.mime, data: bytes.toString("base64") });
     }
     return prompt;
   }
@@ -396,7 +415,8 @@ export class SessionManager {
     if (live.conn.signal.aborted) {
       // The adapter went away mid-turn; its exit handler reports the crash.
       await Promise.race([live.exited, new Promise((resolve) => setTimeout(resolve, EXIT_GRACE_MS))]);
-      if (!live.dead) this.onCrash(live, "The agent connection closed mid-turn");
+      // The exit handler may have run during the wait; onCrash is a no-op if it did.
+      this.onCrash(live, "The agent connection closed mid-turn");
       return;
     }
     live.mapper.endTurn();
@@ -454,14 +474,22 @@ export class SessionManager {
     const backoff = this.rt.opts.restartBackoffMs;
     const delay = backoff[attempt];
     if (delay === undefined) {
-      this.system(chatId, `Gave up after ${String(backoff.length)} automatic restarts. Retry when the agent is fixed.`, "error");
+      this.system(
+        chatId,
+        `Gave up after ${String(backoff.length)} automatic restarts. Retry when the agent is fixed.`,
+        "error",
+      );
       return;
     }
     this.restarts.set(chatId, attempt + 1);
     const t = setTimeout(() => {
       this.timers.delete(chatId);
       if (this.status(chatId) !== "crashed") return;
-      this.system(chatId, `Restarting the agent (attempt ${String(attempt + 1)} of ${String(backoff.length)}).`, "info");
+      this.system(
+        chatId,
+        `Restarting the agent (attempt ${String(attempt + 1)} of ${String(backoff.length)}).`,
+        "info",
+      );
       void this.start(chatId);
     }, delay);
     this.timers.set(chatId, t);

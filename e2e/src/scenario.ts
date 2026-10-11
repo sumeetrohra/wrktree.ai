@@ -1,6 +1,6 @@
 import type { Harness } from "./harness.ts";
 
-export type Scenario = {
+export type TScenario = {
   /** Order in the suite and in the video. */
   n: number;
   title: string;

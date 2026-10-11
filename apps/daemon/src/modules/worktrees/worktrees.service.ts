@@ -41,7 +41,11 @@ const SCRIPT_TIMEOUT_MS = 10 * 60 * 1000;
 const OUTPUT_TAIL = 4000;
 
 export class WorktreesService {
-  hooks: IWorktreeHooks = { stopChats: () => undefined, startChats: () => undefined, deleteChats: () => undefined };
+  hooks: IWorktreeHooks = {
+    stopChats: () => undefined,
+    startChats: () => undefined,
+    deleteChats: () => undefined,
+  };
   /** Background setup work, so tests and shutdown can wait for it. */
   private pending = new Set<Promise<void>>();
 
@@ -112,7 +116,12 @@ export class WorktreesService {
     );
   }
 
-  async create(args: { repoId: string; baseRef?: string; branch: string; title: string }): Promise<TWorktree> {
+  async create(args: {
+    repoId: string;
+    baseRef?: string | undefined;
+    branch: string;
+    title: string;
+  }): Promise<TWorktree> {
     const repo = this.repos.get(args.repoId);
     const baseRef = assertSafeGitArg(args.baseRef ?? repo.defaultBase, "base ref");
     assertSafeGitArg(args.branch, "branch name");
@@ -164,8 +173,9 @@ export class WorktreesService {
       if (result.ok) this.update(id, { status: "ready", setup_error: null });
       else this.update(id, { status: "setup_failed", setup_error: result.output });
     } catch (e) {
-      this.rt.log.warn({ worktreeId: id, err: (e as Error).message }, "worktree provisioning failed");
-      this.update(id, { status: "setup_failed", setup_error: (e as Error).message });
+      const message = e instanceof Error ? e.message : String(e);
+      this.rt.log.warn({ worktreeId: id, code: "PROVISION_FAILED" }, "worktree provisioning failed");
+      this.update(id, { status: "setup_failed", setup_error: message });
     }
   }
 

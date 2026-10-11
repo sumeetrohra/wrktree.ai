@@ -28,7 +28,11 @@ export class CommandError extends Error {
 
 type TPending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
-const daemonInfoSchema = z.object({ port: z.number().int().positive(), pid: z.number().int(), version: z.string() });
+const daemonInfoSchema = z.object({
+  port: z.number().int().positive(),
+  pid: z.number().int(),
+  version: z.string(),
+});
 
 /**
  * A client of the daemon's local transport: commands with exactly one reply each,

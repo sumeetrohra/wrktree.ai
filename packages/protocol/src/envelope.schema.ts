@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { cmdIdSchema, deviceIdSchema } from "./ids.schema.js";
+
 import { protocolErrorSchema } from "./errors.schema.js";
 import { daemonEventSchema, topicSchema } from "./events.schema.js";
+import { cmdIdSchema, deviceIdSchema } from "./ids.schema.js";
 
 /** Outer frame, visible to the relay. Phase 2 encrypts `body`. */
 export const relayFrameSchema = z.object({
@@ -14,7 +15,12 @@ export const relayFrameSchema = z.object({
 });
 export type TRelayFrame = z.infer<typeof relayFrameSchema>;
 
-export const cmdFrameSchema = z.object({ t: z.literal("cmd"), id: cmdIdSchema, name: z.string(), args: z.unknown() });
+export const cmdFrameSchema = z.object({
+  t: z.literal("cmd"),
+  id: cmdIdSchema,
+  name: z.string(),
+  args: z.unknown(),
+});
 export const resOkFrameSchema = z.object({
   t: z.literal("res"),
   id: cmdIdSchema,
@@ -43,7 +49,13 @@ export const blobFrameSchema = z.object({
 });
 
 /** innerSchema frame: only phone and daemon can read it once Phase 2 adds encryption. */
-export const innerSchema = z.union([cmdFrameSchema, resOkFrameSchema, resErrFrameSchema, evtFrameSchema, blobFrameSchema]);
+export const innerSchema = z.union([
+  cmdFrameSchema,
+  resOkFrameSchema,
+  resErrFrameSchema,
+  evtFrameSchema,
+  blobFrameSchema,
+]);
 export type TInner = z.infer<typeof innerSchema>;
 export type TCmdFrame = z.infer<typeof cmdFrameSchema>;
 export type TEvtFrame = z.infer<typeof evtFrameSchema>;

@@ -10,7 +10,12 @@ import { openDb } from "../db/index.js";
 
 import { Router, type THandlers } from "./router.service.js";
 
-const base = { deviceId: "test", takeUpload: () => undefined, afterReply: () => undefined, subscribe: () => undefined };
+const base = {
+  deviceId: "test",
+  takeUpload: () => undefined,
+  afterReply: () => undefined,
+  subscribe: () => undefined,
+};
 
 /** A full handler table where every command not overridden throws. */
 function handlersWith(overrides: Partial<THandlers>): THandlers {
@@ -57,7 +62,10 @@ describe("Router", () => {
       silentLogger,
     );
     const id = newId("cmd");
-    await Promise.all([router.dispatch(id, "repo.list", {}, base), router.dispatch(id, "repo.list", {}, base)]);
+    await Promise.all([
+      router.dispatch(id, "repo.list", {}, base),
+      router.dispatch(id, "repo.list", {}, base),
+    ]);
     router.close();
     expect(runs).toBe(1);
   });

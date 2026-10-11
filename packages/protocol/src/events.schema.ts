@@ -1,6 +1,8 @@
 import { z } from "zod";
+
 import { chatIdSchema, procIdSchema, profileIdSchema, worktreeIdSchema } from "./ids.schema.js";
 import {
+  chatItemPatchSchema,
   chatItemSchema,
   chatStatusSchema,
   permissionDecisionSchema,
@@ -29,9 +31,13 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
     type: z.literal("chat.itemPatch"),
     chatId: chatIdSchema,
     itemId: z.string(),
-    patch: z.record(z.string(), z.unknown()),
+    patch: chatItemPatchSchema,
   }),
-  z.object({ type: z.literal("permission.requested"), chatId: chatIdSchema, request: permissionRequestSchema }),
+  z.object({
+    type: z.literal("permission.requested"),
+    chatId: chatIdSchema,
+    request: permissionRequestSchema,
+  }),
   /** Additive to the spec: lets every client drop its permission sheet, including auto-answered requests. */
   z.object({
     type: z.literal("permission.resolved"),

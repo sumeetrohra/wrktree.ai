@@ -1,13 +1,14 @@
-import type { Scenario } from "../scenario.ts";
-import { goldenPath } from "./01-golden-path.ts";
-import { crashRestart } from "./02-crash-restart.ts";
-import { pathJail } from "./03-path-jail.ts";
-import { chatLifecycle } from "./04-chat-lifecycle.ts";
-import { permissions } from "./05-permissions.ts";
-import { worktreeLifecycle } from "./06-worktree-lifecycle.ts";
-import { streamingBlobs } from "./07-streaming-blobs.ts";
+import type { TScenario } from "../scenario.ts";
 
-export const scenarios: Scenario[] = [
+import { chatLifecycle } from "./chat-lifecycle.scenario.ts";
+import { crashRestart } from "./crash-restart.scenario.ts";
+import { goldenPath } from "./golden-path.scenario.ts";
+import { pathJail } from "./path-jail.scenario.ts";
+import { permissions } from "./permissions.scenario.ts";
+import { streamingBlobs } from "./streaming-blobs.scenario.ts";
+import { worktreeLifecycle } from "./worktree-lifecycle.scenario.ts";
+
+export const scenarios: TScenario[] = [
   goldenPath,
   crashRestart,
   pathJail,

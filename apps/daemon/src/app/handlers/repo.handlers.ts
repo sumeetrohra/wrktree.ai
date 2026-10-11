@@ -2,7 +2,9 @@ import type { THandlers } from "#src/infra/rpc/index.js";
 
 import type { TModules } from "../app.types.js";
 
-export function repoHandlers(m: TModules): Pick<THandlers, "repo.list" | "repo.add" | "repo.remove" | "fs.browse"> {
+export function repoHandlers(
+  m: TModules,
+): Pick<THandlers, "repo.list" | "repo.add" | "repo.remove" | "fs.browse"> {
   return {
     "repo.list": () => m.repos.list(),
     "repo.add": (a) => m.repos.add(a.path),

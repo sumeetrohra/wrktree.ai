@@ -11,9 +11,9 @@ export interface ILogger {
 }
 
 export const silentLogger: ILogger = {
-  debug: () => {},
-  info: () => {},
-  warn: () => {},
-  error: () => {},
+  debug: () => undefined,
+  info: () => undefined,
+  warn: () => undefined,
+  error: () => undefined,
   child: () => silentLogger,
 };

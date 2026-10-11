@@ -18,6 +18,7 @@ export type TAdapterHandlers = {
 
 export type TAdapter = {
   proc: ChildProcess;
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- reason: SDK 1.8 deprecates this for the builder API; migrating is tracked, and this wrapper is the only place to change
   conn: acp.ClientSideConnection;
   stderrTail: () => string;
 };
@@ -52,9 +53,8 @@ export function spawnAdapter(
   // Writes after the adapter exits raise EPIPE; the exit handler deals with it.
   stdin.on("error", () => undefined);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- reason: Node types toWeb() as WritableStream<any>; stdio carries bytes
   const output: WritableStream<Uint8Array> = Writable.toWeb(stdin);
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- reason: Node types toWeb() as ReadableStream<any>; stdio carries bytes
+
   const input: ReadableStream<Uint8Array> = Readable.toWeb(stdout);
   const client: acp.Client = {
     sessionUpdate: (p) => {
@@ -77,6 +77,7 @@ export function spawnAdapter(
       }
     },
   };
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- reason: see TAdapter.conn
   const conn = new acp.ClientSideConnection(() => client, acp.ndJsonStream(output, input));
   return { proc, conn, stderrTail: () => tail.trim() };
 }

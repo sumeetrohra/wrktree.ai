@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import { chatIdSchema, profileIdSchema, repoIdSchema, worktreeIdSchema } from "./ids.schema.js";
 
 export const blobRefSchema = z.object({
@@ -107,6 +108,9 @@ const itemBase = { id: z.string(), at: z.number() };
 export const toolStatusSchema = z.enum(["pending", "running", "done", "failed"]);
 export const planEntryStatusSchema = z.enum(["pending", "in_progress", "done"]);
 
+export const planEntrySchema = z.object({ text: z.string(), status: planEntryStatusSchema });
+export type TPlanEntry = z.infer<typeof planEntrySchema>;
+
 export const chatItemSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("user"), ...itemBase, text: z.string(), attachments: z.array(blobRefSchema) }),
   z.object({ kind: z.literal("agent_text"), ...itemBase, text: z.string() }),
@@ -123,7 +127,7 @@ export const chatItemSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("plan"),
     ...itemBase,
-    entries: z.array(z.object({ text: z.string(), status: planEntryStatusSchema })),
+    entries: z.array(planEntrySchema),
   }),
   z.object({
     kind: z.literal("system"),
@@ -150,3 +154,13 @@ export const fsEntrySchema = z.object({
   size: z.number().int().optional(),
 });
 export type TFsEntry = z.infer<typeof fsEntrySchema>;
+
+/** The fields a `chat.itemPatch` may change on an existing item. */
+export const chatItemPatchSchema = z.object({
+  text: z.string().optional(),
+  status: toolStatusSchema.optional(),
+  title: z.string().optional(),
+  locations: z.array(z.string()).optional(),
+  entries: z.array(planEntrySchema).optional(),
+});
+export type TChatItemPatch = z.infer<typeof chatItemPatchSchema>;

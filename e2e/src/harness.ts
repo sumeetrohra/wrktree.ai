@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { DaemonClient, CommandError } from "@agentdeck/cli";
 import type { TCommandName, TCommandResult, TDaemonEvent, TEvtFrame } from "@agentdeck/protocol";
 
@@ -19,23 +20,23 @@ export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 export const CLI = join(REPO_ROOT, "apps", "cli", "dist", "main.js");
 export const FIXTURES = join(REPO_ROOT, "e2e", "fixtures");
 
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- reason: matching ANSI colour escapes is the point
 const ANSI = /\x1b\[[0-9;]*m/g;
 export const stripAnsi = (s: string) => s.replace(ANSI, "");
 
 /** Where a harness sends what a viewer of the recording should see. */
-export interface Sink {
+export interface ISink {
   /** Bytes for a terminal pane: `cmd` (commands typed and their output) or `events` (the watcher). */
   write(pane: "cmd" | "events", data: string): void;
   step(title: string): void;
   check(label: string, ok: boolean, detail?: string): void;
 }
 
-const nullSink: Sink = { write: () => {}, step: () => {}, check: () => {} };
+const nullSink: ISink = { write: () => undefined, step: () => undefined, check: () => undefined };
 
 export class CheckFailed extends Error {}
 
-type Ids = { repoId: string; profileId: string; worktreeId: string; chatId: string };
+type TIds = { repoId: string; profileId: string; worktreeId: string; chatId: string };
 
 /**
  * Runs the real daemon and the real `agentdeck` CLI against throwaway git repos.
@@ -58,7 +59,7 @@ export class Harness {
   readonly gaps: string[] = [];
   private waiters = new Set<() => void>();
 
-  private constructor(readonly sink: Sink) {
+  private constructor(readonly sink: ISink) {
     this.root = realpathSync.native(mkdtempSync(join(tmpdir(), "agentdeck-e2e-")));
     this.home = join(this.root, "home");
     this.src = join(this.root, "src");
@@ -71,10 +72,10 @@ export class Harness {
       AGENTDECK_RESTART_BACKOFF_MS: "300,300,300",
       FORCE_COLOR: "1",
     };
-    delete this.env.NO_COLOR;
+    delete this.env["NO_COLOR"];
   }
 
-  static async start(sink: Sink = nullSink): Promise<Harness> {
+  static async start(sink: ISink = nullSink): Promise<Harness> {
     const h = new Harness(sink);
     await h.startDaemon();
     await h.startWatcher();
@@ -101,7 +102,7 @@ export class Harness {
   }
 
   /** A named assertion that shows up in the recording's checklist. */
-  async check(label: string, fn: () => unknown | Promise<unknown>): Promise<void> {
+  async check(label: string, fn: () => unknown): Promise<void> {
     try {
       await fn();
       this.sink.check(label, true);
@@ -121,10 +122,12 @@ export class Harness {
     });
     this.daemon = child;
     let err = "";
-    child.stderr!.on("data", (d: Buffer) => (err += d.toString()));
+    child.stderr.on("data", (d: Buffer) => (err += d.toString()));
     await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error(`daemon did not start: ${err}`)), 15_000);
-      child.stdout!.on("data", (d: Buffer) => {
+      const t = setTimeout(() => {
+        reject(new Error(`daemon did not start: ${err}`));
+      }, 15_000);
+      child.stdout.on("data", (d: Buffer) => {
         const s = d.toString();
         this.sink.write("cmd", this.display(s).replace(/\n/g, "\r\n"));
         if (s.includes("listening")) {
@@ -132,7 +135,9 @@ export class Harness {
           resolve();
         }
       });
-      child.once("exit", (code) => reject(new Error(`daemon exited (${code}): ${err}`)));
+      child.once("exit", (code) => {
+        reject(new Error(`daemon exited (${code}): ${err}`));
+      });
     });
     await this.connect();
   }
@@ -161,14 +166,18 @@ export class Harness {
       stdio: ["ignore", "pipe", "pipe"],
     });
     this.watcher = child;
-    child.stdout!.on("data", (d: Buffer) => this.sink.write("events", d.toString().replace(/\n/g, "\r\n")));
-    child.stderr!.on("data", (d: Buffer) => this.sink.write("events", d.toString().replace(/\n/g, "\r\n")));
+    child.stdout.on("data", (d: Buffer) => {
+      this.sink.write("events", d.toString().replace(/\n/g, "\r\n"));
+    });
+    child.stderr.on("data", (d: Buffer) => {
+      this.sink.write("events", d.toString().replace(/\n/g, "\r\n"));
+    });
     await new Promise((r) => setTimeout(r, 400));
   }
 
   async stopWatcher(): Promise<void> {
     const w = this.watcher;
-    if (!w || w.exitCode !== null) return;
+    if (w?.exitCode !== null) return;
     const exited = new Promise((r) => w.once("exit", r));
     w.kill();
     await exited;
@@ -193,7 +202,7 @@ export class Harness {
 
   async stop(): Promise<void> {
     try {
-      this.client?.close();
+      this.client.close();
     } catch {
       // already closed
     }
@@ -233,12 +242,16 @@ export class Harness {
       out += d.toString();
       this.sink.write("cmd", d.toString().replace(/\n/g, "\r\n"));
     };
-    child.stdout!.on("data", (d: Buffer) => {
+    child.stdout.on("data", (d: Buffer) => {
       stdout += d.toString();
       onData(d);
     });
-    child.stderr!.on("data", onData);
-    const code = await new Promise<number>((r) => child.on("close", (c) => r(c ?? 1)));
+    child.stderr.on("data", onData);
+    const code = await new Promise<number>((r) =>
+      child.on("close", (c) => {
+        r(c ?? 1);
+      }),
+    );
     return { code, out: stripAnsi(out), stdout: stripAnsi(stdout) };
   }
 
@@ -444,7 +457,7 @@ export class Harness {
   }
 
   /** Repo + logged-in profile + ready worktree + idle chat, the common starting point. */
-  async quickstart(repoName = "shop"): Promise<Ids> {
+  async quickstart(repoName = "shop"): Promise<TIds> {
     const repoPath = this.makeRepo(repoName);
     const repo = await this.send("repo.add", { path: repoPath });
     const profileId = await this.addProfile("Personal");
@@ -465,7 +478,7 @@ export class Harness {
     const e = [...this.events]
       .reverse()
       .find((f) => f.event.type === "worktree.updated" && f.event.worktree.id === worktreeId);
-    if (!e || e.event.type !== "worktree.updated") throw new Error(`unknown worktree ${worktreeId}`);
+    if (e?.event.type !== "worktree.updated") throw new Error(`unknown worktree ${worktreeId}`);
     return e.event.worktree.path;
   }
 

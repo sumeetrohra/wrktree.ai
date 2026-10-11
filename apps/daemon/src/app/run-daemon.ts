@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { now } from "@agentdeck/shared";
 
 import { createLogger } from "#src/infra/log/index.js";
+import { readDaemonEnv } from "#src/shared/env.schema.js";
 import { defaultHome, pathsFor } from "#src/shared/paths.utils.js";
 import { DAEMON_VERSION } from "#src/shared/version.constants.js";
 
@@ -16,13 +17,14 @@ const logFile = (home: string): string =>
  * and to stderr too with AGENTDECK_LOG_STDERR=1.
  */
 export async function runDaemon(): Promise<void> {
+  const env = readDaemonEnv();
   const home = defaultHome();
   const log = createLogger(logFile(home), {
-    stderr: process.env.AGENTDECK_LOG_STDERR === "1",
+    stderr: env.AGENTDECK_LOG_STDERR === "1",
     base: { v: DAEMON_VERSION },
   });
   const daemon = new Daemon(optionsFromEnv(home), log);
-  const port = await daemon.start(Number(process.env.AGENTDECK_LOCAL_PORT ?? 0));
+  const port = await daemon.start(Number(env.AGENTDECK_LOCAL_PORT ?? 0));
   process.stdout.write(`agentdeck daemon ${DAEMON_VERSION} listening on 127.0.0.1:${String(port)}\n`);
   let stopping = false;
   const stop = async (): Promise<void> => {

@@ -69,7 +69,8 @@ export class ReposService {
   async add(path: string): Promise<TRepo> {
     if (!existsSync(path)) throw new AgentdeckError("NOT_FOUND", `No such folder: ${path}`);
     const real = realpathSync.native(path);
-    if (!this.inAllowList(real)) throw new AgentdeckError("FORBIDDEN_PATH", `${path} is outside the allowed folders`);
+    if (!this.inAllowList(real))
+      throw new AgentdeckError("FORBIDDEN_PATH", `${path} is outside the allowed folders`);
     let top: string;
     try {
       top = realpathSync.native((await git(real, ["rev-parse", "--show-toplevel"])).trim());
@@ -110,12 +111,17 @@ export class ReposService {
     if (path === undefined) {
       return {
         path: null,
-        entries: this.roots.map((r) => ({ name: basename(r) || r, path: r, isGitRepo: existsSync(join(r, ".git")) })),
+        entries: this.roots.map((r) => ({
+          name: basename(r) || r,
+          path: r,
+          isGitRepo: existsSync(join(r, ".git")),
+        })),
       };
     }
     if (!existsSync(path)) throw new AgentdeckError("NOT_FOUND", `No such folder: ${path}`);
     const real = realpathSync.native(path);
-    if (!this.inAllowList(real)) throw new AgentdeckError("FORBIDDEN_PATH", `${path} is outside the allowed folders`);
+    if (!this.inAllowList(real))
+      throw new AgentdeckError("FORBIDDEN_PATH", `${path} is outside the allowed folders`);
     const entries = readdirSync(real)
       .filter((name) => !name.startsWith("."))
       .map((name) => join(real, name))

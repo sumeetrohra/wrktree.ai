@@ -1,4 +1,4 @@
-/* global Terminal, FitAddon */
+/* global Terminal, FitAddon -- provided by the xterm.js bundle inlined into the page */
 // Replays a recorded E2E run: terminal bytes into two xterm.js panes, steps,
 // assertions and title cards, on the timeline the recorder computed.
 (function () {
