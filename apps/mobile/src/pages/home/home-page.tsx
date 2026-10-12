@@ -3,34 +3,56 @@ import { CircleAlert } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
-import { useHostsStore } from "@/lib/api";
-import { useOverviewQueries, WorkList } from "@/modules/workspace";
+import { localHostDeviceId, useHostsStore } from "@/lib/api";
+import {
+  fromCloud,
+  fromOverview,
+  useCloudHistoryQuery,
+  useOverviewQueries,
+  WorkList,
+  type TWorkHost,
+} from "@/modules/workspace";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Text } from "@/shared/components/ui/text";
 
 /**
- * Work: every computer's repos, branches and chats in one list (spec 2c: the new home). A device
- * with no account and no local daemon goes to sign-in.
+ * Work: every computer's repos, branches and chats in one list. Online computers are live; for the
+ * rest (offline, or no longer on the account) the list shows what they last wrote to the cloud. A
+ * device with no account and no local daemon goes to sign-in.
  */
 export function HomePage(): React.JSX.Element {
   const { t } = useTranslation();
   const hosts = useHostsStore((s) => s.hosts);
   const account = useHostsStore((s) => s.account);
   const localPending = useHostsStore((s) => s.localPending);
-  const overviews = useOverviewQueries(hosts.filter((h) => h.status === "online").map((h) => h.id));
-  if (account === "signedOut" && hosts.length === 0 && !localPending) return <Redirect href="/sign-in" />;
   const online = hosts.filter((h) => h.status === "online");
-  const work = hosts.map((h) => {
-    const q = overviews[online.findIndex((o) => o.id === h.id)];
+  const overviews = useOverviewQueries(online.map((h) => h.id));
+  const history = useCloudHistoryQuery();
+  if (account === "signedOut" && hosts.length === 0 && !localPending) return <Redirect href="/sign-in" />;
+  const work: TWorkHost[] = hosts.map((h) => {
+    const overview = overviews[online.findIndex((o) => o.id === h.id)]?.data;
+    if (h.status === "online" && overview) return fromOverview(h, overview);
+    if (history.data)
+      return fromCloud({ ...h, online: h.status === "online" }, history.data.worktrees, history.data.chats);
     return {
-      id: h.id,
-      name: h.name,
-      online: h.status === "online",
-      overview: q?.data ?? null,
-      error: q?.error ? q.error.message : h.status === "online" ? null : t(`connection.${h.status}`),
+      ...fromCloud({ ...h, online: false }, [], []),
+      note: h.status === "online" ? t("work.loading") : t(`connection.${h.status}`),
     };
   });
+  // Computers no longer on the account (or never online here) still have their history.
+  const shownIds = new Set([...hosts.map((h) => h.id), localHostDeviceId()]);
+  for (const ch of history.data?.hosts ?? []) {
+    if (!shownIds.has(ch.id)) {
+      work.push(
+        fromCloud(
+          { id: ch.id, name: ch.name, online: false },
+          history.data?.worktrees ?? [],
+          history.data?.chats ?? [],
+        ),
+      );
+    }
+  }
   return (
     <ScrollView contentContainerClassName="gap-4 p-4" className="bg-background">
       <Stack.Screen options={{ headerShown: false }} />
@@ -55,7 +77,7 @@ export function HomePage(): React.JSX.Element {
           </Button>
         </Link>
       ) : null}
-      {account === "signedIn" && hosts.length === 0 ? (
+      {account === "signedIn" && work.length === 0 ? (
         <Text className="text-muted-foreground">{t("work.noHosts")}</Text>
       ) : null}
       <WorkList hosts={work} />

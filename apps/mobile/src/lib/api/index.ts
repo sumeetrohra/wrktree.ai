@@ -6,6 +6,7 @@ export {
   joinAccount,
   leaveAccount,
   LOCAL_HOST,
+  localHostDeviceId,
   onDaemonEvent,
   refreshHosts,
   registerPushToken,

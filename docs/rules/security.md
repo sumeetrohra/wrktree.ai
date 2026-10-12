@@ -57,6 +57,7 @@
 | SEC16 | Account commands that hand out secrets (`account.link`, `account.logout`, `web.open`) are refused unless the client is local to the daemon; the deprecated `pair.*` commands always fail. | `review`, `test:e2e` |
 | SEC17 | The desktop web UI page never contains the local token. `agentdeck open` gets a one-time code (60 s, single use) for the URL fragment; the page trades it with a same-origin POST. Pages are sent with `X-Frame-Options: DENY` and never serve files outside the web export. | `test` |
 | SEC18 | On the phone, the identity key, the relay device token and the sign-in refresh token live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. On a computer, the relay device token is sealed with the identity's secret (`relay-token.sealed`, 0600). | `review` |
+| SEC19 | Cloud chat history is plaintext in Firebase, readable by Google and the project's admins, never by the relay. Firestore and Storage rules allow a user only `users/{uid}/…` (another account gets 403); Storage objects stay under 50 MB. On a computer, the Firebase refresh token is sealed with the relay device token (`relay-token.sealed`, 0600). | `test` (emulator), `test:e2e` |
 
 ## Pinned transitive fixes (SEC11)
 

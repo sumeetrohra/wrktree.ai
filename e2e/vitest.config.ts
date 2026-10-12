@@ -5,7 +5,12 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     // The app scenarios need a Playwright Chromium and the web export; CI runs them in their own
     // job (APP_E2E=1), and `pnpm test:e2e:app` runs them locally.
-    exclude: process.env.APP_E2E === "1" ? [] : ["src/app.test.ts"],
+    // The cloud scenarios need the Firebase emulators: `pnpm emulators "CLOUD_E2E=1 …"`.
+    exclude: [
+      ...(process.env.APP_E2E === "1" ? [] : ["src/app.test.ts"]),
+      ...(process.env.CLOUD_E2E === "1" ? [] : ["src/cloud.test.ts", "src/cloud-app.test.ts"]),
+      ...(process.env.APP_E2E === "1" ? [] : ["src/cloud-app.test.ts"]),
+    ],
     testTimeout: 180_000,
     hookTimeout: 60_000,
     fileParallelism: false,

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 
 import type { Harness } from "../harness.ts";
+import { PhoneSim } from "../phone-sim.ts";
+import { eventually } from "../scenarios/relay-helpers.ts";
 
 import type { AppDriver } from "./app-driver.ts";
 
@@ -254,5 +256,85 @@ export async function desktopWebSignsIn(h: Harness, app: AppDriver): Promise<voi
     assert.ok(await shown(page, "shop").isVisible());
     assert.equal(await page.getByText("laptop", { exact: true }).locator("visible=true").count(), 0);
     assert.equal(await page.getByText("api", { exact: true }).locator("visible=true").count(), 1);
+  });
+}
+
+/**
+ * Cloud history: the laptop's chats reach Firestore, the laptop goes away, and the app still
+ * lists its branches and chats and opens a chat read-only from the cloud.
+ */
+export async function cloudHistoryInApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: two worktrees with a chat each; one turn in the first");
+  const repoPath = h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: repoPath });
+  const profileId = await h.addProfile("Personal");
+  const since = h.mark();
+  const keep = await h.send("worktree.create", { repoId: repo.id, branch: "fix-login", title: "Fix login" });
+  const gone = await h.send("worktree.create", { repoId: repo.id, branch: "old-idea", title: "Old idea" });
+  await h.waitReady(keep.id, since);
+  await h.waitReady(gone.id, since);
+  const chat = await h.send("chat.create", {
+    worktreeId: keep.id,
+    agent: "fake",
+    profileId,
+    title: "Login bug",
+  });
+  await h.send("chat.create", { worktreeId: gone.id, agent: "fake", profileId, title: "Scratch" });
+  const turn = h.mark();
+  await h.send("chat.send", { chatId: chat.id, text: "Why does login redirect twice?" });
+  await h.waitStatus(chat.id, "idle", turn);
+
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+
+  h.step("Desktop: delete the second worktree; wait for the cloud to have it all");
+  await h.send("worktree.delete", { worktreeId: gone.id });
+  const phone = new PhoneSim(h.relayUrl, "Checker");
+  const { db, uid } = await phone.signInFirebase("me");
+  const hostId = await h.deviceId();
+  await eventually(
+    "the deleted worktree in Firestore",
+    () => db.get(`users/${uid}/worktrees/${hostId}__${gone.id}`),
+    (d) => typeof d?.data["deletedAt"] === "number",
+  );
+  await eventually(
+    "the agent's reply in Firestore",
+    () => db.list(`users/${uid}/chats/${chat.id}/items`),
+    (docs) => docs.some((d) => d.data["text"] === "You said: Why does login redirect twice?"),
+  );
+
+  h.step("Desktop: shut the laptop (kill -9)");
+  await h.stopWatcher();
+  await h.killDaemon();
+
+  h.step("App: Work still lists the laptop's branches and chats, from the cloud");
+  await app.goto("/");
+  await shown(page, "From cloud history (this computer is offline)").waitFor({ timeout: 60_000 });
+  await h.check("both branches and both chats are listed; the deleted worktree is marked", async () => {
+    await shown(page, "Login bug").waitFor({ timeout: 30_000 });
+    await shown(page, "Scratch").waitFor({ timeout: 10_000 });
+    await shown(page, "old-idea · Old idea (worktree deleted)").waitFor({ timeout: 10_000 });
+  });
+
+  h.step("App: open the chat; it reads from the cloud, read-only");
+  await shown(page, "Login bug").click();
+  await shown(page, "You said: Why does login redirect twice?").waitFor({ timeout: 30_000 });
+  await h.check("the whole turn is there, marked read-only", async () => {
+    await shown(page, "Why does login redirect twice?").waitFor({ timeout: 10_000 });
+    await page
+      .getByText("History from the cloud", { exact: false })
+      .locator("visible=true")
+      .first()
+      .waitFor();
+  });
+  await h.check("there is no composer", async () => {
+    assert.equal(
+      await page
+        .getByPlaceholder(/message|ask/i)
+        .locator("visible=true")
+        .count(),
+      0,
+    );
   });
 }

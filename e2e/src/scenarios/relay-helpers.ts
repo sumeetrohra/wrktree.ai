@@ -34,3 +34,20 @@ export const isEvent =
   ) =>
   (f: { event: TDaemonEvent }): boolean =>
     f.event.type === type && pred(f.event as Extract<TDaemonEvent, { type: T }>);
+
+/** Polls `read` until `ok` holds for its value (the host flushes its outbox about once a second). */
+export async function eventually<T>(
+  label: string,
+  read: () => Promise<T>,
+  ok: (v: T) => boolean,
+  timeoutMs = 20_000,
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let last: T | undefined;
+  while (Date.now() < deadline) {
+    last = await read();
+    if (ok(last)) return last;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  throw new Error(`timed out waiting for ${label}: ${JSON.stringify(last)}`);
+}

@@ -40,6 +40,21 @@ class CheckFailed extends Error {}
 
 type TIds = { repoId: string; profileId: string; worktreeId: string; chatId: string };
 
+/** The Firebase emulators `pnpm emulators` started, as relay settings. */
+function firebaseEmulatorEnv(): Record<string, string> {
+  const need = (k: string): string => {
+    const v = process.env[k];
+    if (v === undefined) throw new Error(`${k} is not set: run under \`pnpm emulators\``);
+    return v;
+  };
+  return {
+    FIREBASE_PROJECT_ID: process.env["GCLOUD_PROJECT"] ?? "demo-agentdeck",
+    FIREBASE_AUTH_EMULATOR_HOST: need("FIREBASE_AUTH_EMULATOR_HOST"),
+    FIRESTORE_EMULATOR_HOST: need("FIRESTORE_EMULATOR_HOST"),
+    FIREBASE_STORAGE_EMULATOR_HOST: need("FIREBASE_STORAGE_EMULATOR_HOST"),
+  };
+}
+
 /** Records the relay's log lines, so a test can check nothing secret was ever logged. */
 function recordingLogger(lines: string[]): ILogger {
   const log = (level: string) => (obj: Record<string, unknown>, msg?: string) => {
@@ -105,6 +120,8 @@ export class Harness {
     sink: ISink = nullSink,
     opts: {
       relay?: boolean;
+      /** Point the relay at the Firebase emulators (run under `pnpm emulators`). */
+      firebase?: boolean;
       webRoot?: string;
       /** Join this relay instead of starting one (a second host on the same account). */
       relayUrl?: string;
@@ -118,7 +135,7 @@ export class Harness {
     if (opts.webRoot) h.env["AGENTDECK_WEB_ROOT"] = opts.webRoot;
     h.env["AGENTDECK_HOST_NAME"] = opts.hostName ?? "laptop";
     if (opts.relayUrl !== undefined) h.env["AGENTDECK_RELAY_URL"] = opts.relayUrl;
-    else if (opts.relay) await h.startRelay();
+    else if (opts.relay || opts.firebase) await h.startRelay(opts.firebase === true);
     await h.startDaemon();
     if (opts.watch !== false) await h.startWatcher();
     return h;
@@ -156,12 +173,18 @@ export class Harness {
 
   // ---------- processes ----------
 
-  async startRelay(): Promise<void> {
-    this.echo("agentdeck-relay &   # local self-host relay, dev mode");
+  async startRelay(firebase = false): Promise<void> {
+    this.echo(
+      `agentdeck-relay &   # local self-host relay, dev mode${firebase ? ", Firebase emulators" : ""}`,
+    );
     this.relay = await startNodeRelay({
       port: 0,
       dataDir: this.relayDir,
-      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_DEV_SECRET: "e2e-only-secret-e2e-only-secret-e2e" }),
+      env: relayEnvSchema.parse({
+        RELAY_DEV: "1",
+        RELAY_DEV_SECRET: "e2e-only-secret-e2e-only-secret-e2e",
+        ...(firebase ? firebaseEmulatorEnv() : {}),
+      }),
       log: recordingLogger(this.relayLog),
     });
     this.env["AGENTDECK_RELAY_URL"] = this.relay.url;

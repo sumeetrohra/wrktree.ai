@@ -4,6 +4,7 @@ import { linkHost } from "../scenarios/relay-helpers.ts";
 
 import { APP_DIST, type AppDriver } from "./app-driver.ts";
 import {
+  cloudHistoryInApp,
   desktopWeb,
   desktopWebSignsIn,
   linkFromApp,
@@ -21,7 +22,7 @@ export type TAppScenario = {
   title: string;
   summary: string;
   covers: string[];
-  harness: { relay?: boolean; webRoot?: string };
+  harness: { relay?: boolean; firebase?: boolean; webRoot?: string };
   run(h: Harness, app: AppDriver): Promise<void>;
 };
 
@@ -91,5 +92,20 @@ export const appScenarios: TAppScenario[] = [
         await b.stop();
       }
     },
+  },
+];
+
+/** Phase 3a: the app reads an offline computer's chats from Firebase (needs the emulators). */
+export const cloudAppScenarios: TAppScenario[] = [
+  {
+    n: 17,
+    title: "The app: an offline computer's chats, from the cloud",
+    summary: "The laptop syncs to Firestore, then shuts; Work and the chat still show everything, read-only",
+    covers: [
+      "Phase 3a: worktrees and chats from Firestore when their computer is offline",
+      "Phase 3a: a deleted worktree's chats stay in the cloud",
+    ],
+    harness: { firebase: true },
+    run: cloudHistoryInApp,
   },
 ];

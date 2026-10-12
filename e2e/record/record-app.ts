@@ -9,7 +9,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { AppDriver } from "../src/app/app-driver.ts";
-import { appScenarios } from "../src/app/app-scenarios.ts";
+import { appScenarios, cloudAppScenarios } from "../src/app/app-scenarios.ts";
 import { Harness, REPO_ROOT, type ISink } from "../src/harness.ts";
 
 const OUT = join(REPO_ROOT, "artifacts");
@@ -60,8 +60,11 @@ function subtitles(cues: TCue[], endMs: number): string {
   return lines.join("\n") + "\n";
 }
 
+// Under `pnpm emulators` (CLOUD_E2E=1), the cloud history scenarios too.
+const ALL = [...appScenarios, ...(process.env["CLOUD_E2E"] === "1" ? cloudAppScenarios : [])];
+
 async function recordScenario(index: number): Promise<{ mp4: string; ok: boolean; title: string }> {
-  const s = appScenarios[index]!;
+  const s = ALL[index]!;
   process.stdout.write(`\n${String(s.n)}. ${s.title}\n`);
   const cues: TCue[] = [
     {
@@ -137,7 +140,7 @@ async function main(): Promise<void> {
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
   const results = [];
-  for (let i = 0; i < appScenarios.length; i++) results.push(await recordScenario(i));
+  for (let i = 0; i < ALL.length; i++) results.push(await recordScenario(i));
   const list = join(TMP, "list.txt");
   writeFileSync(list, results.map((r) => `file '${r.mp4}'`).join("\n") + "\n");
   const out = join(OUT, "app-e2e.mp4");

@@ -315,6 +315,11 @@ export async function uploadBlob(hostId: string, base64: string, mime: string): 
   return host(hostId).upload(base64, mime);
 }
 
+/** The local daemon's own device id (desktop web), once known. */
+export function localHostDeviceId(): string | null {
+  return localDaemonId;
+}
+
 /** This device's id (derived from its signing key). */
 export function thisDeviceId(): string {
   return deviceIdFor(connStorage.identity().signPub);

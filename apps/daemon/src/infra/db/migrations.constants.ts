@@ -69,4 +69,14 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE chats ADD COLUMN model TEXT;
   `,
+  // 4: Phase 3a cloud history. Pending Firestore writes and Storage uploads, keyed by document
+  // path so repeated updates of one document coalesce; the chats whose document exists.
+  `
+  CREATE TABLE cloud_outbox (
+    key TEXT PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, data_json TEXT NOT NULL,
+    version INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE cloud_chats (chat_id TEXT PRIMARY KEY);
+  CREATE TABLE cloud_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  `,
 ];

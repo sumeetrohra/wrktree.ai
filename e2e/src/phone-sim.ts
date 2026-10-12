@@ -12,11 +12,13 @@ import {
   utf8ToBytes,
   type TIdentity,
 } from "@agentdeck/crypto";
+import { FirebaseAuth, Firestore, Storage, TokenSource } from "@agentdeck/firebase-rest";
 import {
   blobbedDataSchema,
   innerSchema,
   RELAY_TOKEN_PROTOCOL_PREFIX,
   RELAY_WS_PROTOCOL,
+  relayConfigSchema,
   relayControlSchema,
   relayFrameSchema,
   type TCommandName,
@@ -110,6 +112,36 @@ export class PhoneSim {
       this.idToken,
     );
     this.deviceToken = String(reg["deviceToken"]);
+  }
+
+  /**
+   * Signs in like the app does against a relay with Firebase: through the Auth emulator as
+   * `<uid>@example.com` (the same user `agentdeck login --dev <uid>` becomes), then registers.
+   * Returns Firestore and Storage clients for that user.
+   */
+  async signInFirebase(uid: string): Promise<{ db: Firestore; files: Storage; uid: string }> {
+    this.uid = uid;
+    const res = await fetch(`${this.relayUrl}/v1/config`);
+    const { firebase } = relayConfigSchema.parse(await res.json());
+    if (!firebase) throw new Error("the relay has no Firebase project");
+    const auth = new FirebaseAuth(firebase);
+    const email = `${uid}@example.com`;
+    const signed = await auth.signInWithEmailLink(email, await auth.emulatorSignInLink(email));
+    const tokens = new TokenSource(auth, signed.session, () => undefined, signed);
+    this.idToken = await tokens.idToken();
+    const reg = await this.http(
+      "POST",
+      "/v1/devices/register",
+      { ...signRegistration(this.id, Date.now()), kind: this.kind, name: this.name },
+      this.idToken,
+    );
+    this.deviceToken = String(reg["deviceToken"]);
+    const idToken = (): Promise<string> => tokens.idToken();
+    return {
+      db: new Firestore(firebase, idToken),
+      files: new Storage(firebase, idToken),
+      uid: signed.session.uid,
+    };
   }
 
   /** The account's devices, from the relay. */

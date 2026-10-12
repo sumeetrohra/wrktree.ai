@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, View } from "react-native";
 import { z } from "zod";
 
-import { uploadBlob } from "@/lib/api";
-import { ChatList, ChatStatusBadge, sendMessage, useChatView } from "@/modules/chats";
+import { uploadBlob, useHostsStore } from "@/lib/api";
+import { ChatList, ChatStatusBadge, sendMessage, useChatView, useCloudItemsQuery } from "@/modules/chats";
 import { Composer } from "@/modules/composer";
 import { HostBadge } from "@/modules/hosts";
 import { PermissionSheet, useRespondPermissionMutation } from "@/modules/permissions";
@@ -13,13 +13,23 @@ import { Text } from "@/shared/components/ui/text";
 
 const paramsSchema = z.object({ hostId: z.string(), chatId: chatIdSchema });
 
-/** One chat: the stream, the pending permission pinned above the composer (spec: chat screen). */
+/**
+ * One chat: the stream, the pending permission pinned above the composer (spec: chat screen).
+ * While its computer is offline (or the chat's worktree is gone), the history comes from the
+ * cloud and the chat is read-only.
+ */
 export function ChatPage(): React.JSX.Element {
   const { t } = useTranslation();
   const { hostId, chatId } = paramsSchema.parse(useLocalSearchParams());
   const view = useChatView(chatId);
   const respond = useRespondPermissionMutation(hostId);
-  const items = view.order.flatMap((id) => (view.items[id] ? [view.items[id]] : []));
+  const online = useHostsStore((s) => s.hosts.find((h) => h.id === hostId)?.status === "online");
+  const history = useCloudItemsQuery(chatId, !online);
+  const live = view.order.flatMap((id) => (view.items[id] ? [view.items[id]] : []));
+  const cloudItems = online ? [] : (history.data ?? []);
+  const fromCloud = cloudItems.length > 0;
+  const items = fromCloud ? cloudItems.map((h) => h.item) : live;
+  const files = fromCloud ? new Map(cloudItems.map((h) => [h.item.id, h.files])) : undefined;
   const busy = view.status === "running" || view.status === "awaiting_permission";
   return (
     <KeyboardAvoidingView
@@ -31,10 +41,13 @@ export function ChatPage(): React.JSX.Element {
         {view.queued > 0 ? <Text variant="small">{t("chat.queued", { count: view.queued })}</Text> : null}
         <HostBadge hostId={hostId} />
       </View>
+      {fromCloud ? (
+        <Text className="text-muted-foreground px-4 py-2 text-xs">{t("chat.history")}</Text>
+      ) : null}
       <View className="flex-1">
-        <ChatList items={items} />
+        <ChatList items={items} files={files} />
       </View>
-      {view.pending ? (
+      {online && view.pending ? (
         <PermissionSheet
           request={view.pending}
           busy={respond.isPending}
@@ -44,13 +57,15 @@ export function ChatPage(): React.JSX.Element {
           }}
         />
       ) : null}
-      <Composer
-        agentBusy={busy}
-        upload={(base64, mime) => uploadBlob(hostId, base64, mime)}
-        onSend={(text, attachments) => {
-          void sendMessage(hostId, chatId, text, attachments);
-        }}
-      />
+      {online ? (
+        <Composer
+          agentBusy={busy}
+          upload={(base64, mime) => uploadBlob(hostId, base64, mime)}
+          onSend={(text, attachments) => {
+            void sendMessage(hostId, chatId, text, attachments);
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { chromium } from "playwright-core";
 
 import { Harness, REPO_ROOT, type ISink } from "../src/harness.ts";
-import { relayScenarios, scenarios } from "../src/scenarios/index.ts";
+import { cloudScenarios, relayScenarios, scenarios } from "../src/scenarios/index.ts";
 
 const require = createRequire(import.meta.url);
 const OUT = join(REPO_ROOT, "artifacts");
@@ -67,10 +67,14 @@ async function runScenarios(): Promise<{ recs: TRec[]; rows: TRow[]; totalMs: nu
     },
   };
   const all = [
-    ...scenarios.map((s) => ({ s, relay: false })),
-    ...relayScenarios.map((s) => ({ s, relay: true })),
+    ...scenarios.map((s) => ({ s, relay: false, firebase: false })),
+    ...relayScenarios.map((s) => ({ s, relay: true, firebase: false })),
+    // Under `pnpm emulators` (CLOUD_E2E=1), the cloud history scenarios too.
+    ...(process.env["CLOUD_E2E"] === "1"
+      ? cloudScenarios.map((s) => ({ s, relay: true, firebase: true }))
+      : []),
   ];
-  for (const { s, relay } of all) {
+  for (const { s, relay, firebase } of all) {
     process.stdout.write(`\n${s.n}. ${s.title}\n`);
     recs.push({ t: t(), kind: "scenario", n: s.n, title: s.title, summary: s.summary, covers: s.covers });
     const started = Date.now();
@@ -78,7 +82,7 @@ async function runScenarios(): Promise<{ recs: TRec[]; rows: TRow[]; totalMs: nu
     let h: Harness | null = null;
     let error: string | undefined;
     try {
-      h = await Harness.start(sink, { relay });
+      h = await Harness.start(sink, { relay, firebase });
       await s.run(h);
     } catch (e) {
       error = (e as Error).message.split("\n")[0];
@@ -125,7 +129,7 @@ function playback(recs: TRec[], rows: TRow[], totalMs: number, meta: string) {
     ms: totalMs,
     meta,
   });
-  return { total: scenarios.length + relayScenarios.length, events, tail: 9000, durationMs: play + 9000 };
+  return { total: rows.length, events, tail: 9000, durationMs: play + 9000 };
 }
 
 function buildHtml(pb: ReturnType<typeof playback>): string {

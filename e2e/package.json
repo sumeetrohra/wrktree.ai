@@ -12,6 +12,7 @@
   "dependencies": {
     "@agentdeck/cli": "workspace:*",
     "@agentdeck/crypto": "workspace:*",
+    "@agentdeck/firebase-rest": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
     "@agentdeck/relay": "workspace:*",
     "@agentdeck/shared": "workspace:*",

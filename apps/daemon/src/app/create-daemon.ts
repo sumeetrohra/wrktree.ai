@@ -12,6 +12,7 @@ import type { TRuntime } from "#src/infra/runtime/index.js";
 import { LocalTransport } from "#src/infra/transport/index.js";
 import { AgentRegistry } from "#src/modules/agents/index.js";
 import { BlobStore } from "#src/modules/blobs/index.js";
+import { CloudSync } from "#src/modules/cloud/index.js";
 import { DevicesService } from "#src/modules/devices/index.js";
 import { FileJail } from "#src/modules/files/index.js";
 import { GitService } from "#src/modules/git/index.js";
@@ -26,6 +27,7 @@ import { pathsFor } from "#src/shared/paths.utils.js";
 import { DAEMON_VERSION } from "#src/shared/version.constants.js";
 
 import type { TModules } from "./app.types.js";
+import { cloudStoreFor } from "./cloud-store.utils.js";
 import { createHandlers } from "./handlers/index.js";
 import { Remote } from "./remote.service.js";
 
@@ -77,6 +79,7 @@ export class Daemon {
   readonly modules: TModules;
   private readonly router: Router;
   private transport: LocalTransport | null = null;
+  private readonly cloud: CloudSync;
   port = 0;
 
   constructor(opts: TDaemonOptions, log: ILogger) {
@@ -127,10 +130,55 @@ export class Daemon {
       },
     };
     const devices = new DevicesService(this.rt);
+    const remote = new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log);
+    this.cloud = new CloudSync(
+      this.rt,
+      {
+        worktrees: () => worktrees.all(),
+        worktree: (id) => {
+          try {
+            return worktrees.get(id);
+          } catch {
+            return null;
+          }
+        },
+        repoName: (repoId) => {
+          try {
+            return repos.get(repoId).name;
+          } catch {
+            return repoId;
+          }
+        },
+        chats: (worktreeId) => sessions.list(worktreeId),
+        chat: (id) => {
+          try {
+            return sessions.get(id);
+          } catch {
+            return null;
+          }
+        },
+        profileName: (id) => {
+          try {
+            return profiles.get(id).name;
+          } catch {
+            return null;
+          }
+        },
+        blob: (blobId) => {
+          try {
+            const b = blobs.get(blobId);
+            return { bytes: b.bytes, mime: b.ref.mime };
+          } catch {
+            return null;
+          }
+        },
+      },
+      cloudStoreFor(remote),
+    );
     this.modules = {
       daemonId: newId("dev"),
       devices,
-      remote: new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log),
+      remote,
       webLink: () => this.transport?.webLink() ?? null,
       bus: this.rt.bus,
       repos,
@@ -168,12 +216,14 @@ export class Daemon {
       this.rt.log,
     );
     this.modules.remote.start(identity, vault, this.rt.bus, this.router);
+    this.cloud.start();
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;
   }
 
   async stop(): Promise<void> {
+    this.cloud.stop();
     this.modules.remote.stop();
     this.modules.sessions.shutdown();
     await this.modules.worktrees.idle();

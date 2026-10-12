@@ -26,18 +26,19 @@ when one hits its usage limit.
 
 ## Status
 
-**Phases 1 and 2 are built.** The daemon runs agents in worktrees; phones and browsers sign in and
+**Phases 1 and 2 are built, and Phase 3a.** The daemon runs agents in worktrees; phones and browsers sign in and
 drive any number of linked computers through the relay, end to end encrypted, from the app (tested as its web build in
 Chromium; native builds need an EAS project). The daemon also serves the app as a desktop web UI.
-15 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
-[`docs/phase-1.md`](docs/phase-1.md) and [`docs/phase-2.md`](docs/phase-2.md).
+Every chat is kept in Firebase, so it stays readable when its computer is off.
+17 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+[`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md) and [`docs/phase-3.md`](docs/phase-3.md).
 
 | Phase | What | State |
 |---|---|---|
 | 0 | Spikes: kill the three biggest unknowns | partly done, see [`docs/spikes.md`](docs/spikes.md) |
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
-| 3 | Review, code, preview — judge an agent's work without a laptop | next |
+| 3 | Cloud history (3a); review, code, preview — judge an agent's work without a laptop | 3a ✅ built (real Firebase project pending); 3b next |
 | 4 | Multi-account power features and public launch | |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
@@ -148,6 +149,8 @@ lint, Prettier and the typecheck; CI adds knip, `pnpm audit` and CodeQL.
 - [`docs/phase-1.md`](docs/phase-1.md) — what Phase 1 built, its E2E suite and the video
 - [`docs/phase-2.md`](docs/phase-2.md) — Phase 2: relay and crypto (2a), the app (2b), sign-in with
   many computers and devices (2c)
+- [`docs/phase-3.md`](docs/phase-3.md) — Phase 3: cloud chat history in Firebase (3a); review,
+  code and preview (3b, 3c)
 - [`docs/relay-deploy.md`](docs/relay-deploy.md) — deploying the relay to Cloudflare or self-hosting it
 - [`docs/spikes.md`](docs/spikes.md) — pinned versions and open Phase 0 questions
 - [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation

@@ -371,6 +371,9 @@ importers:
       '@agentdeck/crypto':
         specifier: workspace:*
         version: link:../packages/crypto
+      '@agentdeck/firebase-rest':
+        specifier: workspace:*
+        version: link:../packages/firebase-rest
       '@agentdeck/protocol':
         specifier: workspace:*
         version: link:../packages/protocol

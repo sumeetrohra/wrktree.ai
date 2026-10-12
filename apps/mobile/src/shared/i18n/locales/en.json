@@ -90,7 +90,9 @@
       "running": "running",
       "done": "done",
       "failed": "failed"
-    }
+    },
+    "history": "History from the cloud. The computer is offline, so this chat is read-only.",
+    "image": "Image"
   },
   "permission": {
     "asks": "The agent asks to",
@@ -140,7 +142,10 @@
     "branch": "{{branch}} · {{title}}",
     "loading": "Loading…",
     "noHosts": "No computers yet. On a computer, run `agentdeck login` and sign in with this account.",
-    "signInForMore": "Sign in to see your other computers"
+    "signInForMore": "Sign in to see your other computers",
+    "fromHistory": "From cloud history (this computer is offline)",
+    "noHistory": "Nothing in the cloud yet.",
+    "branchDeleted": "{{branch}} · {{title}} (worktree deleted)"
   },
   "hosts": {
     "title": "Computers",

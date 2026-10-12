@@ -1,4 +1,3 @@
-import type { TChat } from "@agentdeck/protocol";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,21 +8,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Text } from "@/shared/components/ui/text";
 
-import type { TOverview } from "../api/overview.queries";
+import type { TWorkChat, TWorkHost } from "../utils/work.utils";
 
 import { ATTENTION, ChatRow } from "./chat-row";
 
-export type TWorkHost = {
-  id: string;
-  name: string;
-  online: boolean;
-  overview: TOverview | null;
-  error: string | null;
-};
-
 type TFilter = "all" | "attention" | "running";
 
-function matches(filter: TFilter, c: TChat): boolean {
+function matches(filter: TFilter, c: TWorkChat): boolean {
   if (filter === "attention") return ATTENTION.includes(c.status);
   if (filter === "running") return c.status === "running" || c.status === "awaiting_permission";
   return true;
@@ -86,18 +77,16 @@ export function WorkList({ hosts }: { hosts: readonly TWorkHost[] }): React.JSX.
             </Badge>
           </CardHeader>
           <CardContent className="gap-3">
-            {h.overview === null ? (
-              <Text className="text-muted-foreground">{h.error ?? t("work.loading")}</Text>
-            ) : h.overview.repos.length === 0 ? (
-              <Text className="text-muted-foreground">{t("repos.empty")}</Text>
-            ) : (
-              h.overview.repos.map((repo) => {
-                const overview = h.overview;
-                const worktrees = (overview?.worktrees ?? []).filter(
-                  (w) => w.repoId === repo.id && w.status !== "archived",
-                );
-                return (
-                  <View key={repo.id} className="gap-1">
+            {h.live ? null : <Text className="text-muted-foreground text-xs">{t("work.fromHistory")}</Text>}
+            {h.note !== null ? <Text className="text-muted-foreground">{h.note}</Text> : null}
+            {h.note === null && h.repos.length === 0 ? (
+              <Text className="text-muted-foreground">{h.live ? t("repos.empty") : t("work.noHistory")}</Text>
+            ) : null}
+            {h.repos.map((repo) => {
+              const worktrees = h.worktrees.filter((w) => w.repoId === repo.id);
+              return (
+                <View key={repo.id} className="gap-1">
+                  {h.live ? (
                     <Link
                       href={{
                         pathname: "/h/[hostId]/repo/[repoId]",
@@ -109,34 +98,32 @@ export function WorkList({ hosts }: { hosts: readonly TWorkHost[] }): React.JSX.
                         <Text className="font-semibold">{repo.name}</Text>
                       </Button>
                     </Link>
-                    {worktrees.length === 0 ? (
-                      <Text className="text-muted-foreground text-xs">{t("worktrees.empty")}</Text>
-                    ) : null}
-                    {worktrees.map((w) => {
-                      const chats = (overview?.chats ?? []).filter(
-                        (c) => c.worktreeId === w.id && matches(filter, c),
-                      );
-                      if (filter !== "all" && chats.length === 0) return null;
-                      return (
-                        <View key={w.id} className="border-border gap-1 border-l pl-3">
-                          <Text className="text-sm">
-                            {t("work.branch", { branch: w.branch, title: w.title })}
-                          </Text>
-                          {chats.map((c) => (
-                            <ChatRow
-                              key={c.id}
-                              hostId={h.id}
-                              chat={c}
-                              profile={overview?.profiles.find((p) => p.id === c.profileId)?.name ?? null}
-                            />
-                          ))}
-                        </View>
-                      );
-                    })}
-                  </View>
-                );
-              })
-            )}
+                  ) : (
+                    <Text className="font-semibold">{repo.name}</Text>
+                  )}
+                  {worktrees.length === 0 ? (
+                    <Text className="text-muted-foreground text-xs">{t("worktrees.empty")}</Text>
+                  ) : null}
+                  {worktrees.map((w) => {
+                    const chats = h.chats.filter((c) => c.worktreeId === w.id && matches(filter, c));
+                    if (filter !== "all" && chats.length === 0) return null;
+                    return (
+                      <View key={w.id} className="border-border gap-1 border-l pl-3">
+                        <Text className="text-sm">
+                          {t(w.deleted ? "work.branchDeleted" : "work.branch", {
+                            branch: w.branch,
+                            title: w.title,
+                          })}
+                        </Text>
+                        {chats.map((c) => (
+                          <ChatRow key={c.id} hostId={h.id} chat={c} />
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
           </CardContent>
         </Card>
       ))}
