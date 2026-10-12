@@ -4,14 +4,23 @@ import { protocolErrorSchema } from "./errors.schema.js";
 import { daemonEventSchema, topicSchema } from "./events.schema.js";
 import { cmdIdSchema, deviceIdSchema } from "./ids.schema.js";
 
-/** Outer frame, visible to the relay. Phase 2 encrypts `body`. */
+/**
+ * Outer frame, visible to the relay. For `msg`, `body` is the base64url sealed inner frame and
+ * `sid` the session it was sealed under. `hs` (session handshake) and `pair` (pairing) carry
+ * base64url JSON that is signed or MACed but not secret. `wake` is the one unencrypted hint the
+ * relay acts on: it sends a content-free push when the recipient is offline.
+ */
 export const relayFrameSchema = z.object({
   v: z.literal(1),
   to: deviceIdSchema,
   from: deviceIdSchema,
   seq: z.number().int().nonnegative(),
-  kind: z.enum(["msg", "ack", "ping"]),
+  kind: z.enum(["msg", "ack", "ping", "hs", "pair"]),
   body: z.string(),
+  /** Additive: session id the body was sealed under (`msg` only). */
+  sid: z.string().optional(),
+  /** Additive: ask the relay to push-wake an offline recipient. */
+  wake: z.boolean().optional(),
 });
 export type TRelayFrame = z.infer<typeof relayFrameSchema>;
 

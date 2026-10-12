@@ -6,3 +6,4 @@ export * from "./envelope.schema.js";
 export * from "./commands.schema.js";
 
 export const PROTOCOL_VERSION = 1;
+export * from "./relay-api.schema.js";

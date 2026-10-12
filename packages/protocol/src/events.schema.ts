@@ -5,6 +5,7 @@ import {
   chatItemPatchSchema,
   chatItemSchema,
   chatStatusSchema,
+  deviceSchema,
   permissionDecisionSchema,
   permissionRequestSchema,
   usageSnapshotSchema,
@@ -48,6 +49,8 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("usage.updated"), profileId: profileIdSchema, usage: usageSnapshotSchema }),
   z.object({ type: z.literal("proc.output"), procId: procIdSchema, chunk: z.string() }),
+  /** Additive: a device was paired, seen or revoked (topic `global`). */
+  z.object({ type: z.literal("device.updated"), device: deviceSchema }),
   z.object({
     type: z.literal("preview.status"),
     worktreeId: worktreeIdSchema,

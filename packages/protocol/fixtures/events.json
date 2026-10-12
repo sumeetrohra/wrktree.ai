@@ -157,5 +157,16 @@
     "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
     "status": "ready",
     "url": "https://x.preview.example"
+  },
+  {
+    "type": "device.updated",
+    "device": {
+      "id": "d_0123456789abcdef0123456789abcdef",
+      "name": "Pixel 9",
+      "kind": "phone",
+      "pairedAt": 1791600000000,
+      "lastSeenAt": 1791600100000,
+      "revokedAt": null
+    }
   }
 ]

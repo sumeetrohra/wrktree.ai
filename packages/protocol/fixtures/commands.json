@@ -385,5 +385,66 @@
       },
       "base64": "aGVsbG8="
     }
+  },
+  "device.list": {
+    "args": {},
+    "result": [
+      {
+        "id": "d_0123456789abcdef0123456789abcdef",
+        "name": "Pixel 9",
+        "kind": "phone",
+        "pairedAt": 1791600000000,
+        "lastSeenAt": 1791600100000,
+        "revokedAt": null
+      }
+    ]
+  },
+  "device.revoke": {
+    "args": {
+      "deviceId": "d_0123456789abcdef0123456789abcdef"
+    },
+    "result": {
+      "id": "d_0123456789abcdef0123456789abcdef",
+      "name": "Pixel 9",
+      "kind": "phone",
+      "pairedAt": 1791600000000,
+      "lastSeenAt": 1791600100000,
+      "revokedAt": 1791600200000
+    }
+  },
+  "pair.start": {
+    "args": {},
+    "result": {
+      "pairingId": "pair_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "link": "agentdeck://pair?o=eyJ2IjoxfQ",
+      "expiresAt": 1791600600000
+    }
+  },
+  "pair.status": {
+    "args": {
+      "pairingId": "pair_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "state": "confirm",
+      "shortCode": "042137",
+      "deviceId": "d_0123456789abcdef0123456789abcdef",
+      "deviceName": "Pixel 9"
+    }
+  },
+  "pair.confirm": {
+    "args": {
+      "pairingId": "pair_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "accept": true
+    },
+    "result": {}
+  },
+  "relay.status": {
+    "args": {},
+    "result": {
+      "configured": true,
+      "url": "https://relay.agentdeck.dev",
+      "connected": true,
+      "deviceId": "d_fedcba9876543210fedcba9876543210"
+    }
   }
 }

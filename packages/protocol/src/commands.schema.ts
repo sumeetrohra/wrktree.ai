@@ -1,9 +1,16 @@
 import { z } from "zod";
 
-import { chatIdSchema, profileIdSchema, repoIdSchema, worktreeIdSchema } from "./ids.schema.js";
+import {
+  chatIdSchema,
+  deviceIdSchema,
+  profileIdSchema,
+  repoIdSchema,
+  worktreeIdSchema,
+} from "./ids.schema.js";
 import {
   blobRefSchema,
   chatSchema,
+  deviceSchema,
   diffFileSchema,
   fsEntrySchema,
   permissionDecisionSchema,
@@ -171,6 +178,39 @@ export const commands = {
     args: z.object({ blobId: z.string() }),
     result: z.object({ blob: blobRefSchema, base64: z.string() }),
   },
+
+  "device.list": { args: Empty, result: z.array(deviceSchema) },
+  /**
+   * Additive, local clients only (the desktop CLI or web UI): start pairing a phone. The link is
+   * what the QR code encodes; it carries the pairing secret, so it never goes through the relay.
+   */
+  "pair.start": {
+    args: Empty,
+    result: z.object({ pairingId: z.string(), link: z.string(), expiresAt: z.number() }),
+  },
+  /** Additive, local only: poll a pairing until a phone has said hello and shows its short code. */
+  "pair.status": {
+    args: z.object({ pairingId: z.string() }),
+    result: z.object({
+      state: z.enum(["waiting", "confirm", "paired", "rejected", "expired"]),
+      shortCode: z.string().optional(),
+      deviceId: deviceIdSchema.optional(),
+      deviceName: z.string().optional(),
+    }),
+  },
+  /** Additive, local only: the user compared the short codes; `accept: false` forgets the phone. */
+  "pair.confirm": { args: z.object({ pairingId: z.string(), accept: z.boolean() }), result: Empty },
+  /** Additive: whether the daemon is connected to its relay. */
+  "relay.status": {
+    args: Empty,
+    result: z.object({
+      configured: z.boolean(),
+      url: z.string().nullable(),
+      connected: z.boolean(),
+      deviceId: z.string().nullable(),
+    }),
+  },
+  "device.revoke": { args: z.object({ deviceId: deviceIdSchema }), result: deviceSchema },
 } as const;
 
 export type TCommands = typeof commands;

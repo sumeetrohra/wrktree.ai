@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { chatIdSchema, profileIdSchema, repoIdSchema, worktreeIdSchema } from "./ids.schema.js";
+import {
+  chatIdSchema,
+  deviceIdSchema,
+  profileIdSchema,
+  repoIdSchema,
+  worktreeIdSchema,
+} from "./ids.schema.js";
 
 export const blobRefSchema = z.object({
   blobId: z.string(),
@@ -164,3 +170,17 @@ export const chatItemPatchSchema = z.object({
   entries: z.array(planEntrySchema).optional(),
 });
 export type TChatItemPatch = z.infer<typeof chatItemPatchSchema>;
+
+export const deviceKindSchema = z.enum(["phone", "daemon", "web"]);
+export type TDeviceKind = z.infer<typeof deviceKindSchema>;
+
+/** A device paired with this daemon. */
+export const deviceSchema = z.object({
+  id: deviceIdSchema,
+  name: z.string(),
+  kind: deviceKindSchema,
+  pairedAt: z.number(),
+  lastSeenAt: z.number().nullable(),
+  revokedAt: z.number().nullable(),
+});
+export type TDevice = z.infer<typeof deviceSchema>;
