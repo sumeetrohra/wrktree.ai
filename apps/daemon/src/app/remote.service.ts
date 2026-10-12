@@ -1,5 +1,11 @@
 import { deviceIdFor, type TIdentity } from "@agentdeck/crypto";
-import { AgentdeckError, type TAccountStatus, type TDevice } from "@agentdeck/protocol";
+import {
+  FirebaseAuth,
+  TokenSource,
+  type TFirebaseConfig,
+  type TFirebaseSession,
+} from "@agentdeck/firebase-rest";
+import { AgentdeckError, type TAccountStatus, type TDevice, type TRelayConfig } from "@agentdeck/protocol";
 import type { ILogger } from "@agentdeck/shared";
 import { z } from "zod";
 
@@ -21,11 +27,16 @@ const linkedSchema = z.object({
   relayUrl: z.string(),
   deviceToken: z.string(),
   email: z.string().nullable(),
+  /** The Firebase session, when the relay's project uses Firebase (absent with dev sign-in). */
+  firebase: z
+    .object({ uid: z.string(), email: z.string().nullable(), refreshToken: z.string() })
+    .nullable()
+    .optional(),
 });
 type TLinked = z.infer<typeof linkedSchema>;
-type TLinking = { linkId: string; code: string; url: string; expiresAt: number; timer: NodeJS.Timeout };
 
-const LINK_POLL_MS = 1500;
+/** What the cloud history sync needs: the project, and ID tokens for the signed-in user. */
+export type TCloudAccess = { config: TFirebaseConfig; tokens: TokenSource; uid: string; hostId: string };
 const REFRESH_MS = 5 * 60 * 1000;
 /** On-demand refreshes (an unknown device knocking) at most this often. */
 const ON_DEMAND_MS = 2000;
@@ -34,7 +45,7 @@ const isUnauthorized = (e: unknown): boolean => e instanceof RelayHttpError && e
 const message = (e: unknown): string => (e instanceof Error ? e.message : "error");
 
 /**
- * Everything that reaches beyond this machine: linking this host to an account, the relay socket,
+ * Everything that reaches beyond this machine: signing this host in to an account, the relay socket,
  * and encrypted sessions with the account's consumers. The account's device list on the relay is
  * the trust root: it is cached in `devices` and refreshed periodically, on presence, and when an
  * unknown device knocks.
@@ -45,7 +56,9 @@ export class Remote {
   private ctx: { identity: TIdentity; bus: EventBus; router: Router } | null = null;
   private deviceId: string | null = null;
   private linked: TLinked | null = null;
-  private linking: TLinking | null = null;
+  private pendingEmail: string | null = null;
+  private configCache: Promise<TRelayConfig> | null = null;
+  private tokens: TokenSource | null = null;
   private link: RelayLink | null = null;
   private transport: RelayTransport | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
@@ -161,6 +174,7 @@ export class Remote {
     this.transport?.close();
     this.transport = null;
     this.linked = null;
+    this.tokens = null;
     this.stored?.clear();
     this.devices.replace(this.deviceId, []);
   }
@@ -172,64 +186,110 @@ export class Remote {
     return this.api;
   }
 
-  /** Starts linking this host (or returns the code already pending) and polls until it resolves. */
-  async startLink(): Promise<{ code: string; url: string; expiresAt: number }> {
-    const api = this.needApi();
-    if (this.linked) throw new AgentdeckError("BAD_STATE", "Already linked; run `agentdeck logout` first");
-    const pending = this.linking;
-    if (pending && pending.expiresAt > Date.now()) {
-      return { code: pending.code, url: pending.url, expiresAt: pending.expiresAt };
-    }
-    this.cancelLinking();
-    const started = await api.startLink();
-    const url = `${this.appUrl.replace(/\/$/, "")}/link?code=${encodeURIComponent(started.code)}`;
-    let polling = false;
-    const timer = setInterval(() => {
-      if (polling) return;
-      polling = true;
-      void this.pollLink(api, started.linkId).finally(() => {
-        polling = false;
-      });
-    }, LINK_POLL_MS);
-    this.linking = { ...started, url, timer };
-    return { code: started.code, url, expiresAt: started.expiresAt };
-  }
-
-  private async pollLink(api: RelayApi, linkId: string): Promise<void> {
-    const { deviceId, relayUrl } = this;
-    if (deviceId === null || relayUrl === null || this.linking?.linkId !== linkId) return;
+  /** The relay's client configuration, fetched once per daemon run. */
+  private async relayConfig(): Promise<TRelayConfig> {
+    this.configCache ??= this.needApi().config();
     try {
-      const r = await api.pollLink(linkId, deviceId);
-      if (r.status === "pending") return;
-      this.cancelLinking();
-      if (r.status === "expired") return;
-      const linked: TLinked = { relayUrl, deviceToken: r.deviceToken, email: r.accountEmail };
-      this.stored?.write(linked);
-      this.log.info({ email: r.accountEmail }, "linked to account");
-      this.connect(linked);
+      return await this.configCache;
     } catch (e) {
-      this.log.warn({ err: message(e) }, "link poll failed");
-      if (e instanceof RelayHttpError) this.cancelLinking();
+      this.configCache = null;
+      throw e;
     }
   }
 
-  private cancelLinking(): void {
-    if (this.linking) clearInterval(this.linking.timer);
-    this.linking = null;
+  private notSignedInYet(): void {
+    if (this.linked) throw new AgentdeckError("BAD_STATE", "Already signed in; run `agentdeck logout` first");
+  }
+
+  /** Emails a Firebase sign-in link; `completeSignIn` finishes with the link from the email. */
+  async signIn(email: string): Promise<void> {
+    this.notSignedInYet();
+    const { firebase } = await this.relayConfig();
+    if (!firebase) {
+      throw new AgentdeckError(
+        "BAD_STATE",
+        "This relay has no Firebase project; use `agentdeck login --dev <uid>`",
+      );
+    }
+    await new FirebaseAuth(firebase).sendEmailLink(email, `${this.appUrl.replace(/\/$/, "")}/sign-in`);
+    this.pendingEmail = email;
+  }
+
+  async completeSignIn(link: string): Promise<TAccountStatus> {
+    this.notSignedInYet();
+    const email = this.pendingEmail;
+    if (email === null)
+      throw new AgentdeckError("BAD_STATE", "Run `agentdeck login` to get a sign-in link first");
+    const { firebase } = await this.relayConfig();
+    if (!firebase) throw new AgentdeckError("BAD_STATE", "This relay has no Firebase project");
+    const signed = await new FirebaseAuth(firebase).signInWithEmailLink(email, link).catch((e: unknown) => {
+      throw new AgentdeckError("UNAUTHORIZED", `Sign-in failed: ${message(e)}`);
+    });
+    this.pendingEmail = null;
+    await this.join(signed.idToken, signed.session.email, signed.session);
+    return this.accountStatus();
+  }
+
+  /**
+   * Dev relays: signs in as `uid`, through the Firebase Auth emulator when the relay uses one
+   * (as `<uid>@example.com`, so every device of that user shares the account), else the relay's
+   * own dev issuer.
+   */
+  async signInDev(uid: string): Promise<TAccountStatus> {
+    this.notSignedInYet();
+    const cfg = await this.relayConfig();
+    if (!cfg.devSignIn) throw new AgentdeckError("UNAUTHORIZED", "Dev sign-in is only for dev relays");
+    if (cfg.firebase?.emulators?.auth !== undefined) {
+      const auth = new FirebaseAuth(cfg.firebase);
+      const email = `${uid}@example.com`;
+      const signed = await auth.signInWithEmailLink(email, await auth.emulatorSignInLink(email));
+      await this.join(signed.idToken, email, signed.session);
+    } else {
+      await this.join(await this.needApi().devIdToken(uid), `${uid}@example.com`, null);
+    }
+    return this.accountStatus();
+  }
+
+  /** Registers this computer as a host with an ID token, keeps the tokens sealed, connects. */
+  private async join(
+    idToken: string,
+    email: string | null,
+    firebase: TFirebaseSession | null,
+  ): Promise<void> {
+    const relayUrl = this.relayUrl;
+    if (relayUrl === null) throw new AgentdeckError("BAD_STATE", "No relay is configured");
+    const deviceToken = await this.needApi().register(idToken);
+    const linked: TLinked = { relayUrl, deviceToken, email, firebase };
+    this.stored?.write(linked);
+    this.log.info({ email }, "signed in");
+    this.connect(linked);
+  }
+
+  /** Firebase access for the cloud history, or null (local only, or dev sign-in without Firebase). */
+  async cloudAccess(): Promise<TCloudAccess | null> {
+    const linked = this.linked;
+    const session = linked?.firebase;
+    if (!linked || !session || this.deviceId === null) return null;
+    const { firebase } = await this.relayConfig();
+    if (!firebase) return null;
+    this.tokens ??= new TokenSource(new FirebaseAuth(firebase), session, (rotated) => {
+      if (!this.linked) return;
+      this.linked = { ...this.linked, firebase: rotated };
+      this.stored?.write(this.linked);
+    });
+    return { config: firebase, tokens: this.tokens, uid: session.uid, hostId: this.deviceId };
   }
 
   accountStatus(): TAccountStatus {
     if (this.relayUrl === null) return { state: "local" };
     if (this.linked) return { state: "linked", email: this.linked.email };
-    const l = this.linking;
-    if (l && l.expiresAt > Date.now())
-      return { state: "linking", code: l.code, url: l.url, expiresAt: l.expiresAt };
+    if (this.pendingEmail !== null) return { state: "awaitingLink", email: this.pendingEmail };
     return { state: "unlinked" };
   }
 
   /** Leaves the account: the relay forgets this host, and this host forgets its token. */
   async logout(): Promise<void> {
-    this.cancelLinking();
+    this.pendingEmail = null;
     const { api, linked, deviceId } = this;
     if (api && linked && deviceId !== null) {
       try {
@@ -274,7 +334,6 @@ export class Remote {
   }
 
   stop(): void {
-    this.cancelLinking();
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.link?.stop();
     this.transport?.close();

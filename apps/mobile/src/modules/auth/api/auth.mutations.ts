@@ -15,8 +15,8 @@ async function join(relayUrl: string): Promise<void> {
 }
 
 /** Step 1 of email sign-in: Firebase emails a link. */
-export function useSendLinkMutation(): UseMutationResult<void, Error, { email: string }> {
-  return useMutation({ mutationFn: ({ email }) => auth.sendEmailLink(email) });
+export function useSendLinkMutation(): UseMutationResult<void, Error, { relayUrl: string; email: string }> {
+  return useMutation({ mutationFn: ({ relayUrl, email }) => auth.sendEmailLink(relayUrl, email) });
 }
 
 /** Step 2: the link from the email (opened on this device, or pasted). */
@@ -27,7 +27,7 @@ export function useCompleteSignInMutation(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: async ({ relayUrl, email, link }) => {
-      const user = await auth.completeEmailLink(email, link);
+      const user = await auth.completeEmailLink(relayUrl, email, link);
       await join(relayUrl);
       return user;
     },

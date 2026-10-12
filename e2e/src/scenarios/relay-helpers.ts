@@ -6,23 +6,14 @@ import type { Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
 
 /**
- * `agentdeck login --print` on the host, the code approved on a signed-in phone, then the daemon
- * collects its token and connects. Returns the host's device id.
+ * `agentdeck login --dev <uid>` on the host: it signs in as the same user as `phone` (the dev
+ * issuer, or the Auth emulator as `<uid>@example.com`), registers and connects. Returns its id.
  */
 export async function linkHost(h: Harness, phone: PhoneSim): Promise<string> {
-  const { code, out } = await h.cli(["login", "--print"]);
-  const [, linkCode = ""] = /^([A-Z2-9]{4}-[A-Z2-9]{4}) (\S+)$/m.exec(out) ?? [];
+  const { code, out } = await h.cli(["login", "--dev", phone.uid]);
   assert.equal(code, 0, out);
-  const hostId = await h.deviceId();
-  const approved = await phone.approve(linkCode);
-  assert.equal(approved.deviceId, hostId);
-  const end = Date.now() + 10_000;
-  while ((await h.client.call("account.status", {})).state !== "linked") {
-    if (Date.now() > end) throw new Error("the host never collected its token");
-    await new Promise((r) => setTimeout(r, 100));
-  }
   await h.waitRelayConnected();
-  return hostId;
+  return h.deviceId();
 }
 
 /** A phone signed in as `uid`, with this host linked to the same account, connected end to end. */

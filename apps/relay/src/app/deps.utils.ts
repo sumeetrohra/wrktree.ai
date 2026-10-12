@@ -1,6 +1,7 @@
+import type { TRelayConfig } from "@agentdeck/protocol";
 import type { ILogger } from "@agentdeck/shared";
 
-import { DevIdTokens, FirebaseVerifier } from "#src/infra/idtoken/index.js";
+import { DevIdTokens, EmulatorIdTokens, FirebaseVerifier } from "#src/infra/idtoken/index.js";
 import { DevPushSender, ExpoPushSender } from "#src/infra/push/index.js";
 import type { IDirectory } from "#src/modules/directory/index.js";
 import type { IClock } from "#src/shared/clock.types.js";
@@ -21,6 +22,32 @@ const anyOf = (verifiers: IIdTokenVerifier[]): IIdTokenVerifier => ({
   },
 });
 
+/** The public client configuration devices fetch at `GET /v1/config`. */
+function configFor(env: TRelayEnv): TRelayConfig {
+  const dev = env.RELAY_DEV === "1";
+  const projectId = env.FIREBASE_PROJECT_ID;
+  const emulators = dev
+    ? {
+        ...(env.FIREBASE_AUTH_EMULATOR_HOST === undefined ? {} : { auth: env.FIREBASE_AUTH_EMULATOR_HOST }),
+        ...(env.FIRESTORE_EMULATOR_HOST === undefined ? {} : { firestore: env.FIRESTORE_EMULATOR_HOST }),
+        ...(env.FIREBASE_STORAGE_EMULATOR_HOST === undefined
+          ? {}
+          : { storage: env.FIREBASE_STORAGE_EMULATOR_HOST }),
+      }
+    : {};
+  const usingEmulators = Object.keys(emulators).length > 0;
+  const firebase =
+    projectId === undefined || (env.FIREBASE_API_KEY === undefined && !usingEmulators)
+      ? null
+      : {
+          apiKey: env.FIREBASE_API_KEY ?? "emulator-api-key",
+          projectId,
+          storageBucket: env.FIREBASE_STORAGE_BUCKET ?? `${projectId}.appspot.com`,
+          ...(usingEmulators ? { emulators } : {}),
+        };
+  return { firebase, devSignIn: dev };
+}
+
 /** Production adapters, or the dev issuer and recording push sender when RELAY_DEV=1. Fails fast. */
 export function buildDeps(
   env: TRelayEnv,
@@ -33,12 +60,26 @@ export function buildDeps(
     env.FIREBASE_PROJECT_ID === undefined ? null : new FirebaseVerifier(env.FIREBASE_PROJECT_ID);
   if (env.RELAY_DEV !== "1") {
     if (!firebase) throw new Error("FIREBASE_PROJECT_ID is required unless RELAY_DEV=1");
-    return { directory, hubs, idTokens: firebase, devIdTokens: null, clock, log };
+    return { directory, hubs, idTokens: firebase, devIdTokens: null, clock, log, config: configFor(env) };
   }
   if (env.RELAY_DEV_SECRET === undefined) throw new Error("RELAY_DEV_SECRET is required when RELAY_DEV=1");
   const dev = new DevIdTokens(env.RELAY_DEV_SECRET);
-  const idTokens = anyOf(firebase ? [dev, firebase] : [dev]);
-  return { directory, hubs, idTokens, devIdTokens: dev, clock, log };
+  const emulator =
+    env.FIREBASE_AUTH_EMULATOR_HOST !== undefined && env.FIREBASE_PROJECT_ID !== undefined
+      ? new EmulatorIdTokens(env.FIREBASE_PROJECT_ID)
+      : null;
+  const verifiers: IIdTokenVerifier[] = [dev];
+  if (emulator) verifiers.push(emulator);
+  else if (firebase) verifiers.push(firebase);
+  return {
+    directory,
+    hubs,
+    idTokens: anyOf(verifiers),
+    devIdTokens: dev,
+    clock,
+    log,
+    config: configFor(env),
+  };
 }
 
 export function buildPushSender(env: TRelayEnv, directory: Pick<IDirectory, "recordPush">): IPushSender {

@@ -139,8 +139,7 @@ describe("SecureChannel", () => {
 
 describe("relay auth signatures", () => {
   it("accepts a fresh registration and rejects stale, forged or rebound ones", async () => {
-    const { signRegistration, verifyRegistration, signLinkPoll, verifyLinkPoll } =
-      await import("./relay-auth.utils.js");
+    const { signRegistration, verifyRegistration } = await import("./relay-auth.utils.js");
     const me = generateIdentity();
     const t = 1_800_000_000_000;
     const reg = signRegistration(me, t);
@@ -148,10 +147,6 @@ describe("relay auth signatures", () => {
     expect(verifyRegistration(reg, t + 10 * 60 * 1000)).toBe(false);
     expect(verifyRegistration({ ...reg, deviceId: deviceIdFor(generateIdentity().signPub) }, t)).toBe(false);
     expect(verifyRegistration({ ...reg, at: t + 1 }, t)).toBe(false);
-    const sig = signLinkPoll(me, "link_x", t);
-    expect(verifyLinkPoll(reg.signPub, "link_x", t, sig, t)).toBe(true);
-    expect(verifyLinkPoll(reg.signPub, "link_y", t, sig, t)).toBe(false);
-    expect(verifyLinkPoll(reg.signPub, "link_x", t, sig, t + 10 * 60 * 1000)).toBe(false);
   });
 });
 

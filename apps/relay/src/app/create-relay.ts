@@ -1,11 +1,10 @@
-import { relayRoutes } from "@agentdeck/protocol";
+import { relayConfigSchema, relayRoutes } from "@agentdeck/protocol";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import type { TRelayDeps } from "./app.types.js";
 import { devRoutes } from "./routes/dev.routes.js";
 import { deviceRoutes } from "./routes/devices.routes.js";
-import { linkRoutes } from "./routes/link.routes.js";
 
 /** The relay's HTTP API, identical on both hosts. WebSocket upgrades are handled by the host. */
 export function createRelayApp(deps: TRelayDeps): Hono {
@@ -14,8 +13,8 @@ export function createRelayApp(deps: TRelayDeps): Hono {
   // origin may call; a page without a token gets nothing.
   app.use("/v1/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], maxAge: 600 }));
   app.get(relayRoutes.health.path, (c) => c.json({ ok: true }));
+  app.get(relayRoutes.config.path, (c) => c.json(relayConfigSchema.parse(deps.config)));
   deviceRoutes(app, deps);
-  linkRoutes(app, deps);
   if (deps.devIdTokens) devRoutes(app, deps, deps.devIdTokens);
   app.onError((e, c) => {
     deps.log.error({ err: e.message, path: c.req.path }, "relay request failed");

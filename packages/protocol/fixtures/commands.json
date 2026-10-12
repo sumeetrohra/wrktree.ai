@@ -527,5 +527,29 @@
         }
       ]
     }
+  },
+  "account.signIn": {
+    "args": {
+      "email": "me@example.com"
+    },
+    "result": {}
+  },
+  "account.completeSignIn": {
+    "args": {
+      "link": "https://app.agentdeck.dev/sign-in?oobCode=abc"
+    },
+    "result": {
+      "state": "linked",
+      "email": "me@example.com"
+    }
+  },
+  "account.signInDev": {
+    "args": {
+      "uid": "me"
+    },
+    "result": {
+      "state": "linked",
+      "email": "me@example.com"
+    }
   }
 }

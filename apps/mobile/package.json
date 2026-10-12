@@ -7,12 +7,12 @@
     "start": "expo start",
     "web": "expo start --web",
     "export:web": "expo export --platform web --output-dir dist",
-    "export:web:e2e": "EXPO_PUBLIC_DEV_AUTH=1 expo export --platform web --output-dir dist",
     "typecheck": "tsc -p tsconfig.json",
     "test": "jest --ci"
   },
   "dependencies": {
     "@agentdeck/crypto": "workspace:*",
+    "@agentdeck/firebase-rest": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
     "@agentdeck/shared": "workspace:*",
     "@hookform/resolvers": "5.9.1",
@@ -26,7 +26,6 @@
     "clsx": "2.1.1",
     "dayjs": "1.11.23",
     "expo": "56.0.23",
-    "expo-camera": "56.0.8",
     "expo-clipboard": "56.0.4",
     "expo-constants": "56.0.27",
     "expo-crypto": "56.0.5",

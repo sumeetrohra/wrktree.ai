@@ -1,9 +1,9 @@
-import { Icon } from '@/shared/components/ui/icon';
-import { Text, TextClassContext } from '@/shared/components/ui/text';
-import { cn } from '@/shared/utils/cn.utils';
-import type { LucideIcon } from 'lucide-react-native';
-import * as React from 'react';
-import { View } from 'react-native';
+import { Icon } from "@/shared/components/ui/icon";
+import { Text, TextClassContext } from "@/shared/components/ui/text";
+import { cn } from "@/shared/utils/cn.utils";
+import type { LucideIcon } from "lucide-react-native";
+import * as React from "react";
+import { View } from "react-native";
 
 function Alert({
   className,
@@ -12,29 +12,25 @@ function Alert({
   icon,
   iconClassName,
   ...props
-}: React.ComponentProps<typeof View> & React.RefAttributes<View> & {
-  icon: LucideIcon;
-  variant?: 'default' | 'destructive';
-  iconClassName?: string;
-}) {
+}: React.ComponentProps<typeof View> &
+  React.RefAttributes<View> & {
+    icon: LucideIcon;
+    variant?: "default" | "destructive";
+    iconClassName?: string;
+  }) {
   return (
     <TextClassContext.Provider
-      value={cn(
-        'text-sm text-foreground',
-        variant === 'destructive' && 'text-destructive',
-        className
-      )}>
+      value={cn("text-sm text-foreground", variant === "destructive" && "text-destructive", className)}
+    >
       <View
         role="alert"
-        className={cn(
-          'bg-card border-border relative w-full rounded-lg border px-4 pb-2 pt-3.5',
-          className
-        )}
-        {...props}>
+        className={cn("bg-card border-border relative w-full rounded-lg border px-4 pb-2 pt-3.5", className)}
+        {...props}
+      >
         <View className="absolute left-3.5 top-3">
           <Icon
             as={icon}
-            className={cn('size-4', variant === 'destructive' && 'text-destructive', iconClassName)}
+            className={cn("size-4", variant === "destructive" && "text-destructive", iconClassName)}
           />
         </View>
         {children}
@@ -43,29 +39,23 @@ function Alert({
   );
 }
 
-function AlertTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof Text>) {
+function AlertTitle({ className, ...props }: React.ComponentProps<typeof Text>) {
   return (
     <Text
-      className={cn('mb-1 ml-0.5 min-h-4 pl-6 font-medium leading-none tracking-tight', className)}
+      className={cn("mb-1 ml-0.5 min-h-4 pl-6 font-medium leading-none tracking-tight", className)}
       {...props}
     />
   );
 }
 
-function AlertDescription({
-  className,
-  ...props
-}: React.ComponentProps<typeof Text>) {
+function AlertDescription({ className, ...props }: React.ComponentProps<typeof Text>) {
   const textClass = React.useContext(TextClassContext);
   return (
     <Text
       className={cn(
-        'text-muted-foreground ml-0.5 pb-1.5 pl-6 text-sm leading-relaxed',
-        textClass?.includes('text-destructive') && 'text-destructive/90',
-        className
+        "text-muted-foreground ml-0.5 pb-1.5 pl-6 text-sm leading-relaxed",
+        textClass?.includes("text-destructive") && "text-destructive/90",
+        className,
       )}
       {...props}
     />

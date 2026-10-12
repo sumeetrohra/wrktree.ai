@@ -15,10 +15,11 @@
     "format": "prettier --write .",
     "test": "turbo run test --filter=!@agentdeck/e2e",
     "test:e2e": "turbo run build && pnpm --filter @agentdeck/e2e test",
-    "e2e:record": "turbo run build && pnpm --filter @agentdeck/mobile export:web:e2e && pnpm --filter @agentdeck/e2e record && pnpm --filter @agentdeck/e2e record:app",
+    "e2e:record": "turbo run build && pnpm --filter @agentdeck/mobile export:web && pnpm --filter @agentdeck/e2e record && pnpm --filter @agentdeck/e2e record:app",
     "prepare": "husky",
     "knip": "knip",
-    "test:e2e:app": "turbo run build && pnpm --filter @agentdeck/mobile export:web:e2e && APP_E2E=1 pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts"
+    "emulators": "firebase emulators:exec --config firebase/firebase.json --project demo-agentdeck",
+    "test:e2e:app": "turbo run build && pnpm --filter @agentdeck/mobile export:web && APP_E2E=1 pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
@@ -31,6 +32,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-security": "4.2.0",
+    "firebase-tools": "15.33.0",
     "globals": "17.13.0",
     "husky": "9.1.7",
     "knip": "6.41.0",
@@ -50,7 +52,8 @@
     ],
     "overrides": {
       "miniflare>undici": "7.29.1",
-      "miniflare>sharp": "0.35.5"
+      "miniflare>sharp": "0.35.5",
+      "get-uri>basic-ftp": "6.2.3"
     }
   },
   "lint-staged": {

@@ -1,4 +1,4 @@
-import type { TDeviceKind } from "@agentdeck/protocol";
+import type { TDeviceKind, TRelayConfig } from "@agentdeck/protocol";
 import type { ILogger } from "@agentdeck/shared";
 
 import type { DevIdTokens } from "#src/infra/idtoken/index.js";
@@ -22,4 +22,6 @@ export type TRelayDeps = {
   devIdTokens: DevIdTokens | null;
   clock: IClock;
   log: ILogger;
+  /** What `GET /v1/config` hands to devices. */
+  config: TRelayConfig;
 };

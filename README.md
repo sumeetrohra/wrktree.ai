@@ -66,9 +66,10 @@ pnpm agentdeck profile add claude --name Personal  # or codex, gemini; `fake` ne
 pnpm --filter @agentdeck/mobile web               # 4. the app in a browser (Expo, :8081)
 ```
 
-5. In the app: **Dev sign-in** with any user id (say `me`), then **Computers → Link a computer**.
-6. On the computer: `pnpm agentdeck login`. It prints a code (and a QR code and link); type it
-   into the app. The computer collects its token and shows up under **Work**.
+5. In the app: **Dev sign-in** with any user id (say `me`).
+6. On the computer: `pnpm agentdeck login --dev me`, the same user. Every device signs in, the
+   computer included; it shows up under **Work**. (With Firebase: `pnpm agentdeck login`, enter
+   your email, paste the link from the email.)
 7. Start a task with **New task**: pick the computer, repo, profile and, optionally, a model.
 
 More ways in:
@@ -76,7 +77,7 @@ More ways in:
 - **A second computer on the same machine:** another terminal with its own home and name, then
   `login` again:
   `AGENTDECK_HOME=/tmp/agentdeck-desktop AGENTDECK_HOST_NAME=desktop pnpm agentdeck daemon`
-  (and the same variables in front of `pnpm agentdeck login`).
+  (and the same variables in front of `pnpm agentdeck login --dev me`).
 - **The desktop web UI:** `pnpm --filter @agentdeck/mobile export:web`, set `AGENTDECK_WEB_ROOT` to
   `apps/mobile/dist`, restart the daemon, and run `pnpm agentdeck open`. It talks to this computer
   directly; signing in there adds your other computers.
@@ -91,11 +92,13 @@ More ways in:
 1. **Firebase:** create a project and enable **Authentication → Email link (passwordless)**; add
    your web app's domain to the authorized domains.
 2. **Relay:** deploy to Cloudflare or self-host it with Docker, with `RELAY_DEV` unset and
-   `FIREBASE_PROJECT_ID` set ([`docs/relay-deploy.md`](docs/relay-deploy.md)).
-3. **App:** build with `EXPO_PUBLIC_RELAY_URL`, `EXPO_PUBLIC_FIREBASE_API_KEY` and
-   `EXPO_PUBLIC_APP_URL`, and without `EXPO_PUBLIC_DEV_AUTH`.
-4. **Each computer:** `agentdeck relay set https://relay.example.com`, `agentdeck login`, and
-   `agentdeck install` to start the daemon when you log in.
+   `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY` and `FIREBASE_STORAGE_BUCKET` set
+   ([`docs/relay-deploy.md`](docs/relay-deploy.md)). Deploy `firebase/firestore.rules` and
+   `firebase/storage.rules` to the project.
+3. **App:** build with `EXPO_PUBLIC_RELAY_URL` and `EXPO_PUBLIC_APP_URL`; everything else comes
+   from the relay.
+4. **Each computer:** `agentdeck relay set https://relay.example.com`, `agentdeck login` (sign
+   in with your email), and `agentdeck install` to start the daemon when you log in.
 
 ### Configuration
 
@@ -106,21 +109,22 @@ daemon and CLI; loaded by `pnpm relay` and `pnpm agentdeck`) and
 | Key | Read by | Needed | Where it comes from |
 |---|---|---|---|
 | `FIREBASE_PROJECT_ID` | relay | **production** | Firebase console → Project settings |
-| `EXPO_PUBLIC_FIREBASE_API_KEY` | app | **production** | Firebase console → Project settings → Web API key |
+| `FIREBASE_API_KEY`, `FIREBASE_STORAGE_BUCKET` | relay (handed to devices) | **production** | Firebase console → Project settings → Web API key; Storage bucket |
 | `EXPO_PUBLIC_RELAY_URL` | app | **production** (local default works) | your relay's URL |
 | `EXPO_PUBLIC_APP_URL` | app | production | where the web app is hosted (email links come back to it) |
 | `RELAY_PUBLIC_URL` | relay | production | the relay's own public URL |
 | `AGENTDECK_RELAY_URL` | daemon | to use a relay | your relay's URL (or `agentdeck relay set`) |
-| `AGENTDECK_APP_URL` | daemon | optional | the web app's URL, for the `agentdeck login` link |
+| `AGENTDECK_APP_URL` | daemon | optional | the web app's URL, where `agentdeck login` email links come back |
 | `EXPO_ACCESS_TOKEN` | relay | optional | expo.dev access token, if push security is on |
-| `RELAY_DEV`, `RELAY_DEV_SECRET` | relay | **local dev only** | `1` and any 32+ characters |
-| `EXPO_PUBLIC_DEV_AUTH` | app | **local dev only** | `1` shows Dev sign-in |
+| `RELAY_DEV`, `RELAY_DEV_SECRET` | relay | **local dev only** | `1` and any 32+ characters; enables Dev sign-in |
+| `FIREBASE_*_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST` | relay (dev) | optional | the Firebase Emulator Suite (`pnpm emulators`) |
 | `PORT`, `HOST`, `RELAY_DATA_DIR` | relay (self-host) | optional | defaults `8787`, `127.0.0.1`, `~/.agentdeck-relay` |
 | `AGENTDECK_HOME`, `AGENTDECK_HOST_NAME` | daemon | optional | data folder; this computer's name |
 | `AGENTDECK_BROWSE_ROOTS`, `AGENTDECK_WEB_ROOT`, `AGENTDECK_KEYSTORE`, `AGENTDECK_PORT_RANGE`, `AGENTDECK_LOCAL_PORT`, `AGENTDECK_DEV_AGENTS`, `AGENTDECK_DEV_ORIGINS`, `AGENTDECK_LOG_STDERR` | daemon | optional | see `.env.example` |
 
 No secret ever goes into the app: the Firebase Web API key is public by design, and the relay
-holds no sign-in secrets of its own. Real `.env` files are git-ignored.
+holds no sign-in secrets of its own. Security rules in `firebase/` keep each account's data to
+its own signed-in user. Real `.env` files are git-ignored.
 
 ## Develop
 

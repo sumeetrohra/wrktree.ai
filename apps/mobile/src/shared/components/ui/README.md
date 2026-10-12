@@ -7,6 +7,6 @@ Excluded from lint and from the app's tsconfig.
 Type-only changes needed to compile under our `exactOptionalPropertyTypes` tsconfig. Re-apply
 them after re-adding a component.
 
-| File | Change |
-|---|---|
+| File       | Change                                                                   |
+| ---------- | ------------------------------------------------------------------------ |
 | `text.tsx` | `ROLE` is `Partial<Record<TextVariant, Role \| undefined>>` (was `Role`) |

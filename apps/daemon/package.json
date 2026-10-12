@@ -21,6 +21,7 @@
     "@agentclientprotocol/sdk": "1.8.0",
     "@agentdeck/crypto": "workspace:*",
     "@agentdeck/fake-agent": "workspace:*",
+    "@agentdeck/firebase-rest": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
     "@agentdeck/shared": "workspace:*",
     "@vscode/ripgrep": "1.18.0",

@@ -1,7 +1,7 @@
 import { deviceKindSchema } from "@agentdeck/protocol";
 import { z } from "zod";
 
-/** Accounts (one per sign-in uid), devices, pending host links and recorded dev pushes. */
+/** Accounts (one per sign-in uid), devices and recorded dev pushes. */
 export const DIRECTORY_SCHEMA = `
 CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
@@ -20,16 +20,6 @@ CREATE TABLE IF NOT EXISTS devices (
 );
 CREATE INDEX IF NOT EXISTS devices_by_account ON devices(account_id);
 CREATE UNIQUE INDEX IF NOT EXISTS devices_by_token ON devices(token_hash);
-CREATE TABLE IF NOT EXISTS links (
-  id TEXT PRIMARY KEY,
-  code_hash TEXT NOT NULL UNIQUE,
-  device_id TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  name TEXT NOT NULL,
-  sign_pub TEXT NOT NULL,
-  expires_at INTEGER NOT NULL,
-  account_id TEXT
-);
 CREATE TABLE IF NOT EXISTS dev_pushes (
   device_id TEXT NOT NULL, token TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL
 );
@@ -46,16 +36,6 @@ export const deviceRowSchema = z.object({
   created_at: z.number(),
 });
 export type TDeviceRow = z.infer<typeof deviceRowSchema>;
-
-export const linkRowSchema = z.object({
-  id: z.string(),
-  device_id: z.string(),
-  kind: deviceKindSchema,
-  name: z.string(),
-  sign_pub: z.string(),
-  expires_at: z.number(),
-  account_id: z.string().nullable(),
-});
 
 export const pushRowSchema = z.object({
   deviceId: z.string(),

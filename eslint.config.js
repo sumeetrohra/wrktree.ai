@@ -29,12 +29,10 @@ const LIBRARIES = [
   },
   { id: "L12", names: ["hono", "@hono/node-server"], zone: "http-framework" },
   { id: "L13", names: ["jose"], zone: "jwt" },
-  { id: "L14", names: ["qrcode-terminal"], zone: "qr" },
   { id: "L15", names: ["cloudflare:workers"], zone: "workers" },
   { id: "L16", names: ["react-native-mmkv"], zone: "mmkv" },
   { id: "L17", names: ["expo-secure-store"], zone: "secure-store" },
   { id: "L18", names: ["expo-notifications"], zone: "notifications" },
-  { id: "L19", names: ["expo-camera"], zone: "camera" },
   { id: "L20", names: ["expo-image-picker", "expo-clipboard"], zone: "media" },
   { id: "L21", names: ["expo-haptics", "expo-device"], zone: "device" },
   { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
@@ -57,6 +55,14 @@ const SIBLING = {
   regex: "^\\.\\./",
   message: "S4: a module never imports another module; add a port to its .types.ts.",
 };
+
+/** L24: Google/Firebase REST endpoints are called only from packages/firebase-rest. */
+const FIREBASE_ENDPOINTS = [
+  {
+    selector: "Literal[value=/googleapis\\.com/], TemplateElement[value.raw=/googleapis\\.com/]",
+    message: "L24: call Firebase through @agentdeck/firebase-rest.",
+  },
+];
 
 /** TY6, SEC7: banned everywhere. */
 const BASE_RESTRICTED_SYNTAX = [
@@ -109,6 +115,15 @@ const ZONES = [
     patterns: [
       UP_TWO,
       { regex: "^@agentdeck/", message: "S1: protocol and shared depend on no other workspace package." },
+    ],
+  },
+  {
+    name: "packages-firebase-rest",
+    files: ["packages/firebase-rest/src/**/*.ts"],
+    allow: [],
+    patterns: [
+      UP_TWO,
+      { regex: "^@agentdeck/(?!shared$)", message: "S1: firebase-rest depends only on shared." },
     ],
   },
   {
@@ -333,12 +348,6 @@ const ZONES = [
     allow: [],
     patterns: [UP_TWO, ban(["commands", "lib"], "S4: shared depends on nothing else in the CLI.")],
   },
-  {
-    name: "cli-shared-output",
-    files: ["apps/cli/src/shared/output/**/*.ts"],
-    allow: ["qr"],
-    patterns: [UP_TWO, ban(["commands", "lib"], "S4: shared depends on nothing else in the CLI.")],
-  },
 
   // App (apps/mobile): routes -> pages -> modules -> lib/shared. See docs/rules/structure.md.
   {
@@ -404,7 +413,6 @@ const ZONES = [
     ["storage", "mmkv"],
     ["secure-store", "secure-store"],
     ["notifications", "notifications"],
-    ["camera", "camera"],
     ["media", "media"],
     ["device", "device"],
     ["api", "expo-crypto"],
@@ -528,7 +536,7 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
-      "no-restricted-syntax": ["error", ...BASE_RESTRICTED_SYNTAX],
+      "no-restricted-syntax": ["error", ...BASE_RESTRICTED_SYNTAX, ...FIREBASE_ENDPOINTS],
 
       // Naming (docs/rules/naming.md)
       "@typescript-eslint/naming-convention": NAMING_CONVENTION,
@@ -587,6 +595,7 @@ export default tseslint.config(
       "no-restricted-syntax": [
         "error",
         ...BASE_RESTRICTED_SYNTAX,
+        ...FIREBASE_ENDPOINTS,
         {
           selector:
             "CallExpression[callee.name=/^use(Layout)?Effect$/], CallExpression[callee.property.name=/^use(Layout)?Effect$/]",
@@ -638,6 +647,12 @@ export default tseslint.config(
     files: ["apps/mobile/*.js"],
     languageOptions: { sourceType: "commonjs", globals: { ...globals.node } },
     rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
+    // L24: the Firebase REST wrapper, and the relay's verifier of Google-signed ID tokens.
+    name: "firebase-endpoints",
+    files: ["packages/firebase-rest/src/**/*.ts", "apps/relay/src/infra/idtoken/**/*.ts"],
+    rules: { "no-restricted-syntax": ["error", ...BASE_RESTRICTED_SYNTAX] },
   },
   {
     name: "tests",

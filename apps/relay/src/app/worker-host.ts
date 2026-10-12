@@ -3,7 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 
 import { createConsoleLogger } from "#src/infra/log/index.js";
 import { DoSockets, doSql } from "#src/infra/worker/index.js";
-import { DirectoryService, type IDirectory, type TLinkPoll } from "#src/modules/directory/index.js";
+import { DirectoryService, type IDirectory } from "#src/modules/directory/index.js";
 import { HubService } from "#src/modules/hub/index.js";
 import { systemClock } from "#src/shared/clock.types.js";
 import type { TIdentityClaims } from "#src/shared/id-token.types.js";
@@ -41,7 +41,7 @@ const directoryOf = (env: TWorkerEnv): IDirectory => env.DIRECTORY.get(env.DIREC
 const hubOf = (env: TWorkerEnv, accountId: string): IHubRpc & { fetch(req: Request): Promise<Response> } =>
   env.HUB.get(env.HUB.idFromName(accountId));
 
-/** The global directory: one Durable Object (accounts, devices, host links). */
+/** The global directory: one Durable Object (accounts and devices). */
 export class DirectoryDO extends DurableObject<TWorkerEnv> implements IDirectory {
   private readonly svc: DirectoryService;
 
@@ -55,15 +55,6 @@ export class DirectoryDO extends DurableObject<TWorkerEnv> implements IDirectory
   }
   register(body: TRegisterBody, accountId: string): ReturnType<IDirectory["register"]> {
     return this.svc.register(body, accountId);
-  }
-  startLink(body: TRegisterBody): ReturnType<IDirectory["startLink"]> {
-    return this.svc.startLink(body);
-  }
-  approveLink(accountId: string, code: string): ReturnType<IDirectory["approveLink"]> {
-    return this.svc.approveLink(accountId, code);
-  }
-  pollLink(poll: TLinkPoll): ReturnType<IDirectory["pollLink"]> {
-    return this.svc.pollLink(poll);
   }
   deviceByToken(token: string): ReturnType<IDirectory["deviceByToken"]> {
     return this.svc.deviceByToken(token);

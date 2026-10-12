@@ -26,7 +26,10 @@ const accountStatusSchema = z.discriminatedUnion("state", [
   /** No relay configured: local only. */
   z.object({ state: z.literal("local") }),
   z.object({ state: z.literal("unlinked") }),
+  /** Deprecated (Phase 3a: computers sign in instead of showing a link code). */
   z.object({ state: z.literal("linking"), ...accountLinkSchema.shape }),
+  /** Additive: a sign-in link was emailed to `email`; waiting for `account.completeSignIn`. */
+  z.object({ state: z.literal("awaitingLink"), email: z.string() }),
   z.object({ state: z.literal("linked"), email: z.string().nullable() }),
 ]);
 export type TAccountStatus = z.infer<typeof accountStatusSchema>;
@@ -228,11 +231,23 @@ export const commands = {
   /** Removes a device from the account (on the relay); every host stops trusting it. */
   "device.revoke": { args: z.object({ deviceId: deviceIdSchema }), result: deviceSchema },
 
-  /**
-   * Additive, local only: link this host to an account. Returns a code the user approves on a
-   * signed-in device (or at `url`); the daemon polls the relay until it is approved or expires.
-   */
+  /** Deprecated (Phase 3a: computers sign in with `account.signIn`); always fails. */
   "account.link": { args: Empty, result: accountLinkSchema },
+  /**
+   * Additive, local only: sign this computer in to Firebase. Emails a sign-in link to `email`;
+   * finish with `account.completeSignIn`.
+   */
+  "account.signIn": { args: z.object({ email: z.email() }), result: Empty },
+  /** Additive, local only: the link from the email. Registers this computer on the account. */
+  "account.completeSignIn": { args: z.object({ link: z.string().min(1) }), result: accountStatusSchema },
+  /**
+   * Additive, local only, dev relays: sign in as `uid` (the relay's dev issuer, or the Firebase
+   * Auth emulator as `<uid>@example.com`).
+   */
+  "account.signInDev": {
+    args: z.object({ uid: z.string().regex(/^[\w.@+-]{1,128}$/) }),
+    result: accountStatusSchema,
+  },
   /** Additive: whether this host is linked, and to which account. */
   "account.status": { args: Empty, result: accountStatusSchema },
   /** Additive, local only: unlink this host: it leaves the account and forgets its device token. */

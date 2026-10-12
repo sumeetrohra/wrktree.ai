@@ -16,7 +16,7 @@ export async function signInApp(h: Harness, app: AppDriver, uid = "me"): Promise
   const { page } = app;
   h.step("App: open it; a device with no account lands on sign-in");
   await app.goto("/");
-  await page.getByText("Dev user id").waitFor({ timeout: 30_000 });
+  await page.getByLabel("Relay").waitFor({ timeout: 30_000 });
   h.step(`App: sign in (dev issuer standing in for Firebase) as "${uid}"`);
   await page.getByLabel("Relay").fill(h.relayUrl);
   await page.getByPlaceholder("me").fill(uid);
@@ -24,24 +24,18 @@ export async function signInApp(h: Harness, app: AppDriver, uid = "me"): Promise
   await page.getByText("Work", { exact: true }).waitFor({ timeout: 30_000 });
 }
 
-/** Desktop: `agentdeck login --print`; the app approves the code on its Link screen. */
-export async function linkFromApp(h: Harness, app: AppDriver, name: string): Promise<void> {
-  const { page } = app;
-  h.step(`Desktop "${name}": \`agentdeck login\` shows a code`);
-  const { code, out } = await h.cli(["login", "--print"]);
+/**
+ * Desktop: `agentdeck login` as the user the app signed in as. The computer joins the account and
+ * the app picks it up from the relay's presence.
+ */
+export async function linkFromApp(h: Harness, app: AppDriver, name: string, uid = "me"): Promise<void> {
+  h.step(`Desktop "${name}": \`agentdeck login\` (signs in as the same user)`);
+  const { code, out } = await h.cli(["login", "--dev", uid]);
   assert.equal(code, 0, out);
-  const linkCode = /^([A-Z2-9]{4}-[A-Z2-9]{4}) /m.exec(out)?.[1] ?? "";
-  h.step("App: Computers → Link a computer → type the code → Approve");
-  await app.goto("/link");
-  await page.getByPlaceholder("ABCD-EFGH").fill(linkCode);
-  await page.getByText("Approve", { exact: true }).click();
-  await page.getByText(`${name} is joining your account`, { exact: false }).waitFor({ timeout: 20_000 });
-  const end = Date.now() + 15_000;
-  while ((await h.client.call("account.status", {})).state !== "linked") {
-    if (Date.now() > end) throw new Error(`${name} never collected its token`);
-    await new Promise((r) => setTimeout(r, 100));
-  }
   await h.waitRelayConnected();
+  h.step(`App: "${name}" shows up under Computers`);
+  await app.goto("/hosts");
+  await shown(app.page, name).waitFor({ timeout: 30_000 });
 }
 
 /** App: New task on a repo → the chat opens and streams; approve the permission; the turn ends. */
@@ -240,7 +234,7 @@ export async function desktopWeb(h: Harness, app: AppDriver): Promise<void> {
   const stranger = await other.newPage();
   await stranger.goto(url);
   await h.check("a used code opens nothing: the second browser lands on sign-in", async () => {
-    await stranger.getByText("Dev user id").waitFor({ timeout: 30_000 });
+    await stranger.getByLabel("Relay").waitFor({ timeout: 30_000 });
   });
   await other.close();
 }

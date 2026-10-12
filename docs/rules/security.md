@@ -12,7 +12,7 @@
   (mode `0600`, inside a `0700` home folder). Browsers can reach localhost, so the daemon also checks
   `Origin` and `Host`.
 - The relay (Phase 2) is a mailbox, not a trusted party. It sees device ids, frame sizes and times,
-  the unencrypted `wake` flag, link codes (hashed), device names, account emails, and public keys. It never
+  the unencrypted `wake` flag, device names, account emails, and public keys. It never
   holds a key that opens a frame: each phone connection runs a signed X25519 handshake, frames are
   XChaCha20-Poly1305-sealed with the routing header (`from`, `to`, `seq`, session id) as additional
   data, and a replayed or reordered `seq` is rejected. A forged frame, or one the relay redirected,
@@ -53,7 +53,7 @@
 | SEC12 | CodeQL runs on every push to `main` and every PR. | `CI` |
 | SEC13 | Everything between a consumer (phone, browser) and a host after the signed handshake is end-to-end encrypted and bound to its routing header; the relay stores and logs no plaintext. | `test:e2e` |
 | SEC14 | Pushes carry a fixed body and no content; at most one per device every 30 s. | `test` |
-| SEC15 | Relay device tokens and link codes are random and stored hashed; accounts come only from verified ID tokens (Firebase in production; the dev issuer only with `RELAY_DEV=1`); device ids are derived from the device's signing key and proven at registration and on every link poll. | `test` |
+| SEC15 | Relay device tokens are random and stored hashed; accounts come only from verified ID tokens (Firebase in production; the dev issuer and the Auth emulator only with `RELAY_DEV=1`); every device, computers included, registers with an ID token; device ids are derived from the device's signing key and proven at registration. | `test` |
 | SEC16 | Account commands that hand out secrets (`account.link`, `account.logout`, `web.open`) are refused unless the client is local to the daemon; the deprecated `pair.*` commands always fail. | `review`, `test:e2e` |
 | SEC17 | The desktop web UI page never contains the local token. `agentdeck open` gets a one-time code (60 s, single use) for the URL fragment; the page trades it with a same-origin POST. Pages are sent with `X-Frame-Options: DENY` and never serve files outside the web export. | `test` |
 | SEC18 | On the phone, the identity key, the relay device token and the sign-in refresh token live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. On a computer, the relay device token is sealed with the identity's secret (`relay-token.sealed`, 0600). | `review` |
@@ -68,6 +68,7 @@ parent ships the fix.
 |---|---|---|
 | `miniflare>undici` → 7.29.1 | `wrangler` 4.141.0 (dev only) | GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3 |
 | `miniflare>sharp` → 0.35.5 | `wrangler` 4.141.0 (dev only) | GHSA-wq5f-xc86-pv6w |
+| `get-uri>basic-ftp` → 6.2.3 | `firebase-tools` 15.33.0 (dev only: the emulators) | GHSA-c475-qrg2-pj4r |
 
 ## Reviewed audit exceptions (SEC11)
 

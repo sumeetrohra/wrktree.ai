@@ -1,4 +1,16 @@
-import { devIdTokenResultSchema, relayRoutes } from "@agentdeck/protocol";
+import {
+  FirebaseAuth,
+  TokenSource,
+  type TFirebaseConfig,
+  type TFirebaseSession,
+} from "@agentdeck/firebase-rest";
+import {
+  devIdTokenResultSchema,
+  relayConfigSchema,
+  relayRoutes,
+  type TRelayConfig,
+} from "@agentdeck/protocol";
+import { Platform } from "react-native";
 import { z } from "zod";
 
 import { nowMs } from "@/shared/utils/datetime-utils";
@@ -7,183 +19,173 @@ import { secureStore } from "../secure-store";
 import { storage } from "../storage";
 
 /**
- * Signing in. Production uses Firebase Auth through its REST API (the same code on web and
- * native, no SDK); the relay only ever sees the resulting ID token. Builds with
- * `EXPO_PUBLIC_DEV_AUTH=1` can also sign in with the relay's dev issuer (tests, local work).
+ * Signing in. The relay hands out its sign-in setup (`GET /v1/config`): a Firebase project (email
+ * link, through @agentdeck/firebase-rest; the relay only ever sees the resulting ID token), and on a
+ * dev relay a dev sign-in (the Auth emulator when the relay uses one, else the relay's own issuer).
  */
 
 const envSchema = z.object({
-  EXPO_PUBLIC_FIREBASE_API_KEY: z.string().min(1).optional(),
-  EXPO_PUBLIC_DEV_AUTH: z.enum(["0", "1"]).optional(),
   EXPO_PUBLIC_RELAY_URL: z.url().optional(),
   EXPO_PUBLIC_APP_URL: z.url().optional(),
 });
 const env = envSchema.parse({
-  EXPO_PUBLIC_FIREBASE_API_KEY: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  EXPO_PUBLIC_DEV_AUTH: process.env.EXPO_PUBLIC_DEV_AUTH,
   EXPO_PUBLIC_RELAY_URL: process.env.EXPO_PUBLIC_RELAY_URL,
   EXPO_PUBLIC_APP_URL: process.env.EXPO_PUBLIC_APP_URL,
 });
 
-const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1/accounts";
-const SECURE_TOKEN = "https://securetoken.googleapis.com/v1/token";
-/** Refresh a minute before the token runs out. */
-const EXPIRY_MARGIN_MS = 60_000;
-
 const userSchema = z.object({
+  /** `firebase`: a Firebase session (refresh token in the keychain). `dev`: the relay's dev issuer. */
   provider: z.enum(["firebase", "dev"]),
   uid: z.string(),
   email: z.string().nullable(),
-  /** Dev sign-in mints tokens from this relay. */
-  relayUrl: z.string().optional(),
+  relayUrl: z.string(),
 });
 export type TAuthUser = z.infer<typeof userSchema>;
 
 const KEYS = { user: "auth.user", pendingEmail: "auth.pendingEmail", refresh: "auth.refreshToken" } as const;
+const DEV_TOKEN_S = 3600;
+/** Refresh a minute before a dev token runs out. */
+const MARGIN_MS = 60_000;
 
-const firebaseErrorSchema = z.object({ error: z.object({ message: z.string() }) });
-const emailLinkResultSchema = z.object({
-  idToken: z.string(),
-  refreshToken: z.string(),
-  expiresIn: z.string(),
-  localId: z.string(),
-  email: z.string().optional(),
-});
-const refreshResultSchema = z.object({
-  id_token: z.string(),
-  refresh_token: z.string(),
-  expires_in: z.string(),
-});
-
-/** Sign-in failed; `reason` is the provider's message (e.g. INVALID_OOB_CODE). */
 class AuthError extends Error {
   override name = "AuthError";
 }
 
-let cached: { token: string; expiresAt: number } | null = null;
+let devToken: { token: string; expiresAt: number } | null = null;
+let tokens: TokenSource | null = null;
+const configs = new Map<string, Promise<TRelayConfig>>();
 
-async function post<S extends z.ZodType>(
-  url: string,
-  body: BodyInit,
-  schema: S,
-  form = false,
-): Promise<z.infer<S>> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": form ? "application/x-www-form-urlencoded" : "application/json" },
-    body,
-  });
-  const json: unknown = await res.json();
-  if (!res.ok)
-    throw new AuthError(firebaseErrorSchema.safeParse(json).data?.error.message ?? "sign-in failed");
-  return schema.parse(json);
+/** Where email sign-in links come back to: this web app, or the configured app URL. */
+function appUrl(): string {
+  if (env.EXPO_PUBLIC_APP_URL !== undefined) return env.EXPO_PUBLIC_APP_URL;
+  return Platform.OS === "web" ? globalThis.location.origin : "https://app.agentdeck.dev";
 }
 
-function needApiKey(): string {
-  if (env.EXPO_PUBLIC_FIREBASE_API_KEY === undefined)
-    throw new AuthError("Sign-in isn't configured in this build");
-  return env.EXPO_PUBLIC_FIREBASE_API_KEY;
+function firebaseOf(cfg: TRelayConfig): TFirebaseConfig {
+  if (!cfg.firebase) throw new AuthError("This relay has no Firebase project");
+  return cfg.firebase;
 }
 
-function keep(user: TAuthUser, token: { idToken: string; expiresInS: number; refreshToken?: string }): void {
+function keepFirebase(
+  relayUrl: string,
+  session: TFirebaseSession,
+  first: { idToken: string; expiresAt: number },
+  cfg: TFirebaseConfig,
+): TAuthUser {
+  const user: TAuthUser = { provider: "firebase", uid: session.uid, email: session.email, relayUrl };
   storage.set(KEYS.user, user);
-  if (token.refreshToken !== undefined) secureStore.set(KEYS.refresh, token.refreshToken);
-  cached = { token: token.idToken, expiresAt: nowMs() + token.expiresInS * 1000 };
-}
-
-/** The oobCode in an email sign-in link (or in a link nested in its `link`/`continueUrl`). */
-function oobCodeOf(link: string): string | null {
-  try {
-    const url = new URL(link.trim());
-    const code = url.searchParams.get("oobCode");
-    if (code !== null) return code;
-    for (const inner of ["link", "deep_link_id", "continueUrl"]) {
-      const nested = url.searchParams.get(inner);
-      if (nested !== null) return oobCodeOf(nested);
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  secureStore.set(KEYS.refresh, session.refreshToken);
+  tokens = new TokenSource(
+    new FirebaseAuth(cfg),
+    session,
+    (s) => {
+      secureStore.set(KEYS.refresh, s.refreshToken);
+    },
+    first,
+  );
+  return user;
 }
 
 export const auth = {
-  /** Which ways to sign in this build offers. */
-  methods: { email: env.EXPO_PUBLIC_FIREBASE_API_KEY !== undefined, dev: env.EXPO_PUBLIC_DEV_AUTH === "1" },
-
-  /** The relay the build points at (sign-in screens let the user change it). */
+  /** The relay the build points at (sign-in lets the user change it). */
   defaultRelayUrl: env.EXPO_PUBLIC_RELAY_URL ?? "https://relay.agentdeck.dev",
+
+  /** The relay's sign-in setup, fetched once per relay. */
+  config(relayUrl: string): Promise<TRelayConfig> {
+    const url = relayUrl.replace(/\/$/, "");
+    let cached = configs.get(url);
+    if (!cached) {
+      cached = fetch(`${url}${relayRoutes.config.path}`)
+        .then(async (res) => {
+          if (!res.ok) throw new AuthError(`The relay answered ${String(res.status)}`);
+          return relayConfigSchema.parse(await res.json());
+        })
+        .catch((e: unknown) => {
+          configs.delete(url);
+          throw e instanceof Error ? e : new AuthError("Can't reach the relay");
+        });
+      configs.set(url, cached);
+    }
+    return cached;
+  },
 
   user: (): TAuthUser | null => storage.get(KEYS.user, userSchema) ?? null,
 
-  /** Step 1 of email sign-in: Firebase emails a link. */
-  async sendEmailLink(email: string): Promise<void> {
-    const continueUrl = `${env.EXPO_PUBLIC_APP_URL ?? "https://app.agentdeck.dev"}/sign-in`;
-    await post(
-      `${IDENTITY_TOOLKIT}:sendOobCode?key=${needApiKey()}`,
-      JSON.stringify({ requestType: "EMAIL_SIGNIN", email, continueUrl }),
-      z.object({}).loose(),
-    );
+  /** Step 1 of email sign-in: Firebase emails a link back to this app's `/sign-in`. */
+  async sendEmailLink(relayUrl: string, email: string): Promise<void> {
+    const cfg = firebaseOf(await auth.config(relayUrl));
+    await new FirebaseAuth(cfg).sendEmailLink(email, `${appUrl()}/sign-in`);
     storage.set(KEYS.pendingEmail, email);
   },
 
   /** The address the last link was sent to (needed to finish on this device). */
   pendingEmail: (): string | null => storage.get(KEYS.pendingEmail, z.string()) ?? null,
 
-  isSignInLink: (link: string): boolean => oobCodeOf(link) !== null,
-
   /** Step 2: the link from the email (opened in the app, or pasted). */
-  async completeEmailLink(email: string, link: string): Promise<TAuthUser> {
-    const oobCode = oobCodeOf(link);
-    if (oobCode === null) throw new AuthError("That isn't a sign-in link");
-    const r = await post(
-      `${IDENTITY_TOOLKIT}:signInWithEmailLink?key=${needApiKey()}`,
-      JSON.stringify({ email, oobCode }),
-      emailLinkResultSchema,
-    );
-    const user: TAuthUser = { provider: "firebase", uid: r.localId, email: r.email ?? email };
-    keep(user, { idToken: r.idToken, expiresInS: Number(r.expiresIn), refreshToken: r.refreshToken });
+  async completeEmailLink(relayUrl: string, email: string, link: string): Promise<TAuthUser> {
+    const cfg = firebaseOf(await auth.config(relayUrl));
+    const r = await new FirebaseAuth(cfg).signInWithEmailLink(email, link);
     storage.remove(KEYS.pendingEmail);
-    return user;
+    return keepFirebase(relayUrl, r.session, r, cfg);
   },
 
-  /** Dev builds only: any uid, signed by the relay's dev issuer. */
+  /**
+   * Dev relays only: sign in as `uid`. With the Auth emulator this is a real email-link sign-in for
+   * `<uid>@example.com` (its link read from the emulator), so every device of that user shares the
+   * account; otherwise the relay's own dev issuer.
+   */
   async signInDev(relayUrl: string, uid: string): Promise<TAuthUser> {
-    if (!auth.methods.dev) throw new AuthError("Dev sign-in is off in this build");
-    const user: TAuthUser = { provider: "dev", uid, email: `${uid}@example.com`, relayUrl };
+    const cfg = await auth.config(relayUrl);
+    if (!cfg.devSignIn) throw new AuthError("Dev sign-in is only for dev relays");
+    const email = `${uid}@example.com`;
+    if (cfg.firebase?.emulators?.auth !== undefined) {
+      const fa = new FirebaseAuth(cfg.firebase);
+      const r = await fa.signInWithEmailLink(email, await fa.emulatorSignInLink(email));
+      return keepFirebase(relayUrl, r.session, r, cfg.firebase);
+    }
+    const user: TAuthUser = { provider: "dev", uid, email, relayUrl };
     storage.set(KEYS.user, user);
-    cached = null;
+    devToken = null;
     await auth.idToken();
     return user;
   },
 
-  /** A fresh ID token for the signed-in user, refreshed when close to expiry. */
+  /** A fresh ID token for the signed-in user. */
   async idToken(): Promise<string> {
-    if (cached && cached.expiresAt - EXPIRY_MARGIN_MS > nowMs()) return cached.token;
     const user = auth.user();
     if (!user) throw new AuthError("Not signed in");
-    if (user.provider === "dev") {
-      const q = `uid=${encodeURIComponent(user.uid)}&email=${encodeURIComponent(user.email ?? "")}`;
-      const res = await fetch(`${user.relayUrl ?? auth.defaultRelayUrl}${relayRoutes.devIdToken.path}?${q}`);
-      if (!res.ok) throw new AuthError(`dev sign-in failed (${String(res.status)})`);
-      const { idToken } = devIdTokenResultSchema.parse(await res.json());
-      keep(user, { idToken, expiresInS: 3600 });
-      return idToken;
+    if (user.provider === "firebase") return (await auth.firebase()).tokens.idToken();
+    if (devToken && devToken.expiresAt - MARGIN_MS > nowMs()) return devToken.token;
+    const q = `uid=${encodeURIComponent(user.uid)}&email=${encodeURIComponent(user.email ?? "")}`;
+    const res = await fetch(`${user.relayUrl}${relayRoutes.devIdToken.path}?${q}`);
+    if (!res.ok) throw new AuthError(`dev sign-in failed (${String(res.status)})`);
+    const { idToken } = devIdTokenResultSchema.parse(await res.json());
+    devToken = { token: idToken, expiresAt: nowMs() + DEV_TOKEN_S * 1000 };
+    return idToken;
+  },
+
+  /** The Firebase project and ID tokens, for reading cloud history. Throws without a Firebase session. */
+  async firebase(): Promise<{ config: TFirebaseConfig; tokens: TokenSource; uid: string }> {
+    const user = auth.user();
+    if (user?.provider !== "firebase") throw new AuthError("Not signed in with Firebase");
+    const cfg = firebaseOf(await auth.config(user.relayUrl));
+    if (!tokens) {
+      const refreshToken = secureStore.get(KEYS.refresh);
+      if (refreshToken === null) throw new AuthError("Signed out; sign in again");
+      tokens = new TokenSource(
+        new FirebaseAuth(cfg),
+        { uid: user.uid, email: user.email, refreshToken },
+        (s) => {
+          secureStore.set(KEYS.refresh, s.refreshToken);
+        },
+      );
     }
-    const refreshToken = secureStore.get(KEYS.refresh);
-    if (refreshToken === null) throw new AuthError("Signed out; sign in again");
-    const r = await post(
-      `${SECURE_TOKEN}?key=${needApiKey()}`,
-      `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`,
-      refreshResultSchema,
-      true,
-    );
-    keep(user, { idToken: r.id_token, expiresInS: Number(r.expires_in), refreshToken: r.refresh_token });
-    return r.id_token;
+    return { config: cfg, tokens, uid: user.uid };
   },
 
   signOut(): void {
-    cached = null;
+    devToken = null;
+    tokens = null;
     storage.remove(KEYS.user);
     secureStore.remove(KEYS.refresh);
   },

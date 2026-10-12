@@ -27,6 +27,9 @@ export function deviceHandlers(
   | "relay.status"
   | "web.open"
   | "account.link"
+  | "account.signIn"
+  | "account.completeSignIn"
+  | "account.signInDev"
   | "account.status"
   | "account.logout"
 > {
@@ -41,9 +44,24 @@ export function deviceHandlers(
       localOnly(ctx);
       return { url: m.webLink() };
     },
-    "account.link": (_args, ctx) => {
+    "account.link": () => {
+      throw new AgentdeckError(
+        "UNAUTHORIZED",
+        "Link codes were replaced by signing in: run `agentdeck login`",
+      );
+    },
+    "account.signIn": async (args, ctx) => {
       localOnly(ctx);
-      return m.remote.startLink();
+      await m.remote.signIn(args.email);
+      return {};
+    },
+    "account.completeSignIn": (args, ctx) => {
+      localOnly(ctx);
+      return m.remote.completeSignIn(args.link);
+    },
+    "account.signInDev": (args, ctx) => {
+      localOnly(ctx);
+      return m.remote.signInDev(args.uid);
     },
     "account.status": () => m.remote.accountStatus(),
     "account.logout": async (_args, ctx) => {

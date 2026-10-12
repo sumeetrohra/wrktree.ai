@@ -225,7 +225,7 @@ browser ═wss═▶   │      ▲
 | Protocol | Additive: `account.link`, `account.status`, `account.logout`, `workspace.overview` (repos, worktrees with branches, chats with agent, profile and model, profiles), `chat.model`, `device.connected`/`self`. `pair.*` stay in the protocol, deprecated; they always fail. |
 | Daemon | `Remote` links, stores the sealed token (`relay-token.sealed`), refreshes the account's device list and drops sessions of removed devices. The `pairing` module is gone; `devices` is now a cache of the account's list. `AGENTDECK_HOST_NAME` names the computer (default: hostname); `AGENTDECK_APP_URL` is where the login link points. |
 | CLI | `agentdeck login [--print]`, `logout`, `hosts`; `devices` lists phones and browsers, `devices revoke` removes one from the account. `pair` is gone. |
-| App | `lib/auth` (Firebase REST + dev sign-in); `lib/api` keeps one relay socket per device and one sealed session per host (`daemonCall(hostId, …)`, `onDaemonEvent((hostId, e) => …)`), per-host cursors and offline queues. Screens: Work (home), Computers, Link a computer, Devices, Sign in; New task picks the computer, repo, profile and model. Pairing screens are gone. |
+| App | `lib/auth` (Firebase REST + dev sign-in); `lib/api` keeps one relay socket per device and one sealed session per host (`daemonCall(hostId, …)`, `onDaemonEvent((hostId, e) => …)`), per-host cursors and offline queues. Screens: Work (home), Computers, Devices, Sign in (the Link screen was removed in 3a, when computers started signing in themselves); New task picks the computer, repo, profile and model. Pairing screens are gone. |
 
 ### End-to-end tests (2c)
 
@@ -246,9 +246,9 @@ pnpm build
 cp .env.example .env && cp apps/mobile/.env.example apps/mobile/.env   # dev defaults
 pnpm relay                           # dev mode: RELAY_DEV=1
 pnpm agentdeck daemon &
-pnpm agentdeck login                 # shows a code
+pnpm agentdeck login --dev me        # dev sign-in (Firebase: enter your email)
 pnpm --filter @agentdeck/mobile web
-# In the app: Dev sign-in → Computers → Link a computer → type the code.
+# In the app: Dev sign-in as `me`; on the computer: pnpm agentdeck login --dev me
 ```
 
 ### Still needs a real project

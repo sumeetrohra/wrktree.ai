@@ -9,8 +9,10 @@ import { Separator } from "@/shared/components/ui/separator";
 import { Text } from "@/shared/components/ui/text";
 
 export type TSignInFormProps = {
-  methods: { email: boolean; dev: boolean };
-  initialRelayUrl: string;
+  /** What the relay offers; null while its configuration loads (or when it can't be reached). */
+  methods: { email: boolean; dev: boolean } | null;
+  relayUrl: string;
+  onRelayUrlChange: (url: string) => void;
   /** The address a link was already sent to (show the link step). */
   pendingEmail: string | null;
   /** The sign-in link this screen was opened with, if any. */
@@ -23,12 +25,13 @@ export type TSignInFormProps = {
 };
 
 /**
- * Sign in: email link (Firebase) and, in development builds, a dev user id. The relay field is
- * where this device and your computers meet; most people keep the default.
+ * Sign in: email link (Firebase) and, on a dev relay, a dev user id. The relay field is where this
+ * device and your computers meet; most people keep the default.
  */
 export function SignInForm({
   methods,
-  initialRelayUrl,
+  relayUrl,
+  onRelayUrlChange,
   pendingEmail,
   initialLink,
   busy,
@@ -38,7 +41,6 @@ export function SignInForm({
   onDevSignIn,
 }: TSignInFormProps): React.JSX.Element {
   const { t } = useTranslation();
-  const [relayUrl, setRelayUrl] = useState(initialRelayUrl);
   const [email, setEmail] = useState(pendingEmail ?? "");
   const [link, setLink] = useState(initialLink);
   const [uid, setUid] = useState("");
@@ -52,10 +54,10 @@ export function SignInForm({
           autoCorrect={false}
           keyboardType="url"
           value={relayUrl}
-          onChangeText={setRelayUrl}
+          onChangeText={onRelayUrlChange}
         />
       </View>
-      {methods.email ? (
+      {methods?.email === true ? (
         <View className="gap-3">
           <Label nativeID="email">{t("auth.email")}</Label>
           <Input
@@ -99,8 +101,8 @@ export function SignInForm({
           )}
         </View>
       ) : null}
-      {methods.email && methods.dev ? <Separator /> : null}
-      {methods.dev ? (
+      {methods?.email === true && methods.dev ? <Separator /> : null}
+      {methods?.dev === true ? (
         <View className="gap-3">
           <Label nativeID="dev-uid">{t("auth.devUid")}</Label>
           <Input
@@ -122,7 +124,7 @@ export function SignInForm({
           </Button>
         </View>
       ) : null}
-      {!methods.email && !methods.dev ? (
+      {methods !== null && !methods.email && !methods.dev ? (
         <Text className="text-muted-foreground">{t("auth.notConfigured")}</Text>
       ) : null}
       {error === null ? null : <Text className="text-destructive">{error}</Text>}

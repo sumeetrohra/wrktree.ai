@@ -11,17 +11,15 @@ const b64 = z.string().regex(/^[A-Za-z0-9_-]+$/, "expected base64url");
 
 /**
  * Who calls what:
- * - consumers (app, browser) sign in with Firebase and send its ID token as `Authorization: Bearer`;
- * - hosts (daemons) link with a device code a signed-in consumer approves, then use a device token;
- * - every device uses its device token for the socket, push registration and `me`.
+ * - every device (phone, browser, computer) signs in with Firebase and registers with its ID token
+ *   as `Authorization: Bearer`;
+ * - every device then uses its device token for the socket, push registration and `me`.
  */
 export const relayRoutes = {
   register: { method: "POST", path: "/v1/devices/register" },
   devices: { method: "GET", path: "/v1/devices" },
   me: { method: "GET", path: "/v1/devices/me" },
-  linkStart: { method: "POST", path: "/v1/link/start" },
-  linkApprove: { method: "POST", path: "/v1/link/approve" },
-  linkPoll: { method: "POST", path: "/v1/link/poll" },
+  config: { method: "GET", path: "/v1/config" },
   pushRegister: { method: "POST", path: "/v1/push/register" },
   ws: { method: "GET", path: "/v1/ws" },
   devIdToken: { method: "GET", path: "/v1/dev/id-token" },
@@ -31,8 +29,7 @@ export const relayRoutes = {
 
 /**
  * A device proves it holds the signing key its id is derived from; `at` must be within five
- * minutes of the relay's clock. Consumers register with their ID token; hosts send the same body to
- * `link/start`.
+ * minutes of the relay's clock. Every device registers with its ID token.
  */
 export const registerBodySchema = z.object({
   deviceId: deviceIdSchema,
@@ -45,28 +42,29 @@ export const registerBodySchema = z.object({
 export type TRegisterBody = z.infer<typeof registerBodySchema>;
 export const registerResultSchema = z.object({ deviceToken: z.string() });
 
-/** A host asks to join an account; the user approves the code on a signed-in device. */
-export const linkStartResultSchema = z.object({
-  linkId: z.string(),
-  /** Eight characters, shown as `ABCD-EFGH`. */
-  code: z.string().regex(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/),
-  expiresAt: z.number(),
+/**
+ * The public client configuration every device needs, served so that a device only has to know the
+ * relay's URL. `firebase` is null on a dev relay without Firebase (sign in with `devIdToken`).
+ * `emulators` points at the Firebase Emulator Suite (dev relays only).
+ */
+export const relayConfigSchema = z.object({
+  firebase: z
+    .object({
+      apiKey: z.string(),
+      projectId: z.string(),
+      storageBucket: z.string(),
+      emulators: z
+        .object({
+          auth: z.string().optional(),
+          firestore: z.string().optional(),
+          storage: z.string().optional(),
+        })
+        .optional(),
+    })
+    .nullable(),
+  devSignIn: z.boolean(),
 });
-export const linkApproveBodySchema = z.object({ code: z.string().regex(/^[A-Za-z2-9]{4}-?[A-Za-z2-9]{4}$/) });
-export const linkApproveResultSchema = z.object({ deviceId: deviceIdSchema, name: z.string() });
-/** The host polls, signing like a registration, until the link is approved or expires. */
-export const linkPollBodySchema = z.object({
-  linkId: z.string(),
-  deviceId: deviceIdSchema,
-  at: z.number().int(),
-  sig: b64,
-});
-export const linkPollResultSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("pending") }),
-  z.object({ status: z.literal("expired") }),
-  z.object({ status: z.literal("approved"), deviceToken: z.string(), accountEmail: z.string().nullable() }),
-]);
-export type TLinkPollResult = z.infer<typeof linkPollResultSchema>;
+export type TRelayConfig = z.infer<typeof relayConfigSchema>;
 
 /** Dev only (`RELAY_DEV=1`): an ID token for any uid, signed by the relay's dev key. */
 export const devIdTokenResultSchema = z.object({ idToken: z.string() });

@@ -77,7 +77,7 @@ app/create-relay.ts           the Hono API (same on both hosts)
 app/routes/*.routes.ts        one file per route group ("handlers")
 app/node-host.ts              self-host composition (one SQLite file per account hub)
 app/worker-host.ts            Worker composition (Directory and Hub Durable Objects)
-modules/directory/            accounts, devices, magic-link codes, pairing offers
+modules/directory/            accounts (one per sign-in uid) and devices
 modules/hub/                  one account's mailbox: routing, buffer, acks, wake pushes
 infra/{sql,node,worker,jwt,mail,oauth,push,log}  one wrapper per library or runtime
 shared/                       ports (`ISql`, `IHubSockets`, `IPushSender`), constants, env schema

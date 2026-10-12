@@ -58,6 +58,7 @@ export class PhoneSim {
   readonly id: TIdentity = generateIdentity();
   readonly deviceId = deviceIdFor(this.id.signPub);
   idToken = "";
+  uid = "";
   private deviceToken = "";
   private ws: WebSocket | null = null;
   private host: string | null = null;
@@ -99,6 +100,7 @@ export class PhoneSim {
 
   /** Signs in as `uid` (the relay's dev issuer stands in for Firebase) and registers this device. */
   async signIn(uid: string): Promise<void> {
+    this.uid = uid;
     const q = `uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(`${uid}@example.com`)}`;
     this.idToken = String((await this.http("GET", `/v1/dev/id-token?${q}`))["idToken"]);
     const reg = await this.http(
@@ -108,12 +110,6 @@ export class PhoneSim {
       this.idToken,
     );
     this.deviceToken = String(reg["deviceToken"]);
-  }
-
-  /** Approves a host's `agentdeck login` code, as the app's Link screen does. */
-  async approve(code: string): Promise<{ deviceId: string; name: string }> {
-    const r = await this.http("POST", "/v1/link/approve", { code }, this.idToken);
-    return { deviceId: String(r["deviceId"]), name: String(r["name"]) };
   }
 
   /** The account's devices, from the relay. */

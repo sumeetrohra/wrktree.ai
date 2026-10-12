@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateIdentity, signLinkPoll, signRegistration, type TIdentity } from "@agentdeck/crypto";
+import { generateIdentity, signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
   RELAY_TOKEN_PROTOCOL_PREFIX,
   RELAY_WS_PROTOCOL,
@@ -135,49 +135,20 @@ class Client {
     id: TIdentity,
     kind: TDeviceKind,
     idToken: string,
+    name: string = kind,
   ): Promise<{ deviceId: string; token: string }> {
     const reg = signRegistration(id, Date.now());
     const res = await this.call("POST", "/v1/devices/register", {
-      body: { ...reg, kind, name: kind },
+      body: { ...reg, kind, name },
       token: idToken,
     });
     expect(res.status).toBe(200);
     return { deviceId: reg.deviceId, token: res.json["deviceToken"] as string };
   }
 
-  async startLink(
-    id: TIdentity,
-    name = "laptop",
-  ): Promise<{ linkId: string; code: string; deviceId: string }> {
-    const reg = signRegistration(id, Date.now());
-    const res = await this.call("POST", "/v1/link/start", { body: { ...reg, kind: "daemon", name } });
-    expect(res.status).toBe(200);
-    return { linkId: res.json["linkId"] as string, code: res.json["code"] as string, deviceId: reg.deviceId };
-  }
-
-  poll(id: TIdentity, link: { linkId: string; deviceId: string }): ReturnType<Client["call"]> {
-    const at = Date.now();
-    return this.call("POST", "/v1/link/poll", {
-      body: { linkId: link.linkId, deviceId: link.deviceId, at, sig: signLinkPoll(id, link.linkId, at) },
-    });
-  }
-
-  /** Links a host to the account signed in with `idToken`, as `agentdeck login` does. */
-  async linkHost(
-    id: TIdentity,
-    idToken: string,
-    name = "laptop",
-  ): Promise<{ deviceId: string; token: string }> {
-    const link = await this.startLink(id, name);
-    expect((await this.poll(id, link)).json).toEqual({ status: "pending" });
-    const approved = await this.call("POST", "/v1/link/approve", {
-      token: idToken,
-      body: { code: link.code },
-    });
-    expect(approved.json).toEqual({ deviceId: link.deviceId, name });
-    const done = await this.poll(id, link);
-    expect(done.json["status"]).toBe("approved");
-    return { deviceId: link.deviceId, token: done.json["deviceToken"] as string };
+  /** A computer signs in like any device and registers as a host. */
+  linkHost(id: TIdentity, idToken: string, name = "laptop"): Promise<{ deviceId: string; token: string }> {
+    return this.register(id, "daemon", idToken, name);
   }
 
   socket(token: string): Promise<Sock> {
@@ -286,7 +257,7 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
     expect((await c.call("GET", "/v1/dev/id-token?uid=bad%20uid")).status).toBe(400);
   });
 
-  it("rejects registrations with a bad signature, and hosts that skip linking", async () => {
+  it("rejects registrations with a bad signature; hosts register like any signed-in device", async () => {
     const idToken = await c.signIn("forger");
     const reg = signRegistration(generateIdentity(), Date.now());
     const forged = await c.call("POST", "/v1/devices/register", {
@@ -301,51 +272,19 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
     expect(forged.status).toBe(401);
     const host = await c.call("POST", "/v1/devices/register", {
       token: idToken,
+      body: { ...reg, kind: "daemon", name: "desk" },
+    });
+    expect(host.status).toBe(200);
+    const unsigned = await c.call("POST", "/v1/devices/register", {
       body: { ...reg, kind: "daemon", name: "x" },
     });
-    expect(host.status).toBe(400);
-    const consumerLink = await c.call("POST", "/v1/link/start", {
-      body: { ...reg, kind: "phone", name: "x" },
-    });
-    expect(consumerLink.status).toBe(400);
+    expect(unsigned.status).toBe(401);
   });
 
-  it("links a host once its code is approved, and only for the polling host", async () => {
-    const idToken = await c.signIn("linker");
-    const hostId = generateIdentity();
-    const link = await c.startLink(hostId);
-    expect(link.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
-    // Someone else's key can't collect the token.
-    const stranger = generateIdentity();
-    const at = Date.now();
-    const stolen = await c.call("POST", "/v1/link/poll", {
-      body: {
-        linkId: link.linkId,
-        deviceId: link.deviceId,
-        at,
-        sig: signLinkPoll(stranger, link.linkId, at),
-      },
-    });
-    expect(stolen.status).toBe(403);
-    // Approving needs a signed-in user; codes are case- and dash-insensitive.
-    expect((await c.call("POST", "/v1/link/approve", { body: { code: link.code } })).status).toBe(401);
-    const wrong = await c.call("POST", "/v1/link/approve", { token: idToken, body: { code: "ZZZZ-ZZZZ" } });
-    expect(wrong.status).toBe(410);
-    const lower = link.code.replace("-", "").toLowerCase();
-    expect((await c.call("POST", "/v1/link/approve", { token: idToken, body: { code: lower } })).status).toBe(
-      200,
-    );
-    // Another account can't take over an approved code.
-    const other = await c.signIn("other-linker");
-    expect(
-      (await c.call("POST", "/v1/link/approve", { token: other, body: { code: link.code } })).status,
-    ).toBe(409);
-    const done = await c.poll(hostId, link);
-    expect(done.json).toMatchObject({ status: "approved", accountEmail: "linker@example.com" });
-    // The token is handed out once.
-    expect((await c.poll(hostId, link)).status).toBe(404);
-    const me = await c.call("GET", "/v1/devices/me", { token: done.json["deviceToken"] as string });
-    expect(me.json).toEqual({ id: link.deviceId });
+  it("serves the public client configuration", async () => {
+    const res = await c.call("GET", "/v1/config");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ firebase: null, devSignIn: true });
   });
 
   it("lists the account's devices with their signing keys, to users and to hosts", async () => {

@@ -1,12 +1,13 @@
-import { signLinkPoll, signRegistration, type TIdentity } from "@agentdeck/crypto";
+import { signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
-  linkPollResultSchema,
-  linkStartResultSchema,
+  devIdTokenResultSchema,
   meResultSchema,
   okResultSchema,
+  registerResultSchema,
+  relayConfigSchema,
   relayDevicesResultSchema,
   relayRoutes,
-  type TLinkPollResult,
+  type TRelayConfig,
   type TRelayDevice,
 } from "@agentdeck/protocol";
 import type { z } from "zod";
@@ -47,16 +48,26 @@ export class RelayApi {
     return schema.parse(await res.json());
   }
 
-  /** Asks to join an account; the user approves the returned code on a signed-in device. */
-  startLink(): Promise<{ linkId: string; code: string; expiresAt: number }> {
-    const body = { ...signRegistration(this.identity, Date.now()), kind: "daemon", name: this.name };
-    return this.call(relayRoutes.linkStart, linkStartResultSchema, { body });
+  /** The relay's public client configuration (Firebase project, or dev sign-in only). */
+  config(): Promise<TRelayConfig> {
+    return this.call(relayRoutes.config, relayConfigSchema);
   }
 
-  pollLink(linkId: string, deviceId: string): Promise<TLinkPollResult> {
-    const at = Date.now();
-    const body = { linkId, deviceId, at, sig: signLinkPoll(this.identity, linkId, at) };
-    return this.call(relayRoutes.linkPoll, linkPollResultSchema, { body });
+  /** Joins the account the ID token belongs to, as a host. Returns this host's device token. */
+  async register(idToken: string): Promise<string> {
+    const body = { ...signRegistration(this.identity, Date.now()), kind: "daemon", name: this.name };
+    return (await this.call(relayRoutes.register, registerResultSchema, { body, token: idToken }))
+      .deviceToken;
+  }
+
+  /** Dev relays only: an ID token for `uid` from the relay's own issuer. */
+  async devIdToken(uid: string): Promise<string> {
+    const q = `uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(`${uid}@example.com`)}`;
+    return (
+      await this.call(relayRoutes.devIdToken, devIdTokenResultSchema, {
+        path: `${relayRoutes.devIdToken.path}?${q}`,
+      })
+    ).idToken;
   }
 
   /** The account's devices and their signing keys: who may open a session with this host. */

@@ -31,7 +31,7 @@
     "signIn": "Sign in",
     "devUid": "Dev user id",
     "devSignIn": "Dev sign-in",
-    "notConfigured": "Sign-in isn't configured in this build.",
+    "notConfigured": "This relay offers no way to sign in.",
     "failed": "That didn't work: {{reason}}"
   },
   "worktrees": {
@@ -139,25 +139,16 @@
     },
     "branch": "{{branch}} · {{title}}",
     "loading": "Loading…",
-    "noHosts": "No computers yet. On a computer, run `agentdeck login`, then approve it under Computers.",
+    "noHosts": "No computers yet. On a computer, run `agentdeck login` and sign in with this account.",
     "signInForMore": "Sign in to see your other computers"
   },
   "hosts": {
     "title": "Computers",
-    "intro": "Computers running Agentdeck on your account. Each one shows up after `agentdeck login`.",
+    "intro": "Computers running Agentdeck on your account. To add one, run `agentdeck login` on it and sign in with the same account.",
     "empty": "No computers yet.",
     "local": "This computer",
     "viaRelay": "Through the relay, end to end encrypted",
     "remove": "Remove",
     "unknown": "Computer"
-  },
-  "link": {
-    "cta": "Link a computer",
-    "title": "Link a computer",
-    "intro": "On the computer, run `agentdeck login`. Scan its QR code or type the code it shows.",
-    "codeLabel": "Code",
-    "approve": "Approve",
-    "done": "{{name}} is joining your account. It shows up under Work in a moment.",
-    "failed": "Couldn't approve: {{reason}}"
   }
 }

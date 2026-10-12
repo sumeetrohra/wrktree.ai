@@ -32,23 +32,3 @@ export function verifyRegistration(
     return false;
   }
 }
-
-/** A host's proof, while it polls `POST /v1/link/poll`, that it is the device that started the link. */
-export function signLinkPoll(me: TIdentity, linkId: string, at: number): string {
-  return toB64(sign(me, framed(LABELS.linkPoll, linkId, String(at))));
-}
-
-export function verifyLinkPoll(
-  signPub: string,
-  linkId: string,
-  at: number,
-  sig: string,
-  nowMs: number,
-): boolean {
-  if (Math.abs(nowMs - at) > RELAY_AUTH_SKEW_MS) return false;
-  try {
-    return verify(fromB64(signPub), framed(LABELS.linkPoll, linkId, String(at)), fromB64(sig));
-  } catch {
-    return false;
-  }
-}

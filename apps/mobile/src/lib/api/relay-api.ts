@@ -1,6 +1,5 @@
 import { signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
-  linkApproveResultSchema,
   meResultSchema,
   okResultSchema,
   registerResultSchema,
@@ -63,14 +62,6 @@ export const relayApi = {
   async devices(relayUrl: string, token: string): Promise<TRelayDevice[]> {
     return (await call(relayUrl, relayRoutes.devices, relayDevicesResultSchema, { token })).devices;
   },
-
-  /** Approves a computer's `agentdeck login` code. */
-  approveLink: (
-    relayUrl: string,
-    idToken: string,
-    code: string,
-  ): Promise<z.infer<typeof linkApproveResultSchema>> =>
-    call(relayUrl, relayRoutes.linkApprove, linkApproveResultSchema, { body: { code }, token: idToken }),
 
   /** Removes a device from the account: any with the ID token, this device itself with its own token. */
   async remove(relayUrl: string, token: string, deviceId: string): Promise<void> {

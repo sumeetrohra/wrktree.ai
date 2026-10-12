@@ -93,7 +93,7 @@ jobs:
       - run: pnpm --filter @agentdeck/e2e exec playwright-core install --with-deps chromium
       - run: pnpm build
       - name: App web export with dev sign-in (the relay's dev issuer stands in for Firebase)
-        run: pnpm --filter @agentdeck/mobile export:web:e2e
+        run: pnpm --filter @agentdeck/mobile export:web
       - name: App scenarios (sign in, link, two computers, task, offline, push deep link, removal, desktop web)
         run: pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts
         env:

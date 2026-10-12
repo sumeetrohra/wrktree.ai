@@ -1,30 +1,21 @@
-import { verifyLinkPoll, verifyRegistration } from "@agentdeck/crypto";
+import { verifyRegistration } from "@agentdeck/crypto";
 import type { TRegisterBody } from "@agentdeck/protocol";
 import { newId, ok } from "@agentdeck/shared";
 
 import type { IClock } from "#src/shared/clock.types.js";
 import { fail, type TRelayResult } from "#src/shared/failure.types.js";
-import { normalizeLinkCode, randomLinkCode, randomToken, sha256 } from "#src/shared/hash.utils.js";
+import { randomToken, sha256 } from "#src/shared/hash.utils.js";
 import type { TIdentityClaims } from "#src/shared/id-token.types.js";
-import { RELAY_LIMITS } from "#src/shared/relay.constants.js";
 import type { ISql } from "#src/shared/sql.types.js";
 
 import {
   accountRowSchema,
   DIRECTORY_SCHEMA,
   deviceRowSchema,
-  linkRowSchema,
   pushRowSchema,
   type TDeviceRow,
 } from "./directory.schema.js";
-import type {
-  IDirectory,
-  TDevice,
-  TJoined,
-  TLinkPoll,
-  TLinkPolled,
-  TLinkStarted,
-} from "./directory.types.js";
+import type { IDirectory, TDevice, TJoined } from "./directory.types.js";
 
 const toDevice = (r: TDeviceRow): TDevice => ({
   id: r.id,
@@ -36,7 +27,6 @@ const toDevice = (r: TDeviceRow): TDevice => ({
 });
 
 const DEVICE_COLUMNS = "id, account_id, kind, name, sign_pub, created_at";
-const LINK_COLUMNS = "id, device_id, kind, name, sign_pub, expires_at, account_id";
 
 export class DirectoryService implements IDirectory {
   constructor(
@@ -110,74 +100,10 @@ export class DirectoryService implements IDirectory {
     return { deviceToken, accountId, kind: d.kind, previousAccountId: null };
   }
 
-  /** The signature proves the key behind the id. Hosts join through a link, never here. */
+  /** Every device, host or consumer, joins the account it signed in to; the signature proves its key. */
   async register(body: TRegisterBody, accountId: string): Promise<TRelayResult<TJoined>> {
     if (!verifyRegistration(body, this.clock.now())) return fail(401, "bad signature");
-    if (body.kind === "daemon") return fail(400, "hosts link with `agentdeck login`");
     return ok(await this.join(body, accountId));
-  }
-
-  async startLink(body: TRegisterBody): Promise<TRelayResult<TLinkStarted>> {
-    if (!verifyRegistration(body, this.clock.now())) return fail(401, "bad signature");
-    if (body.kind !== "daemon") return fail(400, "only hosts link; consumers sign in");
-    this.sql.run("DELETE FROM links WHERE expires_at < ? OR device_id = ?", this.clock.now(), body.deviceId);
-    const linkId = newId("link");
-    const code = randomLinkCode();
-    const expiresAt = this.clock.now() + RELAY_LIMITS.linkTtlMs;
-    this.sql.run(
-      "INSERT INTO links (id, code_hash, device_id, kind, name, sign_pub, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      linkId,
-      await sha256(normalizeLinkCode(code)),
-      body.deviceId,
-      body.kind,
-      body.name,
-      body.signPub,
-      expiresAt,
-    );
-    return ok({ linkId, code, expiresAt });
-  }
-
-  async approveLink(
-    accountId: string,
-    code: string,
-  ): Promise<TRelayResult<{ deviceId: string; name: string }>> {
-    const link = this.one(
-      this.sql.all(
-        `SELECT ${LINK_COLUMNS} FROM links WHERE code_hash = ?`,
-        await sha256(normalizeLinkCode(code)),
-      ),
-      (r) => linkRowSchema.parse(r),
-    );
-    if (!link || link.expires_at < this.clock.now()) return fail(410, "code expired or unknown");
-    if (link.account_id !== null && link.account_id !== accountId) return fail(409, "code already used");
-    this.sql.run("UPDATE links SET account_id = ? WHERE id = ?", accountId, link.id);
-    return ok({ deviceId: link.device_id, name: link.name });
-  }
-
-  /** Signed by the linking host. Hands out the device token once, then forgets the link. */
-  async pollLink(poll: TLinkPoll): Promise<TRelayResult<TLinkPolled>> {
-    const link = this.one(this.sql.all(`SELECT ${LINK_COLUMNS} FROM links WHERE id = ?`, poll.linkId), (r) =>
-      linkRowSchema.parse(r),
-    );
-    if (link?.device_id !== poll.deviceId) return fail(404, "link not found");
-    if (!verifyLinkPoll(link.sign_pub, poll.linkId, poll.at, poll.sig, this.clock.now())) {
-      return fail(403, "bad signature");
-    }
-    if (link.account_id === null) {
-      if (link.expires_at >= this.clock.now()) return ok({ status: "pending" });
-      this.sql.run("DELETE FROM links WHERE id = ?", link.id);
-      return ok({ status: "expired" });
-    }
-    this.sql.run("DELETE FROM links WHERE id = ?", link.id);
-    const account = this.one(
-      this.sql.all("SELECT id, email FROM accounts WHERE id = ?", link.account_id),
-      (r) => accountRowSchema.parse(r),
-    );
-    const joined = await this.join(
-      { deviceId: link.device_id, kind: link.kind, name: link.name, signPub: link.sign_pub },
-      link.account_id,
-    );
-    return ok({ status: "approved", accountEmail: account?.email ?? null, ...joined });
   }
 
   async deviceByToken(token: string): Promise<TDevice | null> {

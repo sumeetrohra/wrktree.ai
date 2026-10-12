@@ -7,7 +7,6 @@ export const RELAY_LIMITS = {
   phone: { framesPerSecond: 50, bytesPerSecond: 2 * 1024 * 1024 },
   daemon: { framesPerSecond: 200, bytesPerSecond: 8 * 1024 * 1024 },
   pushIntervalMs: 30 * 1000,
-  linkTtlMs: 10 * 60 * 1000,
 } as const;
 
 /** WebSocket close codes the relay uses; clients reconnect on all but REVOKED. */

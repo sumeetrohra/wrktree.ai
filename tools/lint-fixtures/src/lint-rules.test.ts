@@ -130,7 +130,6 @@ const CASES: TCase[] = [
     ["L11", "@noble/ciphers/chacha.js"],
     ["L12", "hono"],
     ["L13", "jose"],
-    ["L14", "qrcode-terminal"],
     ["L15", "cloudflare:workers"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its wrapper`,
@@ -304,7 +303,6 @@ const CASES: TCase[] = [
     ["L16", "react-native-mmkv"],
     ["L17", "expo-secure-store"],
     ["L18", "expo-notifications"],
-    ["L19", "expo-camera"],
     ["L20", "expo-image-picker"],
     ["L21", "expo-haptics"],
     ["L22", "expo-crypto"],
@@ -345,9 +343,7 @@ describe("every lint rule still fires", () => {
     ["apps/relay/src/infra/idtoken/ok.ts", "jose"],
     ["apps/relay/src/infra/sql/ok.ts", "better-sqlite3"],
     ["packages/crypto/src/ok.utils.ts", "@noble/hashes/sha2.js"],
-    ["apps/cli/src/shared/output/ok.utils.ts", "qrcode-terminal"],
     ["apps/mobile/src/lib/storage/ok.ts", "react-native-mmkv"],
-    ["apps/mobile/src/lib/camera/ok.tsx", "expo-camera"],
   ])("allows %s to import %s", async (file, lib) => {
     const [result] = await eslint.lintText(`import * as lib from "${lib}";\nexport const x = lib;\n`, {
       filePath: `${ROOT}${file}`,

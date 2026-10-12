@@ -7,15 +7,15 @@ import { linkHost } from "./relay-helpers.ts";
 
 export const relayLogin: TScenario = {
   n: 8,
-  title: "Sign in, link a computer",
-  summary: "Phone signs in; `agentdeck login` shows a code the phone approves; other accounts get nothing",
+  title: "Every device signs in",
+  summary: "Phone and computer sign in to the same account; other accounts get nothing",
   covers: [
-    "Phase 2c: consumers sign in; a host links once with a device code (no pairing)",
+    "Phase 3a: every device signs in, computers included (`agentdeck login`); no pairing or codes",
     "Phase 2c: the account's device list on the relay is the trust root",
   ],
   relay: true,
   async run(h) {
-    h.step("A computer with a relay but no account yet");
+    h.step("A computer with a relay but not signed in yet");
     const before = await h.send("account.status", {});
     await h.check("the daemon is unlinked and not connected", async () => {
       assert.equal(before.state, "unlinked");
@@ -29,12 +29,7 @@ export const relayLogin: TScenario = {
       assert.deepEqual(await phone.hosts(), []);
     });
 
-    h.step("A mistyped code is refused");
-    await h.check("approving an unknown code fails", async () => {
-      await assert.rejects(phone.approve("ZZZZ-ZZZZ"), /410/);
-    });
-
-    h.step("Desktop: `agentdeck login`, the phone approves the code");
+    h.step("Desktop: `agentdeck login` (dev sign-in as the same user)");
     const hostId = await linkHost(h, phone);
     const hosts = await phone.hosts();
     await h.check("the phone now sees the computer, online", () => {
@@ -53,6 +48,7 @@ export const relayLogin: TScenario = {
       assert.ok(stdout.includes(phone.deviceId) && stdout.includes("Pixel 9"), stdout);
     });
     await h.check("linking and pairing commands are refused from the phone (desktop only)", async () => {
+      await assert.rejects(phone.call("account.signInDev", { uid: "me" }), /UNAUTHORIZED/);
       await assert.rejects(phone.call("account.link", {}), /UNAUTHORIZED/);
       await assert.rejects(phone.call("pair.start", {}), /UNAUTHORIZED/);
     });

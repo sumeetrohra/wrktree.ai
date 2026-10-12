@@ -10,6 +10,7 @@ browsers; the relay only verifies the resulting ID tokens (RS256, Google's publi
 | Variable | Needed | What |
 |---|---|---|
 | `FIREBASE_PROJECT_ID` | production | The Firebase project whose ID tokens sign users in. |
+| `FIREBASE_API_KEY`, `FIREBASE_STORAGE_BUCKET` | production | Public client settings handed to devices at `GET /v1/config`. |
 | `RELAY_PUBLIC_URL` | always | The relay's public base URL. |
 | `EXPO_ACCESS_TOKEN` | optional | Expo push API access token (if push security is enabled on the Expo project). |
 | `RELAY_DEV` | dev only | `1` mounts the dev ID-token issuer (`GET /v1/dev/id-token?uid=…`, standing in for Firebase) and recorded pushes (`GET /v1/dev/pushes`). Never set it in production. |
@@ -22,10 +23,10 @@ with its default, is in the root [`.env.example`](../.env.example); `pnpm relay`
 
 1. Create a Firebase project and enable **Authentication → Email link (passwordless)**. Add the web
    app's domain to the authorized domains.
-2. Give the relay the project id (`FIREBASE_PROJECT_ID`), and build the app with the project's Web
-   API key: `EXPO_PUBLIC_FIREBASE_API_KEY=… EXPO_PUBLIC_RELAY_URL=https://relay.example.com`.
-3. Computers never sign in themselves: `agentdeck login` shows a code that a signed-in phone or
-   browser approves.
+2. Give the relay `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY` and `FIREBASE_STORAGE_BUCKET`; devices
+   fetch them from `GET /v1/config`, so the app is built with just `EXPO_PUBLIC_RELAY_URL`.
+3. Deploy the rules in `firebase/` (`firebase deploy --only firestore:rules,storage`).
+4. Every device signs in, computers included: `agentdeck login` emails a link.
 
 ## Cloudflare (hosted)
 

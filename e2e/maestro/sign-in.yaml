@@ -1,0 +1,15 @@
+appId: dev.agentdeck.app
+---
+# A dev relay (RELAY_DEV=1) offers Dev sign-in; computers sign in with `agentdeck login --dev me`.
+- launchApp:
+    clearState: true
+- assertVisible: "Relay"
+- tapOn: "Relay"
+- eraseText
+- inputText: ${RELAY_URL}
+- tapOn: "me"
+- inputText: "me"
+- tapOn: "Dev sign-in"
+- extendedWaitUntil:
+    visible: "Work"
+    timeout: 60000
