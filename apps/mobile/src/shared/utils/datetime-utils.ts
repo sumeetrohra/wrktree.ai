@@ -7,3 +7,8 @@ dayjs.extend(relativeTime);
 export function fromNow(epochMs: number): string {
   return dayjs(epochMs).fromNow();
 }
+
+/** Milliseconds since the epoch: the protocol's time unit. */
+export function nowMs(): number {
+  return dayjs().valueOf();
+}

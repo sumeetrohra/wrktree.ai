@@ -11,13 +11,12 @@
       "project": ["src/**/*.ts"]
     },
     "apps/mobile": {
-      "entry": ["src/app/**/*.tsx", "src/**/*.test.tsx"],
+      "entry": ["src/app/**/*.tsx", "src/**/*.test.{ts,tsx}", "src/**/*.web.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}"],
       "ignoreDependencies": [
         "react-native-css-interop",
         "babel-plugin-react-compiler",
         "expo-updates",
-        "@rn-primitives/label",
         "@rn-primitives/portal",
         "@rn-primitives/separator"
       ],

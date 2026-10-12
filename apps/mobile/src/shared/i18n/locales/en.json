@@ -5,8 +5,132 @@
   "repos": {
     "title": "Repositories",
     "empty": "No repositories yet. Add one with `agentdeck repo add <path>`.",
-    "loadFailed": "Couldn't reach the daemon.",
+    "loadFailed": "Couldn't reach your computer.",
     "added": "Added {{when}}",
     "defaultBranch": "{{branch}}"
+  },
+  "connection": {
+    "label": "{{name}} · {{status}}",
+    "unpaired": "not paired",
+    "connecting": "connecting",
+    "online": "online",
+    "offline": "offline",
+    "revoked": "revoked",
+    "revokedTitle": "This phone was removed",
+    "revokedBody": "Your computer revoked this phone. Pair again to keep using it."
+  },
+  "pairing": {
+    "title": "Pair with your computer",
+    "intro": "On your computer, run `agentdeck pair`. Scan the QR code it shows, or paste the link printed under it.",
+    "cameraNeeded": "Scanning the QR code needs the camera.",
+    "allowCamera": "Allow camera",
+    "linkLabel": "Pairing link",
+    "linkPlaceholder": "agentdeck://pair?o=…",
+    "invalidLink": "That isn't a pairing link. Copy the whole line `agentdeck pair` printed.",
+    "paste": "Paste",
+    "continue": "Continue",
+    "compare": "Check that your computer shows the same code",
+    "code": "{{first}} {{second}}",
+    "codeLabel": "Pairing code {{code}}",
+    "confirmOnComputer": "Confirm on your computer. This screen moves on by itself once it does."
+  },
+  "auth": {
+    "title": "Sign in",
+    "intro": "Your phone and computer meet through {{relay}}. Sign in with your email to continue.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "code": "Code from the email",
+    "codePlaceholder": "123456",
+    "sendCode": "Email me a code",
+    "verify": "Sign in and pair",
+    "failed": "That didn't work: {{reason}}"
+  },
+  "worktrees": {
+    "title": "Worktrees",
+    "empty": "No tasks yet. Start one with New task.",
+    "status": {
+      "creating": "creating",
+      "setting_up": "setting up",
+      "ready": "ready",
+      "setup_failed": "setup failed",
+      "archived": "archived"
+    }
+  },
+  "newTask": {
+    "cta": "New task",
+    "heading": "New task",
+    "title": "Title",
+    "titlePlaceholder": "Fix the login redirect",
+    "message": "What should the agent do?",
+    "messagePlaceholder": "Describe the task…",
+    "profile": "Run as",
+    "profileOption": "{{name}} ({{agent}})",
+    "start": "Start task",
+    "starting": "Setting up the worktree…",
+    "noProfiles": "No agent profiles yet. Add one on your computer with `agentdeck profile add`.",
+    "failed": "Couldn't start the task: {{reason}}"
+  },
+  "chats": {
+    "title": "Chats",
+    "empty": "No chats in this worktree yet.",
+    "untitled": "Chat with {{agent}}"
+  },
+  "chat": {
+    "attachments_one": "{{count}} image",
+    "attachments_other": "{{count}} images",
+    "plan": "Plan",
+    "planEntry": "{{mark}} {{text}}",
+    "queued_one": "{{count}} queued",
+    "queued_other": "{{count}} queued",
+    "status": {
+      "starting": "starting",
+      "idle": "idle",
+      "running": "working",
+      "awaiting_permission": "needs you",
+      "limited": "usage limit",
+      "crashed": "crashed",
+      "stopped": "stopped"
+    },
+    "tool": {
+      "pending": "pending",
+      "running": "running",
+      "done": "done",
+      "failed": "failed"
+    }
+  },
+  "permission": {
+    "asks": "The agent asks to",
+    "allowOnce": "Allow once",
+    "allowAlways": "Always",
+    "deny": "Deny",
+    "denyAndSay": "Deny + message",
+    "messagePlaceholder": "Tell the agent what to do instead",
+    "denyWithMessage": "Deny and send"
+  },
+  "composer": {
+    "label": "Message",
+    "placeholder": "Message the agent…",
+    "queuePlaceholder": "Queue a message for when this turn ends…",
+    "attach": "Attach an image",
+    "attached_one": "{{count}} image attached",
+    "attached_other": "{{count}} images attached",
+    "send": "Send",
+    "queue": "Queue",
+    "camera": "Take a photo",
+    "pasteImage": "Paste an image"
+  },
+  "devices": {
+    "title": "Devices",
+    "thisDevice": "{{name}} (this phone)",
+    "paired": "Paired {{when}}",
+    "revoked": "Revoked {{when}}",
+    "revoke": "Revoke"
+  },
+  "settings": {
+    "title": "Settings",
+    "unpair": "Unpair this phone"
+  },
+  "wake": {
+    "catchingUp": "Catching up with your computer…"
   }
 }

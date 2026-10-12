@@ -31,6 +31,13 @@ const LIBRARIES = [
   { id: "L13", names: ["jose"], zone: "jwt" },
   { id: "L14", names: ["qrcode-terminal"], zone: "qr" },
   { id: "L15", names: ["cloudflare:workers"], zone: "workers" },
+  { id: "L16", names: ["react-native-mmkv"], zone: "mmkv" },
+  { id: "L17", names: ["expo-secure-store"], zone: "secure-store" },
+  { id: "L18", names: ["expo-notifications"], zone: "notifications" },
+  { id: "L19", names: ["expo-camera"], zone: "camera" },
+  { id: "L20", names: ["expo-image-picker", "expo-clipboard"], zone: "media" },
+  { id: "L21", names: ["expo-haptics", "expo-device"], zone: "device" },
+  { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -392,6 +399,22 @@ const ZONES = [
     paths: MOBILE_PATHS,
     patterns: [UP_TWO, banApp(["modules", "pages", "app", "providers"], "lib")],
   },
+  // One wrapper folder per native library (L16–L22).
+  ...[
+    ["storage", "mmkv"],
+    ["secure-store", "secure-store"],
+    ["notifications", "notifications"],
+    ["camera", "camera"],
+    ["media", "media"],
+    ["device", "device"],
+    ["api", "expo-crypto"],
+  ].map(([folder, tag]) => ({
+    name: `mobile-lib-${folder}`,
+    files: [`apps/mobile/src/lib/${folder}/**/*.{ts,tsx}`],
+    allow: [tag],
+    paths: MOBILE_PATHS,
+    patterns: [UP_TWO, banApp(["modules", "pages", "app", "providers"], "lib")],
+  })),
   {
     name: "mobile-providers",
     files: ["apps/mobile/src/providers/**/*.{ts,tsx}"],

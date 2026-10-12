@@ -13,9 +13,10 @@
     "format": "prettier --write .",
     "test": "turbo run test --filter=!@agentdeck/e2e",
     "test:e2e": "turbo run build && pnpm --filter @agentdeck/e2e test",
-    "e2e:record": "turbo run build && pnpm --filter @agentdeck/e2e record",
+    "e2e:record": "turbo run build && pnpm --filter @agentdeck/mobile export:web && pnpm --filter @agentdeck/e2e record && pnpm --filter @agentdeck/e2e record:app",
     "prepare": "husky",
-    "knip": "knip"
+    "knip": "knip",
+    "test:e2e:app": "turbo run build && pnpm --filter @agentdeck/mobile export:web && APP_E2E=1 pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
@@ -52,7 +53,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js}": [
-      "eslint --max-warnings 0 --fix",
+      "eslint --max-warnings 0 --no-warn-ignored --fix",
       "prettier --write"
     ],
     "*.{json,css,yml,yaml}": "prettier --write"

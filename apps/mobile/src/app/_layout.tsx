@@ -1,1 +1,1 @@
-export { RootLayout as default } from "@/providers";
+export { RootPage as default } from "@/pages/root";

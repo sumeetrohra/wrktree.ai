@@ -1,16 +1,26 @@
 import "../global.css";
 
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
+import { bootConnection } from "@/lib/api";
+import { onNotificationTap } from "@/lib/notifications";
+
 import { AppProviders } from "./app-providers";
+
+// Once, when the app starts: pick the connection (local daemon or paired machine), and send a
+// tapped push to the wake screen, which opens the chat that needs the user.
+bootConnection();
+onNotificationTap(() => {
+  router.push("/wake");
+});
 
 /** The router's root layout: providers around a stack navigator. */
 export function RootLayout(): React.JSX.Element {
   return (
     <AppProviders>
       <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerTitle: "", headerBackTitle: "", headerShadowVisible: false }} />
     </AppProviders>
   );
 }

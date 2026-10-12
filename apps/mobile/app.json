@@ -6,8 +6,19 @@
     "orientation": "portrait",
     "scheme": "agentdeck",
     "userInterfaceStyle": "automatic",
+    "ios": { "bundleIdentifier": "dev.agentdeck.app", "supportsTablet": true },
+    "android": { "package": "dev.agentdeck.app" },
     "web": { "bundler": "metro", "output": "single" },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-camera", { "cameraPermission": "Agentdeck uses the camera to scan the pairing QR code." }],
+      [
+        "expo-image-picker",
+        { "photosPermission": "Agentdeck attaches the images you pick to your messages to the agent." }
+      ],
+      ["expo-notifications", { "enableBackgroundRemoteNotifications": false }]
+    ],
     "experiments": { "reactCompiler": true, "typedRoutes": false }
   }
 }
