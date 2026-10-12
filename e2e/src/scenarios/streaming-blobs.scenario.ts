@@ -38,7 +38,9 @@ export const streamingBlobs: TScenario = {
       `${patchIdx.length} patches over ${(spanMs / 1000).toFixed(1)} s: at most 20 per second`,
       () => {
         assert.ok(patchIdx.length > 0);
-        assert.ok(patchIdx.length < 400 / 4, "chunks are coalesced");
+        // Coalesced: fewer patches than chunks (how many fewer depends on the OS timer resolution;
+        // Windows runs 2 ms timers at ~15 ms). The rate bound below is the spec's rule.
+        assert.ok(patchIdx.length < 400, "chunks are coalesced");
         assert.ok(
           patchIdx.length <= Math.ceil(spanMs / 50) + 2,
           `${patchIdx.length} patches in ${spanMs} ms`,
