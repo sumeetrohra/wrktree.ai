@@ -243,10 +243,11 @@ Scenarios 9, 10 and 12 (chat, offline, plaintext dump) run unchanged on top of s
 
 ```sh
 pnpm build
-RELAY_DEV=1 RELAY_DEV_SECRET=dev-only-secret-dev-only-secret-dev pnpm --filter @agentdeck/relay start
-AGENTDECK_RELAY_URL=http://127.0.0.1:8787 agentdeck daemon &
-agentdeck login                      # shows a code
-EXPO_PUBLIC_DEV_AUTH=1 EXPO_PUBLIC_RELAY_URL=http://127.0.0.1:8787 pnpm --filter @agentdeck/mobile web
+cp .env.example .env && cp apps/mobile/.env.example apps/mobile/.env   # dev defaults
+pnpm relay                           # dev mode: RELAY_DEV=1
+pnpm agentdeck daemon &
+pnpm agentdeck login                 # shows a code
+pnpm --filter @agentdeck/mobile web
 # In the app: Dev sign-in → Computers → Link a computer → type the code.
 ```
 

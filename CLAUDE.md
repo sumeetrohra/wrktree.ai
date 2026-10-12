@@ -33,6 +33,7 @@ the type checker. The ones that most often matter:
 ```sh
 pnpm install --frozen-lockfile
 pnpm build && pnpm lint && pnpm typecheck && pnpm test
+pnpm relay && pnpm agentdeck daemon   # run the stack locally (cp .env.example .env first; see README)
 pnpm test:e2e        # real daemon + CLI + scripted agent
 pnpm e2e:record      # same, rendered to artifacts/e2e.mp4
 RELAY_WORKER_TESTS=1 pnpm --filter @agentdeck/relay test   # relay contract tests on the Worker too

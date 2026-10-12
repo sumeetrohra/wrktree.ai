@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "relay": "node --env-file-if-exists=.env apps/relay/dist/main.node.js",
+    "agentdeck": "node --env-file-if-exists=.env apps/cli/dist/main.js",
     "typecheck": "turbo run typecheck",
     "lint": "eslint . --max-warnings 0 && prettier --check .",
     "format": "prettier --write .",

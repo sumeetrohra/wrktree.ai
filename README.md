@@ -44,34 +44,98 @@ Chromium; native builds need an EAS project). The daemon also serves the app as 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.
 
-## Develop
+## Run it
 
-Needs Node 22+, pnpm 10 and git.
+Needs Node 22.12+, pnpm 10 and git. Everything below runs locally with **no accounts and no API
+keys**: the relay runs in dev mode and mints its own sign-in tokens. Agents use their own logins
+(each profile runs the agent's normal login), so there are no Anthropic, OpenAI or Google keys to
+set here.
+
+### The whole stack on one machine
 
 ```sh
+cp .env.example .env                              # relay + daemon/CLI settings
+cp apps/mobile/.env.example apps/mobile/.env      # app settings
 pnpm install
 pnpm build
+
+pnpm relay                                        # 1. the relay, dev mode, on :8787
+pnpm agentdeck daemon                             # 2. the daemon (another terminal)
+pnpm agentdeck repo add ~/src/my-repo             # 3. a repo and an agent profile
+pnpm agentdeck profile add claude --name Personal  # or codex, gemini; `fake` needs no account
+pnpm --filter @agentdeck/mobile web               # 4. the app in a browser (Expo, :8081)
+```
+
+5. In the app: **Dev sign-in** with any user id (say `me`), then **Computers → Link a computer**.
+6. On the computer: `pnpm agentdeck login`. It prints a code (and a QR code and link); type it
+   into the app. The computer collects its token and shows up under **Work**.
+7. Start a task with **New task**: pick the computer, repo, profile and, optionally, a model.
+
+More ways in:
+
+- **A second computer on the same machine:** another terminal with its own home and name, then
+  `login` again:
+  `AGENTDECK_HOME=/tmp/agentdeck-desktop AGENTDECK_HOST_NAME=desktop pnpm agentdeck daemon`
+  (and the same variables in front of `pnpm agentdeck login`).
+- **The desktop web UI:** `pnpm --filter @agentdeck/mobile export:web`, set `AGENTDECK_WEB_ROOT` to
+  `apps/mobile/dist`, restart the daemon, and run `pnpm agentdeck open`. It talks to this computer
+  directly; signing in there adds your other computers.
+- **A phone:** Expo Go or a development build (`eas build --profile development`). Set
+  `EXPO_PUBLIC_RELAY_URL` and the relay's `HOST=0.0.0.0` so the phone can reach your computer's
+  LAN address.
+- **Local only, no relay:** leave `AGENTDECK_RELAY_URL` unset and drive the daemon from the CLI:
+  `pnpm agentdeck dev watch`, `pnpm agentdeck dev send repo.list`.
+
+### Production
+
+1. **Firebase:** create a project and enable **Authentication → Email link (passwordless)**; add
+   your web app's domain to the authorized domains.
+2. **Relay:** deploy to Cloudflare or self-host it with Docker, with `RELAY_DEV` unset and
+   `FIREBASE_PROJECT_ID` set ([`docs/relay-deploy.md`](docs/relay-deploy.md)).
+3. **App:** build with `EXPO_PUBLIC_RELAY_URL`, `EXPO_PUBLIC_FIREBASE_API_KEY` and
+   `EXPO_PUBLIC_APP_URL`, and without `EXPO_PUBLIC_DEV_AUTH`.
+4. **Each computer:** `agentdeck relay set https://relay.example.com`, `agentdeck login`, and
+   `agentdeck install` to start the daemon when you log in.
+
+### Configuration
+
+Two example files hold every setting with its default: [`.env.example`](.env.example) (relay,
+daemon and CLI; loaded by `pnpm relay` and `pnpm agentdeck`) and
+[`apps/mobile/.env.example`](apps/mobile/.env.example) (the app; Expo inlines it at build time).
+
+| Key | Read by | Needed | Where it comes from |
+|---|---|---|---|
+| `FIREBASE_PROJECT_ID` | relay | **production** | Firebase console → Project settings |
+| `EXPO_PUBLIC_FIREBASE_API_KEY` | app | **production** | Firebase console → Project settings → Web API key |
+| `EXPO_PUBLIC_RELAY_URL` | app | **production** (local default works) | your relay's URL |
+| `EXPO_PUBLIC_APP_URL` | app | production | where the web app is hosted (email links come back to it) |
+| `RELAY_PUBLIC_URL` | relay | production | the relay's own public URL |
+| `AGENTDECK_RELAY_URL` | daemon | to use a relay | your relay's URL (or `agentdeck relay set`) |
+| `AGENTDECK_APP_URL` | daemon | optional | the web app's URL, for the `agentdeck login` link |
+| `EXPO_ACCESS_TOKEN` | relay | optional | expo.dev access token, if push security is on |
+| `RELAY_DEV`, `RELAY_DEV_SECRET` | relay | **local dev only** | `1` and any 32+ characters |
+| `EXPO_PUBLIC_DEV_AUTH` | app | **local dev only** | `1` shows Dev sign-in |
+| `PORT`, `HOST`, `RELAY_DATA_DIR` | relay (self-host) | optional | defaults `8787`, `127.0.0.1`, `~/.agentdeck-relay` |
+| `AGENTDECK_HOME`, `AGENTDECK_HOST_NAME` | daemon | optional | data folder; this computer's name |
+| `AGENTDECK_BROWSE_ROOTS`, `AGENTDECK_WEB_ROOT`, `AGENTDECK_KEYSTORE`, `AGENTDECK_PORT_RANGE`, `AGENTDECK_LOCAL_PORT`, `AGENTDECK_DEV_AGENTS`, `AGENTDECK_DEV_ORIGINS`, `AGENTDECK_LOG_STDERR` | daemon | optional | see `.env.example` |
+
+No secret ever goes into the app: the Firebase Web API key is public by design, and the relay
+holds no sign-in secrets of its own. Real `.env` files are git-ignored.
+
+## Develop
+
+```sh
 pnpm test          # unit tests
-pnpm test:e2e      # end-to-end: real daemon + CLI + scripted ACP agent
-pnpm e2e:record    # same run, rendered to artifacts/e2e.mp4 (needs ffmpeg + Chromium)
+pnpm test:e2e      # end-to-end: real relay, daemons, CLI and a scripted ACP agent
+pnpm test:e2e:app  # the app's web build in Chromium (needs a Playwright Chromium)
+pnpm e2e:record    # both, rendered to artifacts/e2e.mp4 and app-e2e.mp4 (needs ffmpeg)
 pnpm lint && pnpm typecheck   # strict lint (structure, naming, library wrappers) and tsc
 pnpm knip          # no unused files, exports or dependencies
-pnpm --filter @agentdeck/mobile start   # Expo app skeleton (web: export:web)
 ```
 
 The coding rules every change follows live in [`docs/rules/`](docs/rules/README.md) and are
 summarised for agents in [`CLAUDE.md`](CLAUDE.md). A pre-commit hook (husky + lint-staged) runs
 lint, Prettier and the typecheck; CI adds knip, `pnpm audit` and CodeQL.
-
-Try it by hand with the scripted agent:
-
-```sh
-export AGENTDECK_HOME=/tmp/agentdeck AGENTDECK_DEV_AGENTS=1
-node apps/cli/dist/main.js daemon &
-node apps/cli/dist/main.js dev watch &
-node apps/cli/dist/main.js repo add ~/src/my-repo
-node apps/cli/dist/main.js profile add fake --name Personal
-```
 
 ## Docs
 

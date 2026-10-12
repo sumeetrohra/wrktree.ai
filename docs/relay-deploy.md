@@ -15,7 +15,8 @@ browsers; the relay only verifies the resulting ID tokens (RS256, Google's publi
 | `RELAY_DEV` | dev only | `1` mounts the dev ID-token issuer (`GET /v1/dev/id-token?uid=…`, standing in for Firebase) and recorded pushes (`GET /v1/dev/pushes`). Never set it in production. |
 | `RELAY_DEV_SECRET` | dev only | 32+ characters; signs dev ID tokens. Read only with `RELAY_DEV=1`. |
 
-Without `RELAY_DEV=1`, the relay refuses to start unless `FIREBASE_PROJECT_ID` is set.
+Without `RELAY_DEV=1`, the relay refuses to start unless `FIREBASE_PROJECT_ID` is set. Every key,
+with its default, is in the root [`.env.example`](../.env.example); `pnpm relay` loads `.env`.
 
 ## Firebase
 
