@@ -51,8 +51,10 @@ hash. Rules cap an object below 50 MB.
 - The outbox flushes every second in batches of up to 400 writes, with exponential backoff while
   Firebase is unreachable; pending writes survive restarts. Document ids are deterministic, so
   retries are idempotent.
-- On first sign-in it backfills existing worktrees and chats from the event logs. Signing out, or
-  in as another account, clears the outbox.
+- On first sign-in it backfills existing worktrees and chats from the event logs, and replays each
+  repo's log so a worktree deleted earlier still gets `deletedAt`. Chats of a worktree deleted
+  before that first sync are not backfilled (deleting a worktree deletes its chats locally).
+  Signing out, or in as another account, clears the outbox.
 - Deleting a worktree marks its document `deletedAt`; its chats and files stay. A later decision
   may prune them.
 

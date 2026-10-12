@@ -280,7 +280,12 @@ export async function cloudHistoryInApp(h: Harness, app: AppDriver): Promise<voi
     profileId,
     title: "Login bug",
   });
-  await h.send("chat.create", { worktreeId: gone.id, agent: "fake", profileId, title: "Scratch" });
+  const scratch = await h.send("chat.create", {
+    worktreeId: gone.id,
+    agent: "fake",
+    profileId,
+    title: "Scratch",
+  });
   const turn = h.mark();
   await h.send("chat.send", { chatId: chat.id, text: "Why does login redirect twice?" });
   await h.waitStatus(chat.id, "idle", turn);
@@ -288,11 +293,18 @@ export async function cloudHistoryInApp(h: Harness, app: AppDriver): Promise<voi
   await signInApp(h, app);
   await linkFromApp(h, app, "laptop");
 
-  h.step("Desktop: delete the second worktree; wait for the cloud to have it all");
-  await h.send("worktree.delete", { worktreeId: gone.id });
+  // The first sync copies up what exists at sign-in; wait for it before deleting anything.
   const phone = new PhoneSim(h.relayUrl, "Checker");
   const { db, uid } = await phone.signInFirebase("me");
   const hostId = await h.deviceId();
+  await eventually(
+    "the backfilled chats in Firestore",
+    () => db.list(`users/${uid}/chats`),
+    (docs) => [chat.id, scratch.id].every((id) => docs.some((d) => d.data["chatId"] === id)),
+  );
+
+  h.step("Desktop: delete the second worktree; wait for the cloud to have it all");
+  await h.send("worktree.delete", { worktreeId: gone.id });
   await eventually(
     "the deleted worktree in Firestore",
     () => db.get(`users/${uid}/worktrees/${hostId}__${gone.id}`),
