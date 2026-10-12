@@ -82,6 +82,30 @@ const CASES: TCase[] = [
     code: 'import { openDb } from "#src/infra/db/index.js";\nexport const x = openDb;\n',
   },
   {
+    id: "S4 relay module imports another module",
+    rule: "no-restricted-imports",
+    file: "apps/relay/src/modules/hub/bad.ts",
+    code: 'import { DirectoryService } from "#src/modules/directory/index.js";\nexport const x = DirectoryService;\n',
+  },
+  {
+    id: "S4 relay module imports infra",
+    rule: "no-restricted-imports",
+    file: "apps/relay/src/modules/hub/bad.ts",
+    code: 'import { openSql } from "#src/infra/sql/index.js";\nexport const x = openSql;\n',
+  },
+  {
+    id: "L1 better-sqlite3 in the relay outside infra/sql",
+    rule: "no-restricted-imports",
+    file: "apps/relay/src/infra/node/bad.ts",
+    code: 'import Database from "better-sqlite3";\nexport const x = Database;\n',
+  },
+  {
+    id: "S1 crypto imports protocol",
+    rule: "no-restricted-imports",
+    file: "packages/crypto/src/bad.utils.ts",
+    code: 'import { commands } from "@agentdeck/protocol";\nexport const x = commands;\n',
+  },
+  {
     id: "S1 protocol imports a workspace package",
     rule: "no-restricted-imports",
     file: "packages/protocol/src/bad.schema.ts",
@@ -103,6 +127,11 @@ const CASES: TCase[] = [
     ["L4", "node:child_process"],
     ["L5", "@vscode/ripgrep"],
     ["L6", "pino"],
+    ["L11", "@noble/ciphers/chacha.js"],
+    ["L12", "hono"],
+    ["L13", "jose"],
+    ["L14", "qrcode-terminal"],
+    ["L15", "cloudflare:workers"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its wrapper`,
     rule: "no-restricted-imports",
@@ -284,6 +313,18 @@ describe("every lint rule still fires", () => {
     const [result] = await eslint.lintText(c.code, { filePath: `${ROOT}${c.file}` });
     const rules = (result?.messages ?? []).map((m) => m.ruleId ?? m.message);
     expect(rules).toContain(c.rule);
+  });
+
+  it.each([
+    ["apps/relay/src/infra/jwt/ok.ts", "jose"],
+    ["apps/relay/src/infra/sql/ok.ts", "better-sqlite3"],
+    ["packages/crypto/src/ok.utils.ts", "@noble/hashes/sha2.js"],
+    ["apps/cli/src/shared/output/ok.utils.ts", "qrcode-terminal"],
+  ])("allows %s to import %s", async (file, lib) => {
+    const [result] = await eslint.lintText(`import * as lib from "${lib}";\nexport const x = lib;\n`, {
+      filePath: `${ROOT}${file}`,
+    });
+    expect((result?.messages ?? []).map((m) => m.ruleId)).not.toContain("no-restricted-imports");
   });
 
   it("allows the same code inside its wrapper", async () => {

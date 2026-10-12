@@ -2,184 +2,14 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import {
-  BLOB_PART_SIZE,
-  FRAME_BLOB_THRESHOLD,
-  innerSchema,
-  type TEvtFrame,
-  type TInner,
-  type TLoggedEvent,
-} from "@agentdeck/protocol";
-import { now, tryParseJson, type ILogger } from "@agentdeck/shared";
-import { WebSocketServer, type WebSocket } from "ws";
+import type { ILogger } from "@agentdeck/shared";
+import { WebSocketServer } from "ws";
 
-import { topicMatches, type EventBus } from "../bus/index.js";
+import type { EventBus } from "../bus/index.js";
 import type { Router } from "../rpc/index.js";
 
+import { Connection } from "./connection.service.js";
 import { LIMITS, TOKEN_PROTOCOL_PREFIX } from "./transport.constants.js";
-
-type TUpload = { parts: Buffer[]; size: number; done: boolean };
-
-/** One authenticated client. Enforces per-connection resource limits (SEC9). */
-class Connection {
-  private readonly subs = new Set<string>();
-  /** Highest cursor sent per topic, so replay and live events never duplicate. */
-  private readonly sent = new Map<string, number>();
-  private readonly uploads = new Map<string, TUpload>();
-  private pendingUploadBytes = 0;
-  private windowStart = now();
-  private framesInWindow = 0;
-  private readonly unlisten: () => void;
-
-  constructor(
-    readonly id: string,
-    private readonly ws: WebSocket,
-    private readonly bus: EventBus,
-    private readonly router: Router,
-    private readonly log: ILogger,
-  ) {
-    this.unlisten = bus.on((e) => {
-      this.onEvent(e);
-    });
-    ws.on("message", (raw: Buffer) => {
-      void this.onMessage(raw.toString());
-    });
-    ws.on("close", () => {
-      this.unlisten();
-    });
-    // Oversized or malformed frames surface here; without a listener they would crash the daemon.
-    ws.on("error", (e) => {
-      this.log.warn({ conn: this.id, code: e.name }, "websocket error");
-    });
-  }
-
-  private send(frame: TInner): void {
-    if (this.ws.readyState === this.ws.OPEN) this.ws.send(JSON.stringify(frame));
-  }
-
-  private sendEvent(e: TLoggedEvent): void {
-    if ((this.sent.get(e.topic) ?? 0) >= e.cursor) return;
-    this.sent.set(e.topic, e.cursor);
-    const frame: TEvtFrame = { t: "evt", topic: e.topic, cursor: e.cursor, event: e.event };
-    this.send(frame);
-  }
-
-  private onEvent(e: TLoggedEvent): void {
-    for (const s of this.subs) {
-      if (topicMatches(s, e.topic)) {
-        this.sendEvent(e);
-        return;
-      }
-    }
-  }
-
-  /** Synchronous: no event can be published between the replay and going live. */
-  subscribe(cursors: Readonly<Record<string, number>>): void {
-    for (const [pattern, after] of Object.entries(cursors)) {
-      this.subs.add(pattern);
-      // An explicit topic key wins over a wildcard that also covers it.
-      const topics = pattern.endsWith(":*")
-        ? this.bus.topics(pattern).filter((t) => !Object.hasOwn(cursors, t))
-        : [pattern];
-      for (const topic of topics) {
-        const from = Math.max(after, this.sent.get(topic) ?? 0);
-        if (from > (this.sent.get(topic) ?? 0)) this.sent.set(topic, from);
-        for (const e of this.bus.replay(topic, from)) this.sendEvent(e);
-      }
-    }
-  }
-
-  private takeUpload(uploadId: string): Buffer | undefined {
-    const u = this.uploads.get(uploadId);
-    if (!u?.done) return undefined;
-    this.uploads.delete(uploadId);
-    this.pendingUploadBytes -= u.size;
-    return Buffer.concat(u.parts);
-  }
-
-  private close(reason: string): void {
-    this.log.warn({ conn: this.id, reason }, "closing connection");
-    this.ws.close(1008, reason);
-  }
-
-  private overRate(): boolean {
-    const t = now();
-    if (t - this.windowStart >= 1000) {
-      this.windowStart = t;
-      this.framesInWindow = 0;
-    }
-    this.framesInWindow++;
-    return this.framesInWindow > LIMITS.framesPerSecond;
-  }
-
-  private async onMessage(raw: string): Promise<void> {
-    if (this.overRate()) {
-      this.close("rate limit");
-      return;
-    }
-    const frame = tryParseJson(innerSchema, raw);
-    if (!frame) {
-      this.log.warn({ conn: this.id }, "dropped malformed frame");
-      return;
-    }
-    if (frame.t === "blob") {
-      this.onBlob(frame.blobId, frame.part, frame.last, frame.bytes);
-      return;
-    }
-    if (frame.t !== "cmd") return;
-
-    const hooks: { after?: () => void } = {};
-    const reply = await this.router.dispatch(frame.id, frame.name, frame.args, {
-      deviceId: this.id,
-      takeUpload: (id) => this.takeUpload(id),
-      afterReply: (fn) => {
-        hooks.after = fn;
-      },
-      subscribe: (cursors) => {
-        this.subscribe(cursors);
-      },
-    });
-    if (reply.ok) this.sendData(frame.id, reply.data);
-    else this.send({ t: "res", id: frame.id, ok: false, error: reply.error });
-    hooks.after?.();
-  }
-
-  private onBlob(blobId: string, part: number, last: boolean, base64: string): void {
-    const bytes = Buffer.from(base64, "base64");
-    const existing = this.uploads.get(blobId);
-    if (!existing && this.uploads.size >= LIMITS.concurrentUploads) {
-      this.close("too many uploads");
-      return;
-    }
-    const u = existing ?? { parts: [], size: 0, done: false };
-    u.size += bytes.length;
-    this.pendingUploadBytes += bytes.length;
-    if (u.size > LIMITS.uploadBytes || this.pendingUploadBytes > LIMITS.pendingUploadBytes) {
-      this.close("upload too large");
-      return;
-    }
-    u.parts[part] = bytes;
-    u.done = last;
-    this.uploads.set(blobId, u);
-  }
-
-  /** Inner frames above the threshold travel as blob parts, then a `{ $blob }` reply. */
-  private sendData(id: string, data: unknown): void {
-    const json = JSON.stringify(data ?? {});
-    if (json.length <= FRAME_BLOB_THRESHOLD) {
-      this.send({ t: "res", id, ok: true, data: data ?? {} });
-      return;
-    }
-    const blobId = randomBytes(12).toString("hex");
-    const buf = Buffer.from(json);
-    const parts = Math.ceil(buf.length / BLOB_PART_SIZE);
-    for (let i = 0; i < parts; i++) {
-      const bytes = buf.subarray(i * BLOB_PART_SIZE, (i + 1) * BLOB_PART_SIZE).toString("base64");
-      this.send({ t: "blob", blobId, part: i, last: i === parts - 1, bytes });
-    }
-    this.send({ t: "res", id, ok: true, data: { $blob: blobId } });
-  }
-}
 
 function safeEqual(a: string, b: string): boolean {
   return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -231,7 +61,31 @@ export class LocalTransport {
         return;
       }
       this.wss.handleUpgrade(req, socket, head, (ws) => {
-        new Connection(`local-${String(++this.seq)}`, ws, this.bus, this.router, this.log);
+        const id = `local-${String(++this.seq)}`;
+        const conn = new Connection(
+          id,
+          {
+            send: (text) => {
+              if (ws.readyState === ws.OPEN) ws.send(text);
+            },
+            close: (reason) => {
+              ws.close(1008, reason);
+            },
+          },
+          this.bus,
+          this.router,
+          this.log,
+        );
+        ws.on("message", (raw: Buffer) => {
+          void conn.receive(raw.toString());
+        });
+        ws.on("close", () => {
+          conn.dispose();
+        });
+        // Oversized or malformed frames surface here; without a listener they would crash the daemon.
+        ws.on("error", (e) => {
+          this.log.warn({ conn: id, code: e.name }, "websocket error");
+        });
       });
     });
   }

@@ -15,13 +15,22 @@ import tseslint from "typescript-eslint";
 // Library wrappers (docs/rules/library-calls.md): each I/O library is importable only in its zone.
 // ---------------------------------------------------------------------------
 const LIBRARIES = [
-  { id: "L1", names: ["better-sqlite3"], zone: "daemon-infra-db" },
+  { id: "L1", names: ["better-sqlite3"], zone: "sqlite" },
   { id: "L2", names: ["@agentclientprotocol/sdk"], zone: "daemon-infra-acp" },
   { id: "L3", names: ["ws"], zone: "transport" },
   { id: "L3", names: ["node:http", "http", "node:https", "https"], zone: "transport" },
   { id: "L4", names: ["node:child_process", "child_process"], zone: "process" },
   { id: "L5", names: ["@vscode/ripgrep"], zone: "daemon-infra-search" },
   { id: "L6", names: ["pino"], zone: "daemon-infra-log" },
+  {
+    id: "L11",
+    names: ["@noble/curves", "@noble/ciphers", "@noble/hashes", "libsodium-wrappers-sumo"],
+    zone: "crypto",
+  },
+  { id: "L12", names: ["hono", "@hono/node-server"], zone: "http-framework" },
+  { id: "L13", names: ["jose"], zone: "jwt" },
+  { id: "L14", names: ["qrcode-terminal"], zone: "qr" },
+  { id: "L15", names: ["cloudflare:workers"], zone: "workers" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -96,6 +105,12 @@ const ZONES = [
     ],
   },
   {
+    name: "packages-crypto",
+    files: ["packages/crypto/src/**/*.ts"],
+    allow: ["crypto"],
+    patterns: [UP_TWO, { regex: "^@agentdeck/(?!shared$)", message: "S1: crypto depends only on shared." }],
+  },
+  {
     name: "process",
     files: ["tools/**/*.ts", "e2e/**/*.ts"],
     allow: ["process", "transport"],
@@ -155,7 +170,7 @@ const ZONES = [
   {
     name: "daemon-infra-db",
     files: ["apps/daemon/src/infra/db/**/*.ts"],
-    allow: ["daemon-infra-db"],
+    allow: ["sqlite"],
     patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
   },
   {
@@ -167,6 +182,12 @@ const ZONES = [
   {
     name: "daemon-infra-transport",
     files: ["apps/daemon/src/infra/transport/**/*.ts"],
+    allow: ["transport"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "daemon-infra-relay",
+    files: ["apps/daemon/src/infra/relay/**/*.ts"],
     allow: ["transport"],
     patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
   },
@@ -199,6 +220,86 @@ const ZONES = [
     ],
   },
 
+  // Relay (apps/relay): same layering as the daemon. Hosts (node, worker) live in infra and app.
+  {
+    name: "relay-entry",
+    files: ["apps/relay/src/*.ts"],
+    allow: [],
+    patterns: [UP_TWO, MODULE_INTERNALS],
+  },
+  {
+    name: "relay-tests",
+    files: ["apps/relay/src/*.test.ts"],
+    allow: ["process"],
+    patterns: [UP_TWO, MODULE_INTERNALS],
+  },
+  {
+    name: "relay-app",
+    files: ["apps/relay/src/app/**/*.ts"],
+    allow: ["http-framework", "workers"],
+    patterns: [UP_TWO, MODULE_INTERNALS],
+  },
+  {
+    name: "relay-module-root",
+    files: ["apps/relay/src/modules/*/*.ts"],
+    allow: [],
+    patterns: [
+      UP_TWO,
+      SIBLING,
+      ban(["app", "modules", "infra"], "S4: relay modules use ports, never infra or other modules."),
+    ],
+  },
+  {
+    name: "relay-module-tests",
+    files: ["apps/relay/src/modules/*/*.test.ts"],
+    allow: [],
+    patterns: [
+      UP_TWO,
+      SIBLING,
+      ban(["app", "modules"], "S4: tests may build real infra, never other modules."),
+    ],
+  },
+  {
+    name: "relay-infra",
+    files: ["apps/relay/src/infra/**/*.ts"],
+    allow: [],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "relay-infra-node",
+    files: ["apps/relay/src/infra/node/**/*.ts"],
+    allow: ["transport", "http-framework"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "relay-infra-sql",
+    files: ["apps/relay/src/infra/sql/**/*.ts"],
+    allow: ["sqlite"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "relay-infra-jwt",
+    files: ["apps/relay/src/infra/jwt/**/*.ts"],
+    allow: ["jwt"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "relay-infra-worker",
+    files: ["apps/relay/src/infra/worker/**/*.ts"],
+    allow: ["workers"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "relay-shared",
+    files: ["apps/relay/src/shared/**/*.ts"],
+    allow: [],
+    patterns: [
+      UP_TWO,
+      { regex: "^\\.\\./", message: "S4: shared is flat." },
+      ban(["app", "modules", "infra"], "S4: shared depends on nothing else in the relay."),
+    ],
+  },
+
   // CLI
   { name: "cli-commands", files: ["apps/cli/src/commands/**/*.ts"], allow: [], patterns: [UP_TWO] },
   {
@@ -223,6 +324,12 @@ const ZONES = [
     name: "cli-shared",
     files: ["apps/cli/src/shared/**/*.ts"],
     allow: [],
+    patterns: [UP_TWO, ban(["commands", "lib"], "S4: shared depends on nothing else in the CLI.")],
+  },
+  {
+    name: "cli-shared-output",
+    files: ["apps/cli/src/shared/output/**/*.ts"],
+    allow: ["qr"],
     patterns: [UP_TWO, ban(["commands", "lib"], "S4: shared depends on nothing else in the CLI.")],
   },
 
@@ -308,14 +415,18 @@ const ZONES = [
   },
 ];
 
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 function restrictedImports(zone) {
-  const paths = LIBRARIES.filter((l) => !zone.allow.includes(l.zone)).flatMap((l) =>
-    l.names.map((name) => ({
-      name,
-      message: `${l.id}: ${name} may only be imported in its wrapper (docs/rules/library-calls.md).`,
-    })),
+  const banned = LIBRARIES.filter((l) => !zone.allow.includes(l.zone));
+  const message = (l, name) =>
+    `${l.id}: ${name} may only be imported in its wrapper (docs/rules/library-calls.md).`;
+  const paths = banned.flatMap((l) => l.names.map((name) => ({ name, message: message(l, name) })));
+  // Subpath imports (`@noble/ciphers/chacha.js`, `dayjs/plugin/…`) are the same library.
+  const subpaths = banned.flatMap((l) =>
+    l.names.map((name) => ({ regex: `^${escapeRegex(name)}/`, message: message(l, name) })),
   );
-  return ["error", { paths: [...paths, ...(zone.paths ?? [])], patterns: zone.patterns }];
+  return ["error", { paths: [...paths, ...(zone.paths ?? [])], patterns: [...zone.patterns, ...subpaths] }];
 }
 
 /** N1–N5 (docs/rules/naming.md). */
@@ -351,6 +462,7 @@ export default tseslint.config(
       "tools/lint-fixtures/fixtures/**",
       "apps/mobile/src/shared/components/ui/**",
       "apps/mobile/.expo/**",
+      "**/.wrangler/**",
     ],
   },
   js.configs.recommended,
@@ -405,7 +517,7 @@ export default tseslint.config(
       "check-file/folder-naming-convention": [
         "error",
         {
-          "{apps/{daemon,cli},packages/*,tools/*}/src/**/": "KEBAB_CASE",
+          "{apps/{daemon,cli,relay},packages/*,tools/*}/src/**/": "KEBAB_CASE",
           "apps/mobile/src/!(app)/**/": "KEBAB_CASE",
           "e2e/{src,record}/**/": "KEBAB_CASE",
         },
@@ -508,6 +620,12 @@ export default tseslint.config(
   {
     name: "config-files",
     files: ["**/*.config.{js,ts,mjs}", "eslint.config.js"],
+    rules: { "import-x/no-default-export": "off" },
+  },
+  {
+    // Workers find their handler through the module's default export.
+    name: "worker-entry",
+    files: ["apps/relay/src/main.worker.ts"],
     rules: { "import-x/no-default-export": "off" },
   },
   {

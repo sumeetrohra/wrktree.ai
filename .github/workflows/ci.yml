@@ -60,6 +60,25 @@ jobs:
       - name: App web export
         run: pnpm --filter @agentdeck/mobile export:web
 
+  relay:
+    name: relay (Worker + self-host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Contract tests on both hosts (wrangler dev + Node)
+        run: pnpm --filter @agentdeck/relay test
+        env:
+          RELAY_WORKER_TESTS: "1"
+      - name: Self-host Docker image builds
+        run: docker build -f apps/relay/Dockerfile -t agentdeck-relay:ci .
+
   record:
     name: record E2E video
     runs-on: ubuntu-latest
@@ -78,8 +97,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: phase-1-e2e-video
+          name: e2e-video
           path: |
-            artifacts/phase-1-e2e.mp4
-            artifacts/phase-1-e2e-results.json
+            artifacts/e2e.mp4
+            artifacts/e2e-results.json
           if-no-files-found: warn

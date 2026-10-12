@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 
 import { DaemonClient, CommandError } from "@agentdeck/cli";
 import type { TCommandName, TCommandResult, TDaemonEvent, TEvtFrame } from "@agentdeck/protocol";
+import { relayEnvSchema, startNodeRelay, type TNodeRelay } from "@agentdeck/relay";
+import type { ILogger } from "@agentdeck/shared";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CLI = join(REPO_ROOT, "apps", "cli", "dist", "main.js");
@@ -38,6 +40,21 @@ class CheckFailed extends Error {}
 
 type TIds = { repoId: string; profileId: string; worktreeId: string; chatId: string };
 
+/** Records the relay's log lines, so a test can check nothing secret was ever logged. */
+function recordingLogger(lines: string[]): ILogger {
+  const log = (level: string) => (obj: Record<string, unknown>, msg?: string) => {
+    lines.push(JSON.stringify({ level, ...obj, msg }));
+  };
+  const logger: ILogger = {
+    debug: log("debug"),
+    info: log("info"),
+    warn: log("warn"),
+    error: log("error"),
+    child: () => logger,
+  };
+  return logger;
+}
+
 /**
  * Runs the real daemon and the real `agentdeck` CLI against throwaway git repos.
  * Assertions read events through a second, in-process client of the same local transport.
@@ -58,11 +75,16 @@ export class Harness {
   /** Any event that did not follow its topic's previous cursor by exactly one (gap or duplicate). */
   readonly gaps: string[] = [];
   private waiters = new Set<() => void>();
+  /** The local relay (Node self-host build), when the scenario needs one. */
+  relay: TNodeRelay | null = null;
+  readonly relayDir: string;
+  readonly relayLog: string[] = [];
 
   private constructor(readonly sink: ISink) {
     this.root = realpathSync.native(mkdtempSync(join(tmpdir(), "agentdeck-e2e-")));
     this.home = join(this.root, "home");
     this.src = join(this.root, "src");
+    this.relayDir = join(this.root, "relay");
     mkdirSync(this.src, { recursive: true });
     this.env = {
       ...process.env,
@@ -72,13 +94,16 @@ export class Harness {
       AGENTDECK_RESTART_BACKOFF_MS: "300,300,300",
       /** SEC6: must never reach an agent or a setup script. */
       AGENTDECK_SECRET_CANARY: "sk_live_e2e_canary",
+      /** CI machines have no usable OS keystore; keep the identity secret in a 0600 file. */
+      AGENTDECK_KEYSTORE: "file",
       FORCE_COLOR: "1",
     };
     delete this.env["NO_COLOR"];
   }
 
-  static async start(sink: ISink = nullSink): Promise<Harness> {
+  static async start(sink: ISink = nullSink, opts: { relay?: boolean } = {}): Promise<Harness> {
     const h = new Harness(sink);
+    if (opts.relay) await h.startRelay();
     await h.startDaemon();
     await h.startWatcher();
     return h;
@@ -115,6 +140,86 @@ export class Harness {
   }
 
   // ---------- processes ----------
+
+  async startRelay(): Promise<void> {
+    this.echo("agentdeck-relay &   # local self-host relay, dev mode");
+    this.relay = await startNodeRelay({
+      port: 0,
+      dataDir: this.relayDir,
+      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_JWT_SECRET: "e2e-only-secret-e2e-only-secret-e2e" }),
+      log: recordingLogger(this.relayLog),
+    });
+    this.env["AGENTDECK_RELAY_URL"] = this.relay.url;
+  }
+
+  get relayUrl(): string {
+    if (!this.relay) throw new Error("this scenario has no relay");
+    return this.relay.url;
+  }
+
+  /** Waits until the daemon reports its relay link up. */
+  async waitRelayConnected(timeoutMs = 10_000): Promise<void> {
+    const end = Date.now() + timeoutMs;
+    for (;;) {
+      const s = await this.client.call("relay.status", {});
+      if (s.connected) return;
+      if (Date.now() > end) throw new Error("daemon never connected to the relay");
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  /**
+   * Starts `agentdeck <args>` and returns while it runs, so a test can act on its output
+   * (e.g. read the pairing link `agentdeck pair` prints, then scan it with a phone).
+   */
+  cliStream(args: string[]): {
+    waitFor(re: RegExp, timeoutMs?: number): Promise<RegExpExecArray>;
+    done: Promise<{ code: number; out: string }>;
+    kill(): void;
+  } {
+    this.echo(["agentdeck", ...args].join(" "));
+    const child = spawn(process.execPath, [CLI, ...args], {
+      env: this.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let out = "";
+    const listeners = new Set<() => void>();
+    const onData = (d: Buffer) => {
+      out += d.toString();
+      this.sink.write("cmd", d.toString().replace(/\n/g, "\r\n"));
+      for (const l of listeners) l();
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    const done = new Promise<{ code: number; out: string }>((resolve) => {
+      child.on("close", (code) => {
+        resolve({ code: code ?? 1, out: stripAnsi(out) });
+      });
+    });
+    return {
+      done,
+      kill: () => {
+        child.kill();
+      },
+      waitFor: (re, timeoutMs = 15_000) =>
+        new Promise((resolve, reject) => {
+          const scan = () => {
+            const m = re.exec(stripAnsi(out));
+            if (m) {
+              listeners.delete(scan);
+              clearTimeout(timer);
+              resolve(m);
+            }
+          };
+          const timer = setTimeout(() => {
+            listeners.delete(scan);
+            reject(new Error(`CLI never printed ${String(re)}: ${stripAnsi(out)}`));
+          }, timeoutMs);
+          listeners.add(scan);
+          scan();
+        }),
+    };
+  }
 
   async startDaemon(): Promise<void> {
     this.echo("agentdeck daemon &");
@@ -216,6 +321,7 @@ export class Harness {
       await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
       d.kill("SIGKILL");
     }
+    await this.relay?.close();
     for (let i = 0; i < 5; i++) {
       try {
         rmSync(this.root, { recursive: true, force: true });

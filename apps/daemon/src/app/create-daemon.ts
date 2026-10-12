@@ -1,22 +1,25 @@
-import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 
 import { AgentdeckError } from "@agentdeck/protocol";
-import { newId, now, type ILogger } from "@agentdeck/shared";
+import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
 
 import { EventBus } from "#src/infra/bus/index.js";
 import { openDb } from "#src/infra/db/index.js";
+import { loadIdentity } from "#src/infra/keystore/index.js";
 import { Router } from "#src/infra/rpc/index.js";
 import type { TRuntime } from "#src/infra/runtime/index.js";
 import { LocalTransport } from "#src/infra/transport/index.js";
 import { AgentRegistry } from "#src/modules/agents/index.js";
 import { BlobStore } from "#src/modules/blobs/index.js";
+import { DevicesService } from "#src/modules/devices/index.js";
 import { FileJail } from "#src/modules/files/index.js";
 import { GitService } from "#src/modules/git/index.js";
 import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
 import { WorktreesService } from "#src/modules/worktrees/index.js";
+import { daemonConfigSchema } from "#src/shared/config.schema.js";
 import type { TDaemonOptions } from "#src/shared/daemon-options.types.js";
 import { readDaemonEnv } from "#src/shared/env.schema.js";
 import { pathsFor } from "#src/shared/paths.utils.js";
@@ -24,6 +27,7 @@ import { DAEMON_VERSION } from "#src/shared/version.constants.js";
 
 import type { TModules } from "./app.types.js";
 import { createHandlers } from "./handlers/index.js";
+import { Remote } from "./remote.service.js";
 
 const DEFAULT_PORT_RANGE: readonly [number, number] = [41000, 41999];
 const DEFAULT_BACKOFF_MS: readonly number[] = [1000, 4000, 15000];
@@ -35,6 +39,14 @@ function portRange(raw: string | undefined): readonly [number, number] {
     throw new Error(`AGENTDECK_PORT_RANGE must look like 41000-41999, got ${raw}`);
   }
   return [lo, hi];
+}
+
+/** The relay URL from the environment, else from `config.json`, else none (local-only). */
+function relayUrlFor(home: string, fromEnv: string | undefined): string | null {
+  if (fromEnv !== undefined) return fromEnv;
+  const file = pathsFor(home).config;
+  if (!existsSync(file)) return null;
+  return tryParseJson(daemonConfigSchema, readFileSync(file, "utf8"))?.relayUrl ?? null;
 }
 
 export function optionsFromEnv(home: string): TDaemonOptions {
@@ -51,6 +63,8 @@ export function optionsFromEnv(home: string): TDaemonOptions {
       : DEFAULT_BACKOFF_MS,
     patchIntervalMs: 50,
     devOrigins: env.AGENTDECK_DEV_ORIGINS ? env.AGENTDECK_DEV_ORIGINS.split(",").map((o) => o.trim()) : [],
+    relayUrl: relayUrlFor(home, env.AGENTDECK_RELAY_URL),
+    keystore: env.AGENTDECK_KEYSTORE ?? "os",
   };
 }
 
@@ -109,8 +123,11 @@ export class Daemon {
         sessions.deleteWorktreeChats(id);
       },
     };
+    const devices = new DevicesService(this.rt);
     this.modules = {
       daemonId: newId("dev"),
+      devices,
+      remote: new Remote(opts.relayUrl, devices, log),
       bus: this.rt.bus,
       repos,
       profiles,
@@ -140,12 +157,19 @@ export class Daemon {
       paths.daemonJson,
       JSON.stringify({ pid: process.pid, port: this.port, version: DAEMON_VERSION, startedAt: now() }),
     );
+    const identity = await loadIdentity(
+      { identity: paths.identity, secretFile: paths.identitySecret },
+      this.rt.opts.keystore,
+      this.rt.log,
+    );
+    this.modules.remote.start(identity, this.rt.bus, this.router);
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;
   }
 
   async stop(): Promise<void> {
+    this.modules.remote.stop();
     this.modules.sessions.shutdown();
     await this.modules.worktrees.idle();
     await this.transport?.close();

@@ -44,7 +44,11 @@
       "better-sqlite3",
       "@vscode/ripgrep",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "miniflare>undici": "7.29.1",
+      "miniflare>sharp": "0.35.5"
+    }
   },
   "lint-staged": {
     "*.{ts,tsx,js}": [

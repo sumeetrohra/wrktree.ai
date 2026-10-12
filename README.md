@@ -25,15 +25,17 @@ when one hits its usage limit.
 
 ## Status
 
-**Phase 1 (daemon core) is built**: the daemon runs agents over ACP in worktrees and is fully
-usable from the `agentdeck` CLI, with no relay or app yet. 7 end-to-end scenarios and 67 unit
-tests pass on every push; see [`docs/phase-1.md`](docs/phase-1.md).
+**Phase 1 (daemon core) is built**, and **Phase 2a** (end-to-end encrypted pairing, the relay and
+the daemon's relay transport) is too: a phone can pair through the relay and drive the daemon,
+with every frame sealed end to end. The app itself (Phase 2b) is next. 12 end-to-end scenarios and
+the unit, contract and lint-rule tests pass on every push; see [`docs/phase-1.md`](docs/phase-1.md)
+and [`docs/phase-2.md`](docs/phase-2.md).
 
 | Phase | What | State |
 |---|---|---|
 | 0 | Spikes: kill the three biggest unknowns | partly done, see [`docs/spikes.md`](docs/spikes.md) |
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
-| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | next |
+| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | 2a ✅ built (relay, crypto, pairing); 2b (app) next |
 | 3 | Review, code, preview — judge an agent's work without a laptop | |
 | 4 | Multi-account power features and public launch | |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
@@ -50,7 +52,7 @@ pnpm install
 pnpm build
 pnpm test          # unit tests
 pnpm test:e2e      # end-to-end: real daemon + CLI + scripted ACP agent
-pnpm e2e:record    # same run, rendered to artifacts/phase-1-e2e.mp4 (needs ffmpeg + Chromium)
+pnpm e2e:record    # same run, rendered to artifacts/e2e.mp4 (needs ffmpeg + Chromium)
 pnpm lint && pnpm typecheck   # strict lint (structure, naming, library wrappers) and tsc
 pnpm knip          # no unused files, exports or dependencies
 pnpm --filter @agentdeck/mobile start   # Expo app skeleton (web: export:web)
@@ -64,10 +66,10 @@ Try it by hand with the scripted agent:
 
 ```sh
 export AGENTDECK_HOME=/tmp/agentdeck AGENTDECK_DEV_AGENTS=1
-node apps/cli/dist/index.js daemon &
-node apps/cli/dist/index.js dev watch &
-node apps/cli/dist/index.js repo add ~/src/my-repo
-node apps/cli/dist/index.js profile add fake --name Personal
+node apps/cli/dist/main.js daemon &
+node apps/cli/dist/main.js dev watch &
+node apps/cli/dist/main.js repo add ~/src/my-repo
+node apps/cli/dist/main.js profile add fake --name Personal
 ```
 
 ## Docs
@@ -75,6 +77,8 @@ node apps/cli/dist/index.js profile add fake --name Personal
 - [`docs/rules/`](docs/rules/README.md) — typing, naming, structure, library-call, React,
   data, security and testing rules, each tagged with what enforces it
 - [`docs/phase-1.md`](docs/phase-1.md) — what Phase 1 built, its E2E suite and the video
+- [`docs/phase-2.md`](docs/phase-2.md) — Phase 2: relay, crypto and pairing (2a), the app (2b)
+- [`docs/relay-deploy.md`](docs/relay-deploy.md) — deploying the relay to Cloudflare or self-hosting it
 - [`docs/spikes.md`](docs/spikes.md) — pinned versions and open Phase 0 questions
 - [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation
   plan: protocol, data model, daemon, chat lifecycle, relay, pairing and encryption,

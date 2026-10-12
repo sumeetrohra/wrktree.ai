@@ -32,6 +32,26 @@ export function run(
   });
 }
 
+/** Runs a program without a shell, writing `input` to its stdin (keeps secrets out of argv). */
+export function runWithInput(file: string, args: readonly string[], input: string): Promise<TExecResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(file, args, { env: childEnv(), windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.stderr.on("data", (d: Buffer) => {
+      stderr += d.toString();
+    });
+    child.once("error", reject);
+    child.once("close", (code) => {
+      resolve({ stdout, stderr, code: code ?? 1 });
+    });
+    child.stdin.end(input);
+  });
+}
+
 /** `git …` in `cwd`; throws GIT_FAILED with stderr on a non-zero exit unless `allow` lists the code. */
 export async function git(
   cwd: string,

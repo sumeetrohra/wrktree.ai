@@ -8,5 +8,7 @@ export type TScenario = {
   summary: string;
   /** The tech-spec acceptance criteria this scenario covers. */
   covers: string[];
+  /** Start a local relay before the daemon (Phase 2 scenarios). */
+  relay?: boolean;
   run(h: Harness): Promise<void>;
 };

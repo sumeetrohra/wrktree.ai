@@ -54,9 +54,9 @@
   const handlers = {
     intro(e) {
       card(
-        `<div class="kicker">Agentdeck · Phase 1 · Daemon core</div>` +
+        `<div class="kicker">Agentdeck · Phases 1–2 · Daemon core and relay</div>` +
           `<h1>End-to-end tests</h1>` +
-          `<p>${pb.total} scenarios against the real daemon and the real <code>agentdeck</code> CLI, ` +
+          `<p>${pb.total} scenarios against the real daemon, the real <code>agentdeck</code> CLI and a local relay, ` +
           `driving a scripted ACP agent (no tokens spent).</p>` +
           `<p>Left: commands as typed. Middle: the live event stream. Right: assertions as they pass.</p>` +
           `<div class="meta">${esc(e.meta)}</div>`,
@@ -105,7 +105,7 @@
         )
         .join("");
       card(
-        `<div class="kicker">Phase 1 · Summary</div>` +
+        `<div class="kicker">Summary</div>` +
           `<h1>${e.passed}/${e.total} scenarios passed</h1>` +
           `<p>${e.checks} assertions · real run time ${(e.ms / 1000).toFixed(1)} s (idle gaps shortened in this video)</p>` +
           `<table>${rows}</table><div class="meta">${esc(e.meta)}</div>`,

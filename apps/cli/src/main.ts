@@ -2,8 +2,12 @@
 import { runDaemon } from "@agentdeck/daemon";
 
 import { devCommand } from "#src/commands/dev.command.js";
+import { devicesCommand } from "#src/commands/devices.command.js";
 import { HELP } from "#src/commands/help.constants.js";
+import { installCommand } from "#src/commands/install.command.js";
+import { pairCommand } from "#src/commands/pair.command.js";
 import { profileCommand } from "#src/commands/profile.command.js";
+import { relayCommand } from "#src/commands/relay.command.js";
 import { repoCommand } from "#src/commands/repo.command.js";
 import { CommandError } from "#src/lib/daemon-client/index.js";
 import { c, print, printError } from "#src/shared/output/index.js";
@@ -24,6 +28,14 @@ async function main(argv: readonly string[]): Promise<void> {
       return profileCommand(rest);
     case "dev":
       return devCommand(rest);
+    case "pair":
+      return pairCommand(rest);
+    case "devices":
+      return devicesCommand(rest);
+    case "relay":
+      return relayCommand(rest);
+    case "install":
+      return installCommand(rest);
     default:
       throw new Error(`Unknown command: ${argv.join(" ")}\n\n${HELP}`);
   }

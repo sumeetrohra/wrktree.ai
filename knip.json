@@ -2,12 +2,12 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {},
-    "apps/daemon": {
+    "apps/cli": {
       "entry": ["src/main.ts", "src/index.ts", "src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
     },
-    "apps/cli": {
-      "entry": ["src/main.ts", "src/index.ts"],
+    "apps/daemon": {
+      "entry": ["src/main.ts", "src/index.ts", "src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
     },
     "apps/mobile": {
@@ -24,6 +24,15 @@
       "ignore": ["src/shared/components/ui/**"],
       "metro": false
     },
+    "apps/relay": {
+      "entry": ["src/main.node.ts", "src/main.worker.ts", "src/index.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["cloudflare"]
+    },
+    "e2e": {
+      "project": ["src/**/*.ts", "record/**/*.ts"],
+      "entry": ["src/**/*.test.ts"]
+    },
     "packages/*": {
       "entry": ["src/index.ts", "src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
@@ -34,10 +43,6 @@
     },
     "tools/lint-fixtures": {
       "project": ["src/**/*.ts"],
-      "entry": ["src/**/*.test.ts"]
-    },
-    "e2e": {
-      "project": ["src/**/*.ts", "record/**/*.ts"],
       "entry": ["src/**/*.test.ts"]
     }
   },

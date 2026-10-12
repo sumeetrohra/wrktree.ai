@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.8.0",
+    "@agentdeck/crypto": "workspace:*",
     "@agentdeck/fake-agent": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
     "@agentdeck/shared": "workspace:*",

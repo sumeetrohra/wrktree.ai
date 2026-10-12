@@ -19,7 +19,9 @@ in its own `.types.ts`, and the composition layer passes in an implementation.
 ```
 packages/protocol/   zod schemas for every frame, command, event and model. Depends on nothing internal.
 packages/shared/     ids, time, json parsing, result, logger interface. Depends on nothing internal.
+packages/crypto/     identity keys, pairing transcript, handshake, sealed frames. Depends only on shared.
 apps/daemon/         the daemon (Node)
+apps/relay/          the relay: Cloudflare Worker + Durable Objects, and a Node self-host build
 apps/cli/            the `agentdeck` CLI (Node)
 apps/mobile/         the app (Expo: iOS, Android, web)
 tools/fake-agent/    scripted ACP agent for tests
@@ -66,6 +68,23 @@ shared/output/              terminal formatting and printing
 ```
 
 `main → commands → lib, shared`; `lib → shared`; `shared → shared`.
+
+## Relay (`apps/relay/src`)
+
+```
+main.worker.ts, main.node.ts  entries for the two hosts
+app/create-relay.ts           the Hono API (same on both hosts)
+app/routes/*.routes.ts        one file per route group ("handlers")
+app/node-host.ts              self-host composition (one SQLite file per account hub)
+app/worker-host.ts            Worker composition (Directory and Hub Durable Objects)
+modules/directory/            accounts, devices, magic-link codes, pairing offers
+modules/hub/                  one account's mailbox: routing, buffer, acks, wake pushes
+infra/{sql,node,worker,jwt,mail,oauth,push,log}  one wrapper per library or runtime
+shared/                       ports (`ISql`, `IHubSockets`, `IPushSender`), constants, env schema
+```
+
+Same rules as the daemon. Modules depend only on ports in `shared/`, so the same directory and hub
+code runs on Durable Object SQLite and on better-sqlite3.
 
 ## App (`apps/mobile/src`)
 

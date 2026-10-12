@@ -67,10 +67,10 @@ events through a second client of the same local transport. The agent is
 
 `pnpm e2e:record` runs the same scenarios under a recording sink, then replays the captured
 terminals in `e2e/record/player.html` (xterm.js) inside headless Chromium with video on, and
-writes `artifacts/phase-1-e2e.mp4`. Left pane: commands as typed and their output. Middle:
+writes `artifacts/e2e.mp4`. Left pane: commands as typed and their output. Middle:
 the live `agentdeck dev watch` stream. Right: assertions as they pass. Idle gaps are capped at
 1.2 s and short pauses are added before each step so it can be followed. CI uploads the
-video as the `phase-1-e2e-video` artifact.
+video as the `e2e-video` artifact.
 
 ## Deviations from the spec (all additive or deliberate)
 

@@ -113,6 +113,9 @@ export function formatEvent(f: TEvtFrame): string {
     case "preview.status":
       body = `preview ${e.status}`;
       break;
+    case "device.updated":
+      body = `device ${e.device.name} ${e.device.revokedAt === null ? c.green("paired") : c.red("revoked")}`;
+      break;
   }
   return `${where} ${body}`;
 }

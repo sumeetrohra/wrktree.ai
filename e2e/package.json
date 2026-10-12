@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@agentdeck/cli": "workspace:*",
+    "@agentdeck/crypto": "workspace:*",
     "@agentdeck/protocol": "workspace:*",
+    "@agentdeck/relay": "workspace:*",
     "@agentdeck/shared": "workspace:*",
     "@xterm/addon-fit": "0.10.0",
     "@xterm/xterm": "5.5.0",

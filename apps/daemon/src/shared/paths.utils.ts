@@ -15,6 +15,12 @@ export type TPaths = {
   daemonJson: string;
   /** Local transport bearer token, mode 0600. */
   localToken: string;
+  /** User settings written by the CLI (`relayUrl`). */
+  config: string;
+  /** This machine's identity keys, sealed with a secret from the OS keystore. */
+  identity: string;
+  /** Fallback for the sealing secret when no OS keystore is available, mode 0600. */
+  identitySecret: string;
 };
 
 /** The daemon's data folder. `AGENTDECK_HOME` overrides it (tests, multiple daemons). */
@@ -42,5 +48,8 @@ export function pathsFor(home: string): TPaths {
     logs: join(home, "logs"),
     daemonJson: join(home, "daemon.json"),
     localToken: join(home, "local-token"),
+    config: join(home, "config.json"),
+    identity: join(home, "identity.sealed"),
+    identitySecret: join(home, "identity.secret"),
   };
 }

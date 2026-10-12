@@ -1,7 +1,7 @@
 /**
- * Runs every Phase 1 scenario under a recording sink, then replays the
+ * Runs every Phase 1 and Phase 2 scenario under a recording sink, then replays the
  * captured terminals in record/player.html inside headless Chromium with
- * video recording on, and encodes artifacts/phase-1-e2e.mp4.
+ * video recording on, and encodes artifacts/e2e.mp4.
  *
  *   pnpm e2e:record            (needs ffmpeg and a Playwright Chromium)
  */
@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { chromium } from "playwright-core";
 
 import { Harness, REPO_ROOT, type ISink } from "../src/harness.ts";
-import { scenarios } from "../src/scenarios/index.ts";
+import { relayScenarios, scenarios } from "../src/scenarios/index.ts";
 
 const require = createRequire(import.meta.url);
 const OUT = join(REPO_ROOT, "artifacts");
@@ -66,7 +66,11 @@ async function runScenarios(): Promise<{ recs: TRec[]; rows: TRow[]; totalMs: nu
       process.stdout.write(`      ${ok ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}\n`);
     },
   };
-  for (const s of scenarios) {
+  const all = [
+    ...scenarios.map((s) => ({ s, relay: false })),
+    ...relayScenarios.map((s) => ({ s, relay: true })),
+  ];
+  for (const { s, relay } of all) {
     process.stdout.write(`\n${s.n}. ${s.title}\n`);
     recs.push({ t: t(), kind: "scenario", n: s.n, title: s.title, summary: s.summary, covers: s.covers });
     const started = Date.now();
@@ -74,7 +78,7 @@ async function runScenarios(): Promise<{ recs: TRec[]; rows: TRow[]; totalMs: nu
     let h: Harness | null = null;
     let error: string | undefined;
     try {
-      h = await Harness.start(sink);
+      h = await Harness.start(sink, { relay });
       await s.run(h);
     } catch (e) {
       error = (e as Error).message.split("\n")[0];
@@ -121,7 +125,7 @@ function playback(recs: TRec[], rows: TRow[], totalMs: number, meta: string) {
     ms: totalMs,
     meta,
   });
-  return { total: scenarios.length, events, tail: 9000, durationMs: play + 9000 };
+  return { total: scenarios.length + relayScenarios.length, events, tail: 9000, durationMs: play + 9000 };
 }
 
 function buildHtml(pb: ReturnType<typeof playback>): string {
@@ -190,11 +194,11 @@ async function main(): Promise<void> {
   mkdirSync(OUT, { recursive: true });
   const meta = `${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · commit ${gitSha()} · ${platform()} ${release()} ${arch()} · Node ${process.versions.node}`;
   const { recs, rows, totalMs } = await runScenarios();
-  writeFileSync(join(OUT, "phase-1-e2e-results.json"), JSON.stringify({ meta, rows, totalMs }, null, 2));
+  writeFileSync(join(OUT, "e2e-results.json"), JSON.stringify({ meta, rows, totalMs }, null, 2));
   const pb = playback(recs, rows, totalMs, meta);
-  const htmlPath = join(OUT, "phase-1-e2e-player.html");
+  const htmlPath = join(OUT, "e2e-player.html");
   writeFileSync(htmlPath, buildHtml(pb));
-  const mp4 = join(OUT, "phase-1-e2e.mp4");
+  const mp4 = join(OUT, "e2e.mp4");
   process.stdout.write(`\nRendering ${(pb.durationMs / 1000).toFixed(0)} s of video…\n`);
   await render(htmlPath, pb.durationMs, mp4);
   const passed = rows.filter((r) => r.ok).length;

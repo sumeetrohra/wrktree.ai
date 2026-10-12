@@ -58,4 +58,10 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE TABLE topic_cursors (topic TEXT PRIMARY KEY, cursor INTEGER NOT NULL);
   `,
+  // 2: Phase 2 pairing. `public_key` holds the phone's Ed25519 key (base64url); a device is
+  // usable once the user confirmed the short code.
+  `
+  ALTER TABLE devices ADD COLUMN kind TEXT NOT NULL DEFAULT 'phone';
+  ALTER TABLE devices ADD COLUMN confirmed_at INTEGER;
+  `,
 ];

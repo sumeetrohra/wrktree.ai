@@ -11,4 +11,8 @@ export type TDaemonOptions = {
   patchIntervalMs: number;
   /** Extra browser origins allowed on the local transport (development only; SEC4). */
   devOrigins: readonly string[];
+  /** Relay base URL, or null to run local-only. */
+  relayUrl: string | null;
+  /** Where the identity's sealing secret lives. */
+  keystore: "os" | "file";
 };
