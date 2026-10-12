@@ -21,6 +21,13 @@ library a one-file change.
 | L13 | `jose` | `apps/relay/src/infra/jwt/` | `lint:no-restricted-imports` |
 | L14 | `qrcode-terminal` | `apps/cli/src/shared/output/` | `lint:no-restricted-imports` |
 | L15 | `cloudflare:workers` | `apps/relay/src/app/worker-host.ts`, `apps/relay/src/infra/worker/` | `lint:no-restricted-imports` |
+| L16 | `react-native-mmkv` | `apps/mobile/src/lib/storage/` | `lint:no-restricted-imports` |
+| L17 | `expo-secure-store` | `apps/mobile/src/lib/secure-store/` | `lint:no-restricted-imports` |
+| L18 | `expo-notifications` | `apps/mobile/src/lib/notifications/` | `lint:no-restricted-imports` |
+| L19 | `expo-camera` | `apps/mobile/src/lib/camera/` | `lint:no-restricted-imports` |
+| L20 | `expo-image-picker`, `expo-clipboard` | `apps/mobile/src/lib/media/` | `lint:no-restricted-imports` |
+| L21 | `expo-haptics`, `expo-device` | `apps/mobile/src/lib/device/` | `lint:no-restricted-imports` |
+| L22 | `expo-crypto` | `apps/mobile/src/lib/api/` (the `getRandomValues` polyfill for Hermes) | `lint:no-restricted-imports` |
 | L10 | `react-native` primitives that have a design-system equivalent (`Pressable`, `TextInput`, `Text`, `Button`, `Switch`) | `apps/mobile/src/shared/components/ui/` | `lint:no-restricted-imports` |
 
 A row covers the library's subpath imports too (`@noble/hashes/sha2.js`, `dayjs/plugin/…`).

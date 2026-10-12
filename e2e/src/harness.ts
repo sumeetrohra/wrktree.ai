@@ -101,8 +101,12 @@ export class Harness {
     delete this.env["NO_COLOR"];
   }
 
-  static async start(sink: ISink = nullSink, opts: { relay?: boolean } = {}): Promise<Harness> {
+  static async start(
+    sink: ISink = nullSink,
+    opts: { relay?: boolean; webRoot?: string } = {},
+  ): Promise<Harness> {
     const h = new Harness(sink);
+    if (opts.webRoot) h.env["AGENTDECK_WEB_ROOT"] = opts.webRoot;
     if (opts.relay) await h.startRelay();
     await h.startDaemon();
     await h.startWatcher();

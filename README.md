@@ -25,18 +25,18 @@ when one hits its usage limit.
 
 ## Status
 
-**Phase 1 (daemon core) is built**, and **Phase 2a** (end-to-end encrypted pairing, the relay and
-the daemon's relay transport) is too: a phone can pair through the relay and drive the daemon,
-with every frame sealed end to end. The app itself (Phase 2b) is next. 12 end-to-end scenarios and
-the unit, contract and lint-rule tests pass on every push; see [`docs/phase-1.md`](docs/phase-1.md)
-and [`docs/phase-2.md`](docs/phase-2.md).
+**Phases 1 and 2 are built.** The daemon runs agents in worktrees; a phone pairs through the
+relay by QR code and drives it end to end encrypted, from the app (tested as its web build in
+Chromium; native builds need an EAS project). The daemon also serves the app as a desktop web UI.
+14 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+[`docs/phase-1.md`](docs/phase-1.md) and [`docs/phase-2.md`](docs/phase-2.md).
 
 | Phase | What | State |
 |---|---|---|
 | 0 | Spikes: kill the three biggest unknowns | partly done, see [`docs/spikes.md`](docs/spikes.md) |
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
-| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | 2a ✅ built (relay, crypto, pairing); 2b (app) next |
-| 3 | Review, code, preview — judge an agent's work without a laptop | |
+| 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
+| 3 | Review, code, preview — judge an agent's work without a laptop | next |
 | 4 | Multi-account power features and public launch | |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 

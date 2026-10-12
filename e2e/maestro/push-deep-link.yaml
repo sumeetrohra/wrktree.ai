@@ -1,0 +1,13 @@
+appId: dev.agentdeck.app
+---
+# With the app in the background, ask the agent for something that needs permission from the
+# desktop (`agentdeck dev send chat.send …`), then tap the notification.
+- launchApp
+- pressKey: Home
+- extendedWaitUntil:
+    visible: "A session needs you"
+    timeout: 120000
+- tapOn: "A session needs you"
+- extendedWaitUntil:
+    visible: "Allow once"
+    timeout: 60000

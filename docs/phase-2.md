@@ -8,7 +8,7 @@ Phase 2 ships in two milestones:
 | Milestone | What | Status |
 |---|---|---|
 | **2a** | `packages/crypto`, the relay (Worker + self-host), the daemon's relay transport, pairing, `agentdeck pair / devices / relay / install` | **built** |
-| **2b** | the app: onboarding, QR pairing, repos → worktrees → chats, chat screen, permission sheet, composer, push and deep links, offline cache | next |
+| **2b** | the app: onboarding, QR pairing, repos → worktrees → chats, chat screen, permission sheet, composer, push and deep links, offline cache; the desktop web UI | **built** (web-tested; native builds need EAS) |
 
 ## 2a: what exists
 
@@ -101,7 +101,80 @@ node apps/cli/dist/main.js daemon &
 node apps/cli/dist/main.js pair
 ```
 
-Until the app lands (2b), the phone side is the E2E phone simulator (`e2e/src/phone-sim.ts`).
+The app (2b, below) is the phone side; the 2a scenarios use a phone simulator (`e2e/src/phone-sim.ts`).
+
+## 2b: the app
+
+```
+apps/mobile/src/
+  app/                    routes: (onboarding)/pair, sign-in, confirm-code; (main)/index, repo/[repoId],
+                          repo/[repoId]/new, wt/[worktreeId], wt/[worktreeId]/chat/[chatId], chat/[chatId],
+                          devices, settings, wake
+  pages/                  one page per route, plus pages/root (the shell that starts every module's sync)
+  modules/                auth, pairing, machines, repos, worktrees, profiles, chats, permissions,
+                          composer, devices
+  lib/api/                RelayConnection (handshake, sealed frames, acks, offline queue, cursors),
+                          LocalConnection (desktop web), pairing, relay HTTP API, connection store
+  lib/{storage,secure-store,notifications,camera,media,device}   one wrapper per native library
+```
+
+- **Onboarding.** Scan the QR code (or paste its link) → sign in to that relay with an emailed code
+  → the app claims the offer, sends `pair.hello`, checks the daemon's signature and shows the
+  six-digit code → it connects as soon as the desktop confirms.
+- **Chats.** A Zustand chat store per chat (items, order, status, pending permission, queued
+  count), fed by daemon events and backed by MMKV (last 200 items), so a cold start shows the
+  conversation at once. FlashList renders one component per `ChatItem.kind`; tool cards collapse.
+- **Permission sheet** above the composer: Allow once, Always, Deny, Deny + message; a haptic when
+  a request arrives. **Composer:** multiline input; attach from the library, the camera or the
+  clipboard; queues while a turn runs.
+- **Offline.** `chat.send`, `permission.respond` and `chat.cancel` queue in MMKV with their `CmdId`
+  and run on reconnect. Every reconnect handshakes again and replays from the saved cursors; the
+  status turns `online` only once the replay is applied. The web build also reacts to the browser's
+  `offline`/`online` events.
+- **Push.** After pairing the app registers its Expo push token with the relay. A tap opens
+  `/wake`, which waits until the phone has caught up and opens the chat with the newest pending
+  permission (the push itself carries nothing).
+- **Revocation.** A revoked phone is told on its open socket (`relay.closed`) or, if it was away,
+  finds out from `GET /v1/devices/me` on its next connect attempt, and shows a "removed" screen.
+- **Desktop web.** With `AGENTDECK_WEB_ROOT=apps/mobile/dist`, the daemon serves the same app.
+  `agentdeck open` opens it with a one-time code in the URL fragment, which the page trades for the
+  local token (SEC17). It talks to the local transport directly: no relay, no crypto.
+
+Decisions:
+
+- **No native crypto module.** `packages/crypto` is pure JS (`@noble`), so pairing and sessions
+  run the same code in Node, the browser and Hermes (with `expo-crypto` for random bytes).
+- **Module sync at startup.** Expo Router loads routes lazily, so an event listener registered when
+  a module is imported could miss events while the user is on another screen. Each module exposes
+  `start…Sync()`, and `pages/root` calls them all at startup.
+
+### End-to-end tests (2b)
+
+`pnpm test:e2e:app` (CI job `app E2E`) builds the web export and drives it in a phone-sized
+Chromium against the real daemon, CLI and relay:
+
+| # | Scenario | Covers |
+|---|---|---|
+| 13 | The app: pair, run a task, go offline, get woken, get revoked | paste the link, sign in with the emailed code, matching codes; New task → streaming → permission sheet → Allow once → done; airplane mode → one content-free push → reconnect, catch up, approve; `/wake` opens the chat that needs the user; `agentdeck devices revoke` → "removed" screen |
+| 14 | The desktop web UI, served by the daemon | `agentdeck open` → one-time link → repos over the local connection; the same link in another browser is refused |
+
+`pnpm e2e:record` also renders these into `artifacts/app-e2e.mp4` (captioned per step and check).
+Jest covers the chat store, patch application, item renderers, the permission sheet, branch
+naming and the home page (11 tests). Maestro flows for a development build are in `e2e/maestro/`.
+
+### Try the app
+
+```sh
+pnpm build && pnpm --filter @agentdeck/mobile export:web
+RELAY_DEV=1 RELAY_JWT_SECRET=$(openssl rand -hex 32) node apps/relay/dist/main.node.js &
+export AGENTDECK_HOME=/tmp/agentdeck AGENTDECK_DEV_AGENTS=1 AGENTDECK_RELAY_URL=http://127.0.0.1:8787
+AGENTDECK_WEB_ROOT=apps/mobile/dist node apps/cli/dist/main.js daemon &
+node apps/cli/dist/main.js open                     # desktop web UI
+pnpm --filter @agentdeck/mobile web                 # or the app in a browser tab; pair with `agentdeck pair`
+```
+
+On a phone: `eas build --profile development` (see `apps/mobile/eas.json`); push needs an EAS
+project id in the app config.
 
 ## Acceptance criteria that need real devices
 

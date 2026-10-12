@@ -37,6 +37,7 @@ pnpm knip            # unused files, exports, dependencies
 pnpm audit --audit-level high   # exceptions are reviewed in docs/rules/security.md
 pnpm --filter @agentdeck/mobile test        # app unit tests (jest-expo)
 pnpm --filter @agentdeck/mobile export:web  # app web build
+pnpm test:e2e:app    # the app's web build in Chromium against daemon + relay (needs a Playwright Chromium)
 ```
 
 The pre-commit hook runs lint-staged and `pnpm typecheck`; never bypass it with `--no-verify`.

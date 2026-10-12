@@ -1,0 +1,18 @@
+appId: dev.agentdeck.app
+---
+- launchApp
+- assertVisible: "Repositories"
+- tapOn: "shop"
+- tapOn: "New task"
+- tapOn: "Fix the login redirect"
+- inputText: "Write the notes"
+- tapOn: "Describe the task…"
+- inputText: "#script:golden file=NOTES.md"
+- tapOn: "Start task"
+- extendedWaitUntil:
+    visible: "Allow once"
+    timeout: 60000
+- tapOn: "Allow once"
+- extendedWaitUntil:
+    visible: "Done."
+    timeout: 60000

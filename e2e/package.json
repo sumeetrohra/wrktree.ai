@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "record": "node --experimental-transform-types --no-warnings record/record.ts"
+    "record": "node --experimental-transform-types --no-warnings record/record.ts",
+    "record:app": "node --experimental-transform-types --no-warnings record/record-app.ts"
   },
   "dependencies": {
     "@agentdeck/cli": "workspace:*",

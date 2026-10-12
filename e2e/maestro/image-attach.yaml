@@ -1,0 +1,20 @@
+appId: dev.agentdeck.app
+---
+# Needs at least one image in the simulator's photo library.
+- launchApp
+- tapOn: "shop"
+- tapOn:
+    index: 0
+    text: "Write the notes"
+- tapOn: "Attach an image"
+- tapOn:
+    index: 0
+    id: "PXGGridLayout-Info"
+    optional: true
+- assertVisible: "1 image attached"
+- tapOn: "Message the agent…"
+- inputText: "#script:golden"
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Received 1 image(s)"
+    timeout: 60000

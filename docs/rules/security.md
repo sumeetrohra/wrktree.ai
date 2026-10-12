@@ -46,7 +46,9 @@
 | SEC13 | Everything after pairing between a phone and the daemon is end-to-end encrypted and bound to its routing header; the relay stores and logs no plaintext. | `test:e2e` |
 | SEC14 | Pushes carry a fixed body and no content; at most one per device every 30 s. | `test` |
 | SEC15 | Relay tokens are random and stored hashed; account sessions are short-lived signed JWTs; device ids are derived from the device's signing key and proven at registration. | `test` |
-| SEC16 | Pairing commands (`pair.*`) are refused unless the client is local to the daemon. | `review`, `test:e2e` |
+| SEC16 | Pairing commands (`pair.*`, `web.open`) are refused unless the client is local to the daemon. | `review`, `test:e2e` |
+| SEC17 | The desktop web UI page never contains the local token. `agentdeck open` gets a one-time code (60 s, single use) for the URL fragment; the page trades it with a same-origin POST. Pages are sent with `X-Frame-Options: DENY` and never serve files outside the web export. | `test` |
+| SEC18 | On the phone, the identity key and relay tokens live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. | `review` |
 
 ## Pinned transitive fixes (SEC11)
 

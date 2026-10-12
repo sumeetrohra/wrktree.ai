@@ -94,8 +94,11 @@ pages/<page>/               <page>-page.tsx + index.ts. Decides data and layout;
 modules/<module>/
   components/  hooks/  stores/  api/  schemas/  types/  utils/  constants/
   index.ts                  public API
-lib/api/                    the typed daemon client, query keys, event → cache bridge
+lib/api/                    the only daemon/relay client: encrypted relay connection, local connection, relay HTTP API
+lib/<wrapper>/              one native library each: storage (MMKV), secure-store, notifications, camera, media, device
+                            (`<file>.web.ts` is the browser version Metro picks for the web build)
 providers/                  QueryProvider, ThemeProvider, I18nProvider: composition only
+pages/root/                 the app shell (routes' `_layout`): providers plus every module's event sync
 shared/
   components/ui/            React Native Reusables (generated; not edited, not linted)
   components/  hooks/  stores/  utils/  types/  constants/  i18n/

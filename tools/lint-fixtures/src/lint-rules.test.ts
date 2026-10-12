@@ -288,6 +288,20 @@ const CASES: TCase[] = [
     file: "apps/mobile/src/shared/utils/bad.utils.ts",
     code: 'import dayjs from "dayjs";\nexport const d = dayjs;\n',
   },
+  ...[
+    ["L16", "react-native-mmkv"],
+    ["L17", "expo-secure-store"],
+    ["L18", "expo-notifications"],
+    ["L19", "expo-camera"],
+    ["L20", "expo-image-picker"],
+    ["L21", "expo-haptics"],
+    ["L22", "expo-crypto"],
+  ].map(([id, lib]) => ({
+    id: `${id ?? ""} ${lib ?? ""} outside its app wrapper`,
+    rule: "no-restricted-imports",
+    file: "apps/mobile/src/modules/chats/api/bad.ts",
+    code: `import * as lib from "${lib ?? ""}";\nexport const x = lib;\n`,
+  })),
   {
     id: "S4 app module imports another module",
     rule: "no-restricted-imports",
@@ -320,6 +334,8 @@ describe("every lint rule still fires", () => {
     ["apps/relay/src/infra/sql/ok.ts", "better-sqlite3"],
     ["packages/crypto/src/ok.utils.ts", "@noble/hashes/sha2.js"],
     ["apps/cli/src/shared/output/ok.utils.ts", "qrcode-terminal"],
+    ["apps/mobile/src/lib/storage/ok.ts", "react-native-mmkv"],
+    ["apps/mobile/src/lib/camera/ok.tsx", "expo-camera"],
   ])("allows %s to import %s", async (file, lib) => {
     const [result] = await eslint.lintText(`import * as lib from "${lib}";\nexport const x = lib;\n`, {
       filePath: `${ROOT}${file}`,
