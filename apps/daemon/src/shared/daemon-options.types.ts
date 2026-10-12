@@ -13,6 +13,8 @@ export type TDaemonOptions = {
   devOrigins: readonly string[];
   /** Relay base URL, or null to run local-only. */
   relayUrl: string | null;
+  /** The desktop web UI's files, or null to serve none. */
+  webRoot: string | null;
   /** Where the identity's sealing secret lives. */
   keystore: "os" | "file";
 };

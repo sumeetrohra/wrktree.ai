@@ -200,6 +200,11 @@ export const commands = {
   },
   /** Additive, local only: the user compared the short codes; `accept: false` forgets the phone. */
   "pair.confirm": { args: z.object({ pairingId: z.string(), accept: z.boolean() }), result: Empty },
+  /**
+   * Additive, local only: a link that opens the desktop web UI. It carries a one-time code (60 s)
+   * the page trades for the local token; null when no web build is configured.
+   */
+  "web.open": { args: Empty, result: z.object({ url: z.string().nullable() }) },
   /** Additive: whether the daemon is connected to its relay. */
   "relay.status": {
     args: Empty,

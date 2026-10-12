@@ -5,6 +5,7 @@ import { devCommand } from "#src/commands/dev.command.js";
 import { devicesCommand } from "#src/commands/devices.command.js";
 import { HELP } from "#src/commands/help.constants.js";
 import { installCommand } from "#src/commands/install.command.js";
+import { openCommand } from "#src/commands/open.command.js";
 import { pairCommand } from "#src/commands/pair.command.js";
 import { profileCommand } from "#src/commands/profile.command.js";
 import { relayCommand } from "#src/commands/relay.command.js";
@@ -36,6 +37,8 @@ async function main(argv: readonly string[]): Promise<void> {
       return relayCommand(rest);
     case "install":
       return installCommand(rest);
+    case "open":
+      return openCommand(rest);
     default:
       throw new Error(`Unknown command: ${argv.join(" ")}\n\n${HELP}`);
   }

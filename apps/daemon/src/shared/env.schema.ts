@@ -22,6 +22,8 @@ const daemonEnvSchema = z.object({
   AGENTDECK_DEV_ORIGINS: z.string().optional(),
   /** Relay base URL; overrides the one saved by `agentdeck relay set`. */
   AGENTDECK_RELAY_URL: z.url().optional(),
+  /** The app's web export (`apps/mobile/dist`), served as the desktop web UI. */
+  AGENTDECK_WEB_ROOT: z.string().min(1).optional(),
   /** `file` skips the OS keystore and keeps the identity secret in a 0600 file (tests, headless). */
   AGENTDECK_KEYSTORE: z.enum(["os", "file"]).optional(),
   APPDATA: z.string().optional(),

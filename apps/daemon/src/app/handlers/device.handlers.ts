@@ -15,7 +15,13 @@ export function deviceHandlers(
   m: TModules,
 ): Pick<
   THandlers,
-  "device.list" | "device.revoke" | "pair.start" | "pair.status" | "pair.confirm" | "relay.status"
+  | "device.list"
+  | "device.revoke"
+  | "pair.start"
+  | "pair.status"
+  | "pair.confirm"
+  | "relay.status"
+  | "web.open"
 > {
   return {
     "device.list": () => m.devices.list(),
@@ -34,5 +40,9 @@ export function deviceHandlers(
       return {};
     },
     "relay.status": () => m.remote.status(),
+    "web.open": (_args, ctx) => {
+      localOnly(ctx);
+      return { url: m.webLink() };
+    },
   };
 }

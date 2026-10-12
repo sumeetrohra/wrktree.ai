@@ -446,5 +446,11 @@
       "connected": true,
       "deviceId": "d_fedcba9876543210fedcba9876543210"
     }
+  },
+  "web.open": {
+    "args": {},
+    "result": {
+      "url": "http://127.0.0.1:4317/#code=0123456789abcdef0123456789abcdef"
+    }
   }
 }

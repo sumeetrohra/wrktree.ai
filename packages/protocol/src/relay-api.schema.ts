@@ -18,6 +18,7 @@ export const relayRoutes = {
   githubFinish: { method: "POST", path: "/v1/auth/github/finish" },
   register: { method: "POST", path: "/v1/devices/register" },
   devices: { method: "GET", path: "/v1/devices" },
+  me: { method: "GET", path: "/v1/devices/me" },
   pairOffer: { method: "POST", path: "/v1/pair/offer" },
   pairClaim: { method: "POST", path: "/v1/pair/claim" },
   pushRegister: { method: "POST", path: "/v1/push/register" },
@@ -61,6 +62,9 @@ export const registerResultSchema = z.object({ deviceToken: z.string() });
 export const pairOfferResultSchema = z.object({ pairingId: z.string(), expiresAt: z.number() });
 export const pairClaimBodySchema = z.object({ pairingId: z.string().min(1), phoneDeviceId: deviceIdSchema });
 export const pairClaimResultSchema = z.object({ daemonDeviceId: deviceIdSchema });
+
+/** `GET /v1/devices/me` with a device token: 200 while the device may connect, 401 once revoked. */
+export const meResultSchema = z.object({ id: deviceIdSchema });
 
 export const pushRegisterBodySchema = z.object({ expoPushToken: z.string().min(1).max(200) });
 

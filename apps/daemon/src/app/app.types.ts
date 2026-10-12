@@ -21,6 +21,8 @@ export type TModules = {
   blobs: BlobStore;
   git: GitService;
   devices: DevicesService;
+  /** A one-time link to the desktop web UI, or null when none is configured. */
+  webLink: () => string | null;
   /** Identity, relay link, phone sessions and pairing (started once the identity is loaded). */
   remote: Remote;
   /** The path jail for one worktree, built from its repo's hidden globs. */

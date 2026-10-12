@@ -65,6 +65,7 @@ export function optionsFromEnv(home: string): TDaemonOptions {
     devOrigins: env.AGENTDECK_DEV_ORIGINS ? env.AGENTDECK_DEV_ORIGINS.split(",").map((o) => o.trim()) : [],
     relayUrl: relayUrlFor(home, env.AGENTDECK_RELAY_URL),
     keystore: env.AGENTDECK_KEYSTORE ?? "os",
+    webRoot: env.AGENTDECK_WEB_ROOT ?? null,
   };
 }
 
@@ -128,6 +129,7 @@ export class Daemon {
       daemonId: newId("dev"),
       devices,
       remote: new Remote(opts.relayUrl, devices, log),
+      webLink: () => this.transport?.webLink() ?? null,
       bus: this.rt.bus,
       repos,
       profiles,
@@ -148,6 +150,7 @@ export class Daemon {
       this.rt.log,
       DAEMON_VERSION,
       this.rt.opts.devOrigins,
+      this.rt.opts.webRoot,
     );
     this.port = await this.transport.listen(port);
     const { paths } = this.rt;

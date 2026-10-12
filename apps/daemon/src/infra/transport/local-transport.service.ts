@@ -10,6 +10,7 @@ import type { Router } from "../rpc/index.js";
 
 import { Connection } from "./connection.service.js";
 import { LIMITS, TOKEN_PROTOCOL_PREFIX } from "./transport.constants.js";
+import { WebUi } from "./web-ui.service.js";
 
 function safeEqual(a: string, b: string): boolean {
   return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -31,6 +32,7 @@ export class LocalTransport {
   private seq = 0;
   private port = 0;
   readonly token = randomBytes(24).toString("hex");
+  private readonly web: WebUi;
 
   constructor(
     private readonly bus: EventBus,
@@ -38,13 +40,24 @@ export class LocalTransport {
     private readonly log: ILogger,
     version: string,
     private readonly devOrigins: readonly string[] = [],
+    webRoot: string | null = null,
   ) {
+    this.web = new WebUi(
+      webRoot,
+      () => this.token,
+      () => this.allowedHosts().map((h) => `http://${h}`),
+    );
     this.server = createServer((req, res) => {
-      if (req.url === "/health" && this.hostAllowed(req)) {
+      if (!this.hostAllowed(req)) {
+        res.writeHead(404).end();
+        return;
+      }
+      if (req.url === "/health") {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ ok: true, version }));
         return;
       }
+      if (this.web.handle(req, res)) return;
       res.writeHead(404).end();
     });
     this.wss = new WebSocketServer({
@@ -115,6 +128,12 @@ export class LocalTransport {
       ?.slice(TOKEN_PROTOCOL_PREFIX.length);
     const given = header ?? fromProtocol ?? "";
     return safeEqual(given, this.token) ? null : "token";
+  }
+
+  /** The desktop web UI's URL with a one-time code, or null when no web build is configured. */
+  webLink(): string | null {
+    if (!this.web.enabled) return null;
+    return `http://127.0.0.1:${String(this.port)}/#code=${this.web.issueCode()}`;
   }
 
   listen(port: number): Promise<number> {

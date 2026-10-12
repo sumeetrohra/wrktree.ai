@@ -1,4 +1,5 @@
 import {
+  meResultSchema,
   okResultSchema,
   pushRegisterBodySchema,
   registerBodySchema,
@@ -25,6 +26,13 @@ export function deviceRoutes(app: Hono, deps: TRelayDeps): void {
     if (previousAccountId !== null) await deps.hubs.removeMember(previousAccountId, b.deviceId, "moved");
     await deps.hubs.addMember(target, { deviceId: b.deviceId, kind: b.kind });
     return c.json(registerResultSchema.parse({ deviceToken }));
+  });
+
+  app.get(relayRoutes.me.path, async (c) => {
+    const token = bearer(c);
+    const device = token === null ? null : await deps.directory.deviceByToken(token);
+    if (device?.revokedAt !== null) return failure(c, UNAUTHORIZED);
+    return c.json(meResultSchema.parse({ id: device.id }));
   });
 
   app.get(relayRoutes.devices.path, async (c) => {

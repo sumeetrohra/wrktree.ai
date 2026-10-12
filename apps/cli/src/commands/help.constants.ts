@@ -7,6 +7,7 @@ export const HELP = `agentdeck — drive coding agents on this machine
   agentdeck pair [--yes]                        pair a phone (QR code + short-code check)
   agentdeck devices [revoke <id>]               list or revoke paired devices
   agentdeck install [--dry-run]                 start the daemon when you log in
+  agentdeck open [--print]                      open the desktop web UI (one-time link)
   agentdeck dev send <command> ['<json args>']  send one command, print the reply
         [--cmd-id <cmd_…>] [--json]
   agentdeck dev watch [topic …] [--from <n>]    print events (default: global repo:* chat:*)
