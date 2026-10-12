@@ -118,8 +118,15 @@ export class CloudSync {
     );
   }
 
-  /** Every worktree and chat this host has, replayed from the event logs, into the outbox. */
+  /**
+   * Every worktree and chat this host has, replayed from the event logs, into the outbox. Each
+   * repo's log comes first, so a worktree deleted before (or while) signing in still gets its
+   * `deletedAt`; the live worktrees then replace whatever that log said about them.
+   */
   backfill(hostId: string): void {
+    for (const repoId of this.source.repoIds()) {
+      for (const logged of this.rt.bus.replay(`repo:${repoId}`, 0)) this.apply(logged);
+    }
     for (const wt of this.source.worktrees()) {
       this.outbox.put(
         "set",

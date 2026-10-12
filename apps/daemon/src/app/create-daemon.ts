@@ -134,6 +134,7 @@ export class Daemon {
     this.cloud = new CloudSync(
       this.rt,
       {
+        repoIds: () => repos.list().map((r) => r.id),
         worktrees: () => worktrees.all(),
         worktree: (id) => {
           try {

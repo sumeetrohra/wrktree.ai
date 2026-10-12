@@ -80,6 +80,7 @@ function setup() {
   const bus = new EventBus(join(dir, "events"), db);
   const rt = { db, bus, log: silentLogger, paths: pathsFor(dir), opts: {} } as TRuntime;
   const source: ICloudSource = {
+    repoIds: () => [WT.repoId],
     worktrees: () => [WT],
     worktree: () => WT,
     repoName: () => "shop",
@@ -169,6 +170,20 @@ describe("CloudSync", () => {
     await t.sync.tick();
     expect(t.store.docs.get(`${base}/worktrees/d_host__${WT.id}`)).toMatchObject({ status: "deleted" });
     expect(t.store.docs.get(`${base}/chats/${CHAT.id}`)).toBeDefined();
+  });
+
+  it("marks a worktree deleted before signing in, from the repo's log", async () => {
+    const t = setup();
+    const gone = { ...WT, id: newId("wt"), branch: "old-idea" };
+    t.bus.publish(`repo:${WT.repoId}`, { type: "worktree.updated", worktree: gone });
+    t.bus.publish(`repo:${WT.repoId}`, { type: "worktree.removed", worktreeId: gone.id });
+    t.signIn();
+    await t.sync.tick();
+    expect(t.store.docs.get(`${base}/worktrees/d_host__${gone.id}`)).toMatchObject({
+      branch: "old-idea",
+      status: "deleted",
+    });
+    expect(t.store.docs.get(`${base}/worktrees/d_host__${WT.id}`)).toMatchObject({ deletedAt: null });
   });
 
   it("retries after a failed commit and uploads each file once", async () => {

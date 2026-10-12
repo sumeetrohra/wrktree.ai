@@ -16,6 +16,7 @@ export interface ICloudStore {
 
 /** What the sync reads from the rest of the daemon (port, implemented by the app). */
 export interface ICloudSource {
+  repoIds(): string[];
   worktrees(): TWorktree[];
   worktree(id: string): TWorktree | null;
   repoName(repoId: string): string;
