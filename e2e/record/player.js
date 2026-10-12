@@ -39,6 +39,8 @@
   const $ = (id) => document.getElementById(id);
   const progress = $("progress");
   for (let i = 0; i < pb.total; i++) progress.appendChild(document.createElement("i"));
+  // Position in this recording; scenario numbers can skip (the app scenarios are recorded apart).
+  let pos = 0;
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 
   function card(html) {
@@ -66,13 +68,14 @@
       terms.cmd.reset();
       terms.events.reset();
       $("checks").innerHTML = "";
-      $("name").textContent = `${e.n}/${pb.total} · ${e.title}`;
+      pos++;
+      $("name").textContent = `${pos}/${pb.total} · ${e.n}. ${e.title}`;
       $("step").textContent = "";
       [...progress.children].forEach((el, i) => {
-        if (i === e.n - 1) el.className = "cur";
+        if (i === pos - 1) el.className = "cur";
       });
       card(
-        `<div class="kicker">Scenario ${e.n} of ${pb.total}</div>` +
+        `<div class="kicker">Scenario ${pos} of ${pb.total} · #${e.n}</div>` +
           `<h1>${esc(e.title)}</h1><p>${esc(e.summary)}</p>` +
           `<div class="covers">From the tech spec: ${e.covers.map(esc).join("<br>")}</div>`,
       );
@@ -93,7 +96,7 @@
       $("checks").appendChild(div);
     },
     result(e) {
-      progress.children[e.n - 1].className = e.ok ? "done" : "fail";
+      progress.children[pos - 1].className = e.ok ? "done" : "fail";
       $("step").textContent = e.ok ? "✓ passed" : `✗ failed: ${e.error ?? ""}`;
     },
     summary(e) {
