@@ -28,6 +28,7 @@ import { InnerClient } from "./inner-client";
 import type { IRelayPeer, RelaySocket } from "./relay-socket";
 
 const HANDSHAKE_BACKOFF_MS = [3000, 5000, 10000, 20000, 30000];
+const ACK_MS = 250;
 /** Commands worth keeping while offline; they run once the host is back (idempotent by id). */
 const QUEUEABLE: readonly TCommandName[] = ["chat.send", "permission.respond", "chat.cancel"];
 const DEFAULT_CURSORS: Readonly<Record<string, number>> = { global: 0, "repo:*": 0, "chat:*": 0 };
@@ -50,6 +51,8 @@ export class RelayConnection implements IDaemonConnection, IRelayPeer {
   private pendingHs: { sessionId: string; eph: TKxKeyPair } | null = null;
   private hsTimer: ReturnType<typeof setTimeout> | null = null;
   private hsAttempt = 0;
+  private readonly acks = new Map<string, number>();
+  private ackTimer: ReturnType<typeof setTimeout> | null = null;
   private detach: (() => void) | null = null;
   private readonly inner = new InnerClient();
   private readonly statusListeners = new Set<(s: TConnStatus) => void>();
@@ -149,7 +152,8 @@ export class RelayConnection implements IDaemonConnection, IRelayPeer {
 
   /** The host came back online (relay presence): handshake now instead of waiting. */
   hostOnline(): void {
-    if (this.socket.open && !this.channel) {
+    // One handshake at a time: a second would race the first, and the host keeps only the last.
+    if (this.socket.open && !this.channel && !this.pendingHs) {
       this.hsAttempt = 0;
       this.handshake();
     }
@@ -168,18 +172,36 @@ export class RelayConnection implements IDaemonConnection, IRelayPeer {
       return;
     }
     if (f.kind !== "msg") return;
-    this.socket.send({
-      v: 1,
-      from: this.myId,
-      to: f.from,
-      seq: f.seq,
-      kind: "ack",
-      body: "",
-      ...(f.sid ? { sid: f.sid } : {}),
-    });
+    this.ack(f.seq, f.sid);
     if (!this.channel || f.sid === undefined) return;
     const plain = this.channel.open({ from: f.from, to: f.to, seq: f.seq, sessionId: f.sid, body: f.body });
     if (plain !== null) this.inner.handle(plain);
+  }
+
+  /**
+   * Acks are cumulative (the relay drops everything up to `seq` in that session), so one ack per
+   * session every ACK_MS is enough. Acking each frame would trip the relay's rate limit while a
+   * host streams.
+   */
+  private ack(seq: number, sid: string | undefined): void {
+    const key = sid ?? "";
+    this.acks.set(key, Math.max(seq, this.acks.get(key) ?? 0));
+    if (this.ackTimer) return;
+    this.ackTimer = setTimeout(() => {
+      this.ackTimer = null;
+      for (const [s, n] of this.acks) {
+        this.socket.send({
+          v: 1,
+          from: this.myId,
+          to: this.host.id,
+          seq: n,
+          kind: "ack",
+          body: "",
+          ...(s === "" ? {} : { sid: s }),
+        });
+      }
+      this.acks.clear();
+    }, ACK_MS);
   }
 
   private onAccept(f: TRelayFrame): void {
@@ -259,11 +281,29 @@ export class RelayConnection implements IDaemonConnection, IRelayPeer {
     args: TCommandArgs<N>,
     opts: { cmdId?: string } = {},
   ): Promise<TCommandResult<N>> {
-    if (this.status === "online") return this.inner.call(name, args, opts.cmdId);
+    const id = opts.cmdId ?? newId("cmd");
+    if (this.status === "online") {
+      // Lost with the connection mid-flight: a queueable command runs again, with the same id
+      // (the host answers a repeated id from its result cache), once the host is back.
+      return this.inner.call(name, args, id).catch((e: unknown) => {
+        if (e instanceof ConnError && e.code === "DISCONNECTED" && QUEUEABLE.includes(name)) {
+          return this.enqueue(name, args, id);
+        }
+        throw e;
+      });
+    }
     if (!QUEUEABLE.includes(name)) {
       return Promise.reject(new ConnError("DISCONNECTED", "Not connected to the computer"));
     }
-    const item: TQueued = { id: opts.cmdId ?? newId("cmd"), name, args };
+    return this.enqueue(name, args, id);
+  }
+
+  private enqueue<N extends TCommandName>(
+    name: N,
+    args: TCommandArgs<N>,
+    id: string,
+  ): Promise<TCommandResult<N>> {
+    const item: TQueued = { id, name, args };
     connStorage.setQueue(this.host.id, [...connStorage.queue(this.host.id), item]);
     return new Promise<unknown>((resolve, reject) => {
       this.deferred.set(item.id, { resolve, reject });

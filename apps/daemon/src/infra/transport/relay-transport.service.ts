@@ -60,6 +60,12 @@ function decode<S extends z.ZodType>(schema: S, body: string): z.infer<S> | unde
  */
 export class RelayTransport {
   private readonly peers = new Map<string, TPeer>();
+  /**
+   * Handshakes run one at a time, in arrival order: checking a key may wait for the account's
+   * device list, and a later handshake must never be overtaken by an earlier one (the device
+   * would be left holding a session this side already replaced).
+   */
+  private handshakes: Promise<void> = Promise.resolve();
   /** Last status per chat, to wake the phone at the end of a turn (running → idle). */
   private readonly lastStatus = new Map<string, TChatStatus>();
 
@@ -98,7 +104,7 @@ export class RelayTransport {
     if (frame?.to !== this.myId) return;
     switch (frame.kind) {
       case "hs":
-        void this.onHandshake(frame);
+        this.handshakes = this.handshakes.then(() => this.onHandshake(frame)).catch(() => undefined);
         return;
       case "msg":
         this.onSealed(frame);
