@@ -28,7 +28,3 @@ export async function clipboardImage(): Promise<TPickedImage | null> {
   if (!img) return null;
   return { base64: img.data.replace(/^data:image\/png;base64,/, ""), mime: "image/png" };
 }
-
-export async function clipboardText(): Promise<string> {
-  return Clipboard.getStringAsync();
-}

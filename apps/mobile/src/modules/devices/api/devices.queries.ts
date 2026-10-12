@@ -1,28 +1,27 @@
-import type { TDevice } from "@agentdeck/protocol";
+import type { TRelayDevice } from "@agentdeck/protocol";
 import { useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
-import { daemonCall, onDaemonEvent, queryClient } from "@/lib/api";
+import { accountDevices, accountRelayUrl, queryClient, refreshHosts, relayApi } from "@/lib/api";
+import { auth } from "@/lib/auth";
 
-const KEY = ["devices"] as const;
+const KEY = ["account-devices"] as const;
 
-export function useDevicesQuery(): UseQueryResult<TDevice[]> {
-  return useQuery({ queryKey: KEY, queryFn: () => daemonCall("device.list", {}) });
+/** Every device on the account (computers, phones, browsers), from the relay. */
+export function useAccountDevicesQuery(): UseQueryResult<TRelayDevice[]> {
+  return useQuery({ queryKey: KEY, queryFn: accountDevices, refetchInterval: 30_000 });
 }
 
-export function useRevokeDeviceMutation(): UseMutationResult<TDevice, Error, string> {
-  return useMutation({ mutationFn: (deviceId) => daemonCall("device.revoke", { deviceId }) });
-}
-
-/** The device list follows `device.updated` events. Call once at startup. */
-export function startDevicesSync(): void {
-  onDaemonEvent(({ event: e }) => {
-    if (e.type !== "device.updated") return;
-    queryClient.setQueryData<TDevice[]>(KEY, (list) =>
-      list?.some((d) => d.id === e.device.id)
-        ? list.map((d) => (d.id === e.device.id ? e.device : d))
-        : list
-          ? [e.device, ...list]
-          : list,
-    );
+/** Removes a device from the account (needs the signed-in user, not just this device). */
+export function useRemoveDeviceMutation(): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (deviceId) => {
+      const relayUrl = accountRelayUrl();
+      if (relayUrl === null) throw new Error("Not signed in");
+      await relayApi.remove(relayUrl, await auth.idToken(), deviceId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: KEY });
+      await refreshHosts();
+    },
   });
 }

@@ -11,10 +11,6 @@ import {
   type TKxKeyPair,
 } from "@agentdeck/crypto";
 import {
-  RELAY_TOKEN_PROTOCOL_PREFIX,
-  RELAY_WS_PROTOCOL,
-  relayControlSchema,
-  relayFrameSchema,
   isCommandName,
   parseCommandResult,
   type TBlobRef,
@@ -26,16 +22,13 @@ import {
 } from "@agentdeck/protocol";
 import { newId, tryParseJson } from "@agentdeck/shared";
 
-import { connStorage, type TMachine, type TQueued } from "./conn.storage";
+import { connStorage, type TQueued } from "./conn.storage";
 import { ConnError, type IDaemonConnection, type TConnStatus } from "./connection.types";
 import { InnerClient } from "./inner-client";
-import { relayApi, RelayApiError } from "./relay-api";
+import type { IRelayPeer, RelaySocket } from "./relay-socket";
 
-const BACKOFF_MS = [500, 1000, 2000, 4000, 8000, 15000];
-const HANDSHAKE_TIMEOUT_MS = 5000;
-const REVOKED = 4003;
-const MOVED = 4001;
-/** Commands worth keeping while offline; they run once the phone reconnects (idempotent by id). */
+const HANDSHAKE_BACKOFF_MS = [3000, 5000, 10000, 20000, 30000];
+/** Commands worth keeping while offline; they run once the host is back (idempotent by id). */
 const QUEUEABLE: readonly TCommandName[] = ["chat.send", "permission.respond", "chat.cancel"];
 const DEFAULT_CURSORS: Readonly<Record<string, number>> = { global: 0, "repo:*": 0, "chat:*": 0 };
 
@@ -43,20 +36,21 @@ type TDeferred = { resolve: (v: unknown) => void; reject: (e: ConnError) => void
 
 const encode = (v: unknown): string => toB64(utf8ToBytes(JSON.stringify(v)));
 
+/** A host on the account: its id and the signing key the account's device list vouches for. */
+export type THostKey = { id: string; signPub: string };
+
 /**
- * The phone's connection to its machine through the relay. Each socket starts with a signed
- * ephemeral handshake; everything after is sealed end to end. On reconnect it handshakes again
- * and `sync.hello` replays from the last cursors; queued commands then run with their original ids.
+ * This device's session with one host, over the shared relay socket. It starts with a signed
+ * ephemeral handshake; everything after is sealed end to end. When the socket reopens (or a host
+ * that was away answers) it handshakes again and `sync.hello` replays from the last cursors;
+ * queued commands then run with their original ids.
  */
-export class RelayConnection implements IDaemonConnection {
-  private ws: WebSocket | null = null;
+export class RelayConnection implements IDaemonConnection, IRelayPeer {
   private channel: SecureChannel | null = null;
   private pendingHs: { sessionId: string; eph: TKxKeyPair } | null = null;
   private hsTimer: ReturnType<typeof setTimeout> | null = null;
-  private retryTimer: ReturnType<typeof setTimeout> | null = null;
-  private attempt = 0;
-  private stopped = false;
-  private networkDown = false;
+  private hsAttempt = 0;
+  private detach: (() => void) | null = null;
   private readonly inner = new InnerClient();
   private readonly statusListeners = new Set<(s: TConnStatus) => void>();
   private readonly eventListeners = new Set<(e: TEvtFrame) => void>();
@@ -65,43 +59,33 @@ export class RelayConnection implements IDaemonConnection {
   status: TConnStatus = "connecting";
 
   constructor(
-    private readonly machine: TMachine,
+    private readonly host: THostKey,
+    private readonly socket: RelaySocket,
     private readonly me: TIdentity,
-    readonly myId: string,
-    private readonly deviceToken: string,
     private readonly deviceName: string,
   ) {
-    this.cursors = { ...DEFAULT_CURSORS, ...connStorage.cursors() };
+    this.cursors = { ...DEFAULT_CURSORS, ...connStorage.cursors(host.id) };
     // Advance and persist the cursor first; a replayed event at or below it is an overlap.
     this.inner.onEvent((e) => {
       if (e.cursor <= (this.cursors[e.topic] ?? 0)) return;
       this.cursors[e.topic] = e.cursor;
-      connStorage.setCursors(this.cursors);
+      connStorage.setCursors(host.id, this.cursors);
       for (const l of this.eventListeners) l(e);
     });
   }
 
-  start(): void {
-    this.open();
+  private get myId(): string {
+    return this.socket.myId;
   }
 
-  /** The device lost or regained its network: drop the socket now, or reconnect at once. */
-  setNetwork(online: boolean): void {
-    this.networkDown = !online;
-    if (!online) {
-      this.ws?.close();
-      return;
-    }
-    if (this.retryTimer) clearTimeout(this.retryTimer);
-    this.attempt = 0;
-    if (!this.ws) this.open();
+  start(): void {
+    this.detach = this.socket.attach(this.host.id, this);
   }
 
   stop(): void {
-    this.stopped = true;
-    if (this.retryTimer) clearTimeout(this.retryTimer);
     if (this.hsTimer) clearTimeout(this.hsTimer);
-    this.ws?.close();
+    this.detach?.();
+    this.dropSession();
   }
 
   private setStatus(s: TConnStatus): void {
@@ -121,99 +105,70 @@ export class RelayConnection implements IDaemonConnection {
     return () => this.eventListeners.delete(fn);
   }
 
-  private open(): void {
-    if (this.stopped || this.networkDown) return;
-    this.setStatus("connecting");
-    const url = `${this.machine.relayUrl.replace(/^http/, "ws")}/v1/ws`;
-    const ws = new WebSocket(url, [RELAY_WS_PROTOCOL, RELAY_TOKEN_PROTOCOL_PREFIX + this.deviceToken]);
-    this.ws = ws;
-    let opened = false;
-    ws.onopen = () => {
-      opened = true;
-      this.handshake();
-    };
-    ws.onmessage = (msg: MessageEvent<string>) => {
-      this.onText(msg.data);
-    };
-    ws.onclose = () => {
-      if (this.ws !== ws) return;
-      this.ws = null;
-      this.channel = null;
-      this.inner.attach(null);
-      this.inner.failAll(new ConnError("DISCONNECTED", "Connection to the machine was lost"));
-      if (this.hsTimer) clearTimeout(this.hsTimer);
-      if (this.stopped || this.status === "revoked") return;
-      this.setStatus("offline");
-      // Refused before opening: browsers can't see why, so ask the relay whether we were revoked.
-      if (!opened && !this.networkDown) void this.checkRevoked();
-      this.schedule();
-    };
+  onOpen(): void {
+    this.hsAttempt = 0;
+    this.handshake();
   }
 
-  private async checkRevoked(): Promise<void> {
-    try {
-      await relayApi.me(this.machine.relayUrl, this.deviceToken);
-    } catch (e) {
-      if (e instanceof RelayApiError && e.status === 401) {
-        this.setStatus("revoked");
-        this.stop();
-      }
-    }
+  onClose(): void {
+    if (this.hsTimer) clearTimeout(this.hsTimer);
+    this.dropSession();
+    this.setStatus("offline");
   }
 
-  private schedule(immediately = false): void {
-    const base = BACKOFF_MS[Math.min(this.attempt, BACKOFF_MS.length - 1)] ?? 15000;
-    this.attempt++;
-    this.retryTimer = setTimeout(
-      () => {
-        this.open();
-      },
-      immediately ? 0 : base / 2 + Math.random() * (base / 2),
-    );
-  }
-
-  private sendFrame(f: TRelayFrame): boolean {
-    if (this.ws?.readyState !== WebSocket.OPEN) return false;
-    this.ws.send(JSON.stringify(f));
-    return true;
+  private dropSession(): void {
+    this.channel = null;
+    this.pendingHs = null;
+    this.inner.attach(null);
+    this.inner.failAll(new ConnError("DISCONNECTED", "Connection to the computer was lost"));
   }
 
   private handshake(): void {
-    const peers = { clientId: this.myId, serverId: this.machine.daemonDeviceId };
+    if (this.hsTimer) clearTimeout(this.hsTimer);
+    if (!this.channel) this.setStatus("connecting");
+    const peers = { clientId: this.myId, serverId: this.host.id };
     const { init, pending } = startHandshake(this.me, peers);
     this.pendingHs = pending;
-    this.sendFrame({
+    this.socket.send({
       v: 1,
       from: this.myId,
-      to: this.machine.daemonDeviceId,
+      to: this.host.id,
       seq: 0,
       kind: "hs",
       body: encode({ t: "session.init", ...init }),
     });
-    // A daemon that hasn't confirmed this phone yet doesn't answer: retry later.
+    // A host that is offline doesn't answer: try again, backing off, while the socket is up.
+    const wait = HANDSHAKE_BACKOFF_MS[Math.min(this.hsAttempt, HANDSHAKE_BACKOFF_MS.length - 1)] ?? 30000;
+    this.hsAttempt++;
     this.hsTimer = setTimeout(() => {
-      this.ws?.close();
-    }, HANDSHAKE_TIMEOUT_MS);
+      if (this.channel) return;
+      this.setStatus("offline");
+      if (this.socket.open) this.handshake();
+    }, wait);
   }
 
-  private onText(text: string): void {
-    const control = tryParseJson(relayControlSchema, text);
-    if (control) {
-      if (control.t === "relay.closed") {
-        if (control.code === REVOKED) this.setStatus("revoked");
-        if (control.code === MOVED) this.attempt = 0;
-        this.ws?.close();
-      }
-      return;
+  /** The host came back online (relay presence): handshake now instead of waiting. */
+  hostOnline(): void {
+    if (this.socket.open && !this.channel) {
+      this.hsAttempt = 0;
+      this.handshake();
     }
-    const f = tryParseJson(relayFrameSchema, text);
-    if (f?.to !== this.myId || f.from !== this.machine.daemonDeviceId) return;
+  }
+
+  /** The host went away: its session is gone; a new one starts when it returns. */
+  hostOffline(): void {
+    if (!this.channel) return;
+    this.dropSession();
+    this.setStatus("offline");
+  }
+
+  onFrame(f: TRelayFrame): void {
     if (f.kind === "hs") {
       this.onAccept(f);
       return;
     }
     if (f.kind !== "msg") return;
-    this.sendFrame({
+    this.socket.send({
       v: 1,
       from: this.myId,
       to: f.from,
@@ -232,29 +187,29 @@ export class RelayConnection implements IDaemonConnection {
     if (!pending) return;
     const msg = decodeBody(f.body);
     if (msg?.t !== "session.accept") return;
-    const peers = { clientId: this.myId, serverId: this.machine.daemonDeviceId };
-    const session = finishHandshake(fromB64(this.machine.daemonSignPub), peers, pending, msg);
+    const peers = { clientId: this.myId, serverId: this.host.id };
+    const session = finishHandshake(fromB64(this.host.signPub), peers, pending, msg);
     if (!session) return;
     if (this.hsTimer) clearTimeout(this.hsTimer);
     this.pendingHs = null;
-    const channel = new SecureChannel(session, this.myId, this.machine.daemonDeviceId);
+    const channel = new SecureChannel(session, this.myId, this.host.id);
     this.channel = channel;
     this.inner.attach((plain) => {
       const s = channel.seal(plain);
-      return this.sendFrame({
+      return this.socket.send({
         v: 1,
         from: this.myId,
-        to: this.machine.daemonDeviceId,
+        to: this.host.id,
         seq: s.seq,
         sid: s.sessionId,
         kind: "msg",
         body: s.body,
       });
     });
-    void this.afterSession();
+    void this.afterSession(channel);
   }
 
-  private async afterSession(): Promise<void> {
+  private async afterSession(channel: SecureChannel): Promise<void> {
     let topics: Record<string, number>;
     try {
       ({ topics } = await this.inner.call("sync.hello", {
@@ -263,12 +218,13 @@ export class RelayConnection implements IDaemonConnection {
         cursors: this.cursors,
       }));
     } catch {
-      this.ws?.close();
+      if (this.channel === channel) this.hostOffline();
       return;
     }
-    this.attempt = 0;
+    this.hsAttempt = 0;
     // "Online" means caught up: the replay that follows the reply has been applied.
     await caughtUp(topics, this.cursors, (fn) => this.inner.onEvent(fn));
+    if (this.channel !== channel) return;
     this.setStatus("online");
     await this.flushQueue();
   }
@@ -279,7 +235,7 @@ export class RelayConnection implements IDaemonConnection {
   }
 
   private async flushQueue(): Promise<void> {
-    for (const item of connStorage.queue()) {
+    for (const item of connStorage.queue(this.host.id)) {
       if (!this.isOnline()) return;
       if (isCommandName(item.name)) {
         try {
@@ -291,7 +247,10 @@ export class RelayConnection implements IDaemonConnection {
         }
       }
       this.deferred.delete(item.id);
-      connStorage.setQueue(connStorage.queue().filter((q) => q.id !== item.id));
+      connStorage.setQueue(
+        this.host.id,
+        connStorage.queue(this.host.id).filter((q) => q.id !== item.id),
+      );
     }
   }
 
@@ -302,17 +261,17 @@ export class RelayConnection implements IDaemonConnection {
   ): Promise<TCommandResult<N>> {
     if (this.status === "online") return this.inner.call(name, args, opts.cmdId);
     if (!QUEUEABLE.includes(name)) {
-      return Promise.reject(new ConnError("DISCONNECTED", "Not connected to the machine"));
+      return Promise.reject(new ConnError("DISCONNECTED", "Not connected to the computer"));
     }
     const item: TQueued = { id: opts.cmdId ?? newId("cmd"), name, args };
-    connStorage.setQueue([...connStorage.queue(), item]);
+    connStorage.setQueue(this.host.id, [...connStorage.queue(this.host.id), item]);
     return new Promise<unknown>((resolve, reject) => {
       this.deferred.set(item.id, { resolve, reject });
     }).then((data) => parseCommandResult(name, data));
   }
 
   async upload(base64: string, mime: string): Promise<TBlobRef> {
-    if (this.status !== "online") throw new ConnError("DISCONNECTED", "Not connected to the machine");
+    if (this.status !== "online") throw new ConnError("DISCONNECTED", "Not connected to the computer");
     const { uploadId, size } = this.inner.sendBlob(base64);
     return this.inner.call("blob.put", { mime, size, uploadId });
   }

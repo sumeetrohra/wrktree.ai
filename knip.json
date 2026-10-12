@@ -17,8 +17,7 @@
         "react-native-css-interop",
         "babel-plugin-react-compiler",
         "expo-updates",
-        "@rn-primitives/portal",
-        "@rn-primitives/separator"
+        "@rn-primitives/portal"
       ],
       "ignore": ["src/shared/components/ui/**"],
       "metro": false

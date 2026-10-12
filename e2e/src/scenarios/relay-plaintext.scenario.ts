@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import type { TScenario } from "../scenario.ts";
 
-import { isEvent, pairPhone, type TRequested } from "./relay-helpers.ts";
+import { isEvent, signedInPhone, type TRequested } from "./relay-helpers.ts";
 
 const PROMPT_CANARY = "PROMPT-CANARY-7f3a9c";
 const FILE_CANARY = "Demo app for the Agentdeck end-to-end tests";
@@ -24,7 +24,7 @@ export const relayPlaintext: TScenario = {
   relay: true,
   async run(h) {
     const ids = await h.quickstart();
-    const phone = await pairPhone(h);
+    const phone = await signedInPhone(h);
 
     h.step("Phone: a prompt with a canary, and a file read");
     await phone.call("chat.send", {

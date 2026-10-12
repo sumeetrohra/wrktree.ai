@@ -283,6 +283,18 @@ const CASES: TCase[] = [
     code: 'export const ws = new WebSocket("ws://x");\n',
   },
   {
+    id: "L9 fetch outside lib/api and lib/auth",
+    rule: "no-restricted-globals",
+    file: "apps/mobile/src/modules/repos/api/bad.queries.ts",
+    code: 'export const r = fetch("https://x");\n',
+  },
+  {
+    id: "L23 lib/auth may fetch but never open a WebSocket",
+    rule: "no-restricted-globals",
+    file: "apps/mobile/src/lib/auth/bad.ts",
+    code: 'export const ws = new WebSocket("ws://x");\n',
+  },
+  {
     id: "L7 dayjs outside datetime-utils",
     rule: "no-restricted-imports",
     file: "apps/mobile/src/shared/utils/bad.utils.ts",
@@ -330,7 +342,7 @@ describe("every lint rule still fires", () => {
   });
 
   it.each([
-    ["apps/relay/src/infra/jwt/ok.ts", "jose"],
+    ["apps/relay/src/infra/idtoken/ok.ts", "jose"],
     ["apps/relay/src/infra/sql/ok.ts", "better-sqlite3"],
     ["packages/crypto/src/ok.utils.ts", "@noble/hashes/sha2.js"],
     ["apps/cli/src/shared/output/ok.utils.ts", "qrcode-terminal"],
@@ -341,6 +353,13 @@ describe("every lint rule still fires", () => {
       filePath: `${ROOT}${file}`,
     });
     expect((result?.messages ?? []).map((m) => m.ruleId)).not.toContain("no-restricted-imports");
+  });
+
+  it("allows lib/auth to call fetch (sign-in)", async () => {
+    const [result] = await eslint.lintText('export const r = fetch("https://x");\n', {
+      filePath: `${ROOT}apps/mobile/src/lib/auth/ok.ts`,
+    });
+    expect((result?.messages ?? []).map((m) => m.ruleId)).not.toContain("no-restricted-globals");
   });
 
   it("allows the same code inside its wrapper", async () => {

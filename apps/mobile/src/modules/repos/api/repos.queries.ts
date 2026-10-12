@@ -5,7 +5,7 @@ import { daemonCall } from "@/lib/api";
 
 import { reposKeys } from "./repos.keys";
 
-/** Repositories the daemon knows about (A3). */
-export function useReposQuery(): UseQueryResult<TRepo[]> {
-  return useQuery({ queryKey: reposKeys.list(), queryFn: () => daemonCall("repo.list", {}) });
+/** Repositories one host knows about (A3). */
+export function useReposQuery(hostId: string): UseQueryResult<TRepo[]> {
+  return useQuery({ queryKey: reposKeys.list(hostId), queryFn: () => daemonCall(hostId, "repo.list", {}) });
 }

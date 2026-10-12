@@ -9,13 +9,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Text } from "@/shared/components/ui/text";
 
-const paramsSchema = z.object({ worktreeId: worktreeIdSchema });
+const paramsSchema = z.object({ hostId: z.string(), worktreeId: worktreeIdSchema });
 
 /** A worktree's chats (spec: `wt/[worktreeId]/chats`; the other tabs come in Phase 3). */
 export function WorktreePage(): React.JSX.Element {
   const { t } = useTranslation();
-  const { worktreeId } = paramsSchema.parse(useLocalSearchParams());
-  const chats = useChatsQuery(worktreeId);
+  const { hostId, worktreeId } = paramsSchema.parse(useLocalSearchParams());
+  const chats = useChatsQuery(hostId, worktreeId);
   return (
     <ScrollView contentContainerClassName="gap-3 p-4" className="bg-background">
       <Text variant="h3">{t("chats.title")}</Text>
@@ -24,7 +24,7 @@ export function WorktreePage(): React.JSX.Element {
       {chats.data?.map((c) => (
         <Link
           key={c.id}
-          href={{ pathname: "/wt/[worktreeId]/chat/[chatId]", params: { worktreeId, chatId: c.id } }}
+          href={{ pathname: "/h/[hostId]/chat/[chatId]", params: { hostId, chatId: c.id } }}
           asChild
         >
           <Button variant="outline" className="h-auto justify-between py-3">

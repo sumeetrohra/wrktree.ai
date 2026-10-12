@@ -3,9 +3,10 @@ import { DurableObject } from "cloudflare:workers";
 
 import { createConsoleLogger } from "#src/infra/log/index.js";
 import { DoSockets, doSql } from "#src/infra/worker/index.js";
-import { DirectoryService, type IDirectory } from "#src/modules/directory/index.js";
+import { DirectoryService, type IDirectory, type TLinkPoll } from "#src/modules/directory/index.js";
 import { HubService } from "#src/modules/hub/index.js";
 import { systemClock } from "#src/shared/clock.types.js";
+import type { TIdentityClaims } from "#src/shared/id-token.types.js";
 import { relayEnvSchema, type TRelayEnv } from "#src/shared/relay-env.schema.js";
 import { CLOSE } from "#src/shared/relay.constants.js";
 import { socketToken } from "#src/shared/socket-token.utils.js";
@@ -40,7 +41,7 @@ const directoryOf = (env: TWorkerEnv): IDirectory => env.DIRECTORY.get(env.DIREC
 const hubOf = (env: TWorkerEnv, accountId: string): IHubRpc & { fetch(req: Request): Promise<Response> } =>
   env.HUB.get(env.HUB.idFromName(accountId));
 
-/** The global directory: one Durable Object (accounts, devices, codes, pairing offers). */
+/** The global directory: one Durable Object (accounts, devices, host links). */
 export class DirectoryDO extends DurableObject<TWorkerEnv> implements IDirectory {
   private readonly svc: DirectoryService;
 
@@ -49,49 +50,29 @@ export class DirectoryDO extends DurableObject<TWorkerEnv> implements IDirectory
     this.svc = new DirectoryService(doSql(ctx), systemClock);
   }
 
-  startMagic(email: string): Promise<string> {
-    return this.svc.startMagic(email);
+  accountFor(claims: TIdentityClaims): Promise<string> {
+    return this.svc.accountFor(claims);
   }
-  finishMagic(email: string, code: string): ReturnType<IDirectory["finishMagic"]> {
-    return this.svc.finishMagic(email, code);
-  }
-  accountForGithub(githubId: string): Promise<string> {
-    return this.svc.accountForGithub(githubId);
-  }
-  register(body: TRegisterBody, accountId: string | null): ReturnType<IDirectory["register"]> {
+  register(body: TRegisterBody, accountId: string): ReturnType<IDirectory["register"]> {
     return this.svc.register(body, accountId);
+  }
+  startLink(body: TRegisterBody): ReturnType<IDirectory["startLink"]> {
+    return this.svc.startLink(body);
+  }
+  approveLink(accountId: string, code: string): ReturnType<IDirectory["approveLink"]> {
+    return this.svc.approveLink(accountId, code);
+  }
+  pollLink(poll: TLinkPoll): ReturnType<IDirectory["pollLink"]> {
+    return this.svc.pollLink(poll);
   }
   deviceByToken(token: string): ReturnType<IDirectory["deviceByToken"]> {
     return this.svc.deviceByToken(token);
   }
-  device(id: string): ReturnType<IDirectory["device"]> {
-    return this.svc.device(id);
-  }
   listDevices(accountId: string): ReturnType<IDirectory["listDevices"]> {
     return this.svc.listDevices(accountId);
   }
-  createPairing(daemonDeviceId: string): ReturnType<IDirectory["createPairing"]> {
-    return this.svc.createPairing(daemonDeviceId);
-  }
-  claimPairing(
-    accountId: string,
-    pairingId: string,
-    phoneDeviceId: string,
-  ): ReturnType<IDirectory["claimPairing"]> {
-    return this.svc.claimPairing(accountId, pairingId, phoneDeviceId);
-  }
-  revoke(
-    accountId: string,
-    deviceId: string,
-    confirm: { daemonDeviceId: string; at: number; sig: string },
-  ): ReturnType<IDirectory["revoke"]> {
-    return this.svc.revoke(accountId, deviceId, confirm);
-  }
-  recordOutbox(to: string, code: string): Promise<void> {
-    return this.svc.recordOutbox(to, code);
-  }
-  outbox(): ReturnType<IDirectory["outbox"]> {
-    return this.svc.outbox();
+  removeDevice(accountId: string, deviceId: string): ReturnType<IDirectory["removeDevice"]> {
+    return this.svc.removeDevice(accountId, deviceId);
   }
   recordPush(push: { deviceId: string; token: string; title: string; body: string }): Promise<void> {
     return this.svc.recordPush(push);

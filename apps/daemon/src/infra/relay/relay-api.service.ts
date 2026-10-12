@@ -1,19 +1,31 @@
-import { deviceIdFor, signRegistration, signRevocation, type TIdentity } from "@agentdeck/crypto";
+import { signLinkPoll, signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
+  linkPollResultSchema,
+  linkStartResultSchema,
+  meResultSchema,
   okResultSchema,
-  pairOfferResultSchema,
-  registerResultSchema,
+  relayDevicesResultSchema,
   relayRoutes,
+  type TLinkPollResult,
+  type TRelayDevice,
 } from "@agentdeck/protocol";
 import type { z } from "zod";
 
+/** The relay answered with an HTTP error. `status` 401 means the device token is no good. */
+export class RelayHttpError extends Error {
+  constructor(
+    readonly path: string,
+    readonly status: number,
+  ) {
+    super(`relay ${path} returned ${String(status)}`);
+  }
+}
+
 /** The relay's HTTP API as the daemon uses it. Every reply is zod-validated. */
 export class RelayApi {
-  private token: string | null = null;
-
   constructor(
     readonly baseUrl: string,
-    private readonly me: TIdentity,
+    private readonly identity: TIdentity,
     private readonly name: string,
   ) {}
 
@@ -22,7 +34,8 @@ export class RelayApi {
     schema: S,
     opts: { body?: unknown; token?: string; path?: string } = {},
   ): Promise<z.infer<S>> {
-    const res = await fetch(new URL(opts.path ?? route.path, this.baseUrl), {
+    const path = opts.path ?? route.path;
+    const res = await fetch(new URL(path, this.baseUrl), {
       method: route.method,
       headers: {
         "content-type": "application/json",
@@ -30,38 +43,37 @@ export class RelayApi {
       },
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
     });
-    if (!res.ok) throw new Error(`relay ${route.path} returned ${String(res.status)}`);
+    if (!res.ok) throw new RelayHttpError(path, res.status);
     return schema.parse(await res.json());
   }
 
-  /** Registers (or re-registers) this daemon and returns a fresh device token. */
-  async register(): Promise<string> {
-    const body = { ...signRegistration(this.me, Date.now()), kind: "daemon", name: this.name };
-    const { deviceToken } = await this.call(relayRoutes.register, registerResultSchema, { body });
-    this.token = deviceToken;
-    return deviceToken;
+  /** Asks to join an account; the user approves the returned code on a signed-in device. */
+  startLink(): Promise<{ linkId: string; code: string; expiresAt: number }> {
+    const body = { ...signRegistration(this.identity, Date.now()), kind: "daemon", name: this.name };
+    return this.call(relayRoutes.linkStart, linkStartResultSchema, { body });
   }
 
-  async deviceToken(): Promise<string> {
-    return this.token ?? this.register();
-  }
-
-  async createOffer(): Promise<{ pairingId: string; expiresAt: number }> {
-    return this.call(relayRoutes.pairOffer, pairOfferResultSchema, { token: await this.deviceToken() });
-  }
-
-  /** Tells the relay to drop a revoked device's sockets and push token. */
-  async revoke(deviceId: string): Promise<void> {
+  pollLink(linkId: string, deviceId: string): Promise<TLinkPollResult> {
     const at = Date.now();
-    const body = {
-      daemonDeviceId: deviceIdFor(this.me.signPub),
-      at,
-      sig: signRevocation(this.me, deviceId, at),
-    };
+    const body = { linkId, deviceId, at, sig: signLinkPoll(this.identity, linkId, at) };
+    return this.call(relayRoutes.linkPoll, linkPollResultSchema, { body });
+  }
+
+  /** The account's devices and their signing keys: who may open a session with this host. */
+  async devices(token: string): Promise<TRelayDevice[]> {
+    return (await this.call(relayRoutes.devices, relayDevicesResultSchema, { token })).devices;
+  }
+
+  /** Resolves while the token is good; throws `RelayHttpError` 401 once this host was removed. */
+  async me(token: string): Promise<void> {
+    await this.call(relayRoutes.me, meResultSchema, { token });
+  }
+
+  /** Removes a device from the account (this host's own id to unlink itself). */
+  async removeDevice(token: string, deviceId: string): Promise<void> {
     await this.call({ method: "DELETE", path: relayRoutes.devices.path }, okResultSchema, {
-      token: await this.deviceToken(),
+      token,
       path: `${relayRoutes.devices.path}/${encodeURIComponent(deviceId)}`,
-      body,
     });
   }
 }

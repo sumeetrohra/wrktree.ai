@@ -8,9 +8,11 @@ const MOVED = 4001;
 
 export type TRelayLinkOptions = {
   url: string;
-  token: () => Promise<string>;
-  /** Called when the relay refused the token: get a fresh one. */
-  reauth: () => Promise<string>;
+  token: string;
+  /** The relay refused the token or removed this host: it is no longer on the account. */
+  onRemoved: () => void;
+  /** The relay refused the token; resolves true if the token is in fact still good (a blip). */
+  stillValid: () => Promise<boolean>;
   onText: (text: string) => void;
   onState: (connected: boolean) => void;
   log: ILogger;
@@ -18,7 +20,7 @@ export type TRelayLinkOptions = {
 
 /**
  * The daemon's one outbound socket to its relay. Reconnects with jittered backoff; stops for good
- * only when the relay says this device was revoked.
+ * only when this host was removed from its account.
  */
 export class RelayLink {
   private ws: WebSocket | null = null;
@@ -30,7 +32,7 @@ export class RelayLink {
   constructor(private readonly o: TRelayLinkOptions) {}
 
   start(): void {
-    void this.connect(false);
+    this.connect();
   }
 
   stop(): void {
@@ -51,20 +53,30 @@ export class RelayLink {
     const delay = immediately ? 0 : base / 2 + Math.random() * (base / 2);
     this.attempt++;
     this.timer = setTimeout(() => {
-      void this.connect(false);
+      this.connect();
     }, delay);
   }
 
-  private async connect(fresh: boolean): Promise<void> {
-    if (this.stopped) return;
-    let token: string;
+  private removed(): void {
+    this.o.log.error({}, "this host was removed from its account; not reconnecting");
+    this.stopped = true;
+    this.o.onRemoved();
+  }
+
+  private async afterRefusal(): Promise<void> {
+    let valid = true;
     try {
-      token = fresh ? await this.o.reauth() : await this.o.token();
+      valid = await this.o.stillValid();
     } catch (e) {
       this.o.log.warn({ err: e instanceof Error ? e.message : "error" }, "relay unreachable");
-      this.schedule(false);
-      return;
     }
+    if (valid) this.schedule(false);
+    else this.removed();
+  }
+
+  private connect(): void {
+    if (this.stopped) return;
+    const token = this.o.token;
     const url = new URL("/v1/ws", this.o.url);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(url, [RELAY_WS_PROTOCOL], { headers: { authorization: `Bearer ${token}` } });
@@ -101,12 +113,11 @@ export class RelayLink {
       if (wasConnected) this.o.onState(false);
       const why = closeCode || code;
       if (why === REVOKED) {
-        this.o.log.error({}, "relay says this daemon was revoked; not reconnecting");
-        this.stopped = true;
+        this.removed();
         return;
       }
       if (refused) {
-        void this.connect(true);
+        void this.afterRefusal();
         return;
       }
       this.schedule(why === MOVED);

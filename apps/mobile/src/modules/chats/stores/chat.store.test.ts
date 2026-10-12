@@ -13,7 +13,9 @@ const evt = (event: TEvtFrame["event"]): TEvtFrame => ({
 
 describe("chat store", () => {
   it("appends items, applies streaming patches, tracks status and the pending permission", () => {
-    const apply = useChatsStore.getState().apply;
+    const apply = (e: TEvtFrame): void => {
+      useChatsStore.getState().apply("d_host", e);
+    };
     apply(
       evt({ type: "chat.item", chatId: CHAT, item: { kind: "agent_text", id: "i1", at: 1, text: "Hel" } }),
     );
@@ -39,7 +41,7 @@ describe("chat store", () => {
     expect(v.items["i1"]).toMatchObject({ text: "Hello" });
     expect(v.status).toBe("awaiting_permission");
     expect(v.pending?.requestId).toBe("r1");
-    expect(chatNeedingAttention()).toBe(CHAT);
+    expect(chatNeedingAttention()).toEqual({ chatId: CHAT, hostId: "d_host" });
 
     apply(
       evt({
@@ -56,7 +58,9 @@ describe("chat store", () => {
   });
 
   it("re-delivering an item replaces it instead of duplicating it", () => {
-    const apply = useChatsStore.getState().apply;
+    const apply = (e: TEvtFrame): void => {
+      useChatsStore.getState().apply("d_host", e);
+    };
     apply(
       evt({ type: "chat.item", chatId: CHAT, item: { kind: "agent_text", id: "i1", at: 1, text: "Again" } }),
     );

@@ -3,16 +3,28 @@
 The relay has two builds of the same code: a Cloudflare Worker with Durable Objects (the hosted
 relay) and a Node server (self-host). Both read the settings below.
 
+Users sign in with [Firebase Auth](https://firebase.google.com/docs/auth) on their phones and
+browsers; the relay only verifies the resulting ID tokens (RS256, Google's public keys, `iss` and
+`aud` naming your project). It holds no sign-in secrets of its own.
+
 | Variable | Needed | What |
 |---|---|---|
-| `RELAY_JWT_SECRET` | always | 32+ random characters; signs account sessions. Rotating it signs everyone out. |
-| `RELAY_PUBLIC_URL` | always | The relay's public base URL (used in OAuth redirects). |
-| `RESEND_API_KEY`, `RELAY_MAIL_FROM` | production | Magic-link email through Resend. |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | production | GitHub sign-in (an OAuth app with callback to the app). |
+| `FIREBASE_PROJECT_ID` | production | The Firebase project whose ID tokens sign users in. |
+| `RELAY_PUBLIC_URL` | always | The relay's public base URL. |
 | `EXPO_ACCESS_TOKEN` | optional | Expo push API access token (if push security is enabled on the Expo project). |
-| `RELAY_DEV` | dev only | `1` swaps in the dev mailer (`GET /v1/dev/outbox`), dev OAuth (`dev-<login>` codes) and recorded pushes (`GET /v1/dev/pushes`). Never set it in production. |
+| `RELAY_DEV` | dev only | `1` mounts the dev ID-token issuer (`GET /v1/dev/id-token?uid=…`, standing in for Firebase) and recorded pushes (`GET /v1/dev/pushes`). Never set it in production. |
+| `RELAY_DEV_SECRET` | dev only | 32+ characters; signs dev ID tokens. Read only with `RELAY_DEV=1`. |
 
-Without `RELAY_DEV=1`, the relay refuses to start unless the mail and GitHub keys are set.
+Without `RELAY_DEV=1`, the relay refuses to start unless `FIREBASE_PROJECT_ID` is set.
+
+## Firebase
+
+1. Create a Firebase project and enable **Authentication → Email link (passwordless)**. Add the web
+   app's domain to the authorized domains.
+2. Give the relay the project id (`FIREBASE_PROJECT_ID`), and build the app with the project's Web
+   API key: `EXPO_PUBLIC_FIREBASE_API_KEY=… EXPO_PUBLIC_RELAY_URL=https://relay.example.com`.
+3. Computers never sign in themselves: `agentdeck login` shows a code that a signed-in phone or
+   browser approves.
 
 ## Cloudflare (hosted)
 
@@ -20,10 +32,8 @@ Without `RELAY_DEV=1`, the relay refuses to start unless the mail and GitHub key
 cd apps/relay
 pnpm build                                   # wrangler deploys dist/main.worker.js
 npx wrangler login
-for s in RELAY_JWT_SECRET RESEND_API_KEY GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET EXPO_ACCESS_TOKEN; do
-  npx wrangler secret put "$s" --env staging
-done
-npx wrangler deploy --env staging
+npx wrangler secret put EXPO_ACCESS_TOKEN --env staging   # optional
+npx wrangler deploy --env staging            # FIREBASE_PROJECT_ID is a var in wrangler.toml
 ```
 
 `wrangler.toml` declares the `DirectoryDO` and `HubDO` Durable Object classes on SQLite storage.
@@ -38,10 +48,9 @@ Local development of the Worker build: `pnpm --filter @agentdeck/relay dev:worke
 ```sh
 docker build -f apps/relay/Dockerfile -t agentdeck-relay .
 docker run -d -p 8787:8787 -v agentdeck-relay:/data \
-  -e RELAY_PUBLIC_URL=https://relay.example.com -e RELAY_JWT_SECRET=… \
-  -e RESEND_API_KEY=… -e GITHUB_CLIENT_ID=… -e GITHUB_CLIENT_SECRET=… agentdeck-relay
+  -e RELAY_PUBLIC_URL=https://relay.example.com -e FIREBASE_PROJECT_ID=my-project agentdeck-relay
 ```
 
 Terminate TLS in front of it (Caddy, nginx, a load balancer). Data lives in `/data`: one SQLite
 file for the directory and one per account hub. Then point daemons at it with
-`agentdeck relay set https://relay.example.com`.
+`agentdeck relay set https://relay.example.com` and link each with `agentdeck login`.

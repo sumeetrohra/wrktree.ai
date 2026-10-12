@@ -103,13 +103,24 @@ export class Harness {
 
   static async start(
     sink: ISink = nullSink,
-    opts: { relay?: boolean; webRoot?: string } = {},
+    opts: {
+      relay?: boolean;
+      webRoot?: string;
+      /** Join this relay instead of starting one (a second host on the same account). */
+      relayUrl?: string;
+      /** The computer's name on the account. */
+      hostName?: string;
+      /** Show `agentdeck dev watch` in the events pane (default true). */
+      watch?: boolean;
+    } = {},
   ): Promise<Harness> {
     const h = new Harness(sink);
     if (opts.webRoot) h.env["AGENTDECK_WEB_ROOT"] = opts.webRoot;
-    if (opts.relay) await h.startRelay();
+    h.env["AGENTDECK_HOST_NAME"] = opts.hostName ?? "laptop";
+    if (opts.relayUrl !== undefined) h.env["AGENTDECK_RELAY_URL"] = opts.relayUrl;
+    else if (opts.relay) await h.startRelay();
     await h.startDaemon();
-    await h.startWatcher();
+    if (opts.watch !== false) await h.startWatcher();
     return h;
   }
 
@@ -150,15 +161,23 @@ export class Harness {
     this.relay = await startNodeRelay({
       port: 0,
       dataDir: this.relayDir,
-      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_JWT_SECRET: "e2e-only-secret-e2e-only-secret-e2e" }),
+      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_DEV_SECRET: "e2e-only-secret-e2e-only-secret-e2e" }),
       log: recordingLogger(this.relayLog),
     });
     this.env["AGENTDECK_RELAY_URL"] = this.relay.url;
   }
 
   get relayUrl(): string {
-    if (!this.relay) throw new Error("this scenario has no relay");
-    return this.relay.url;
+    const url = this.relay?.url ?? this.env["AGENTDECK_RELAY_URL"];
+    if (url === undefined) throw new Error("this scenario has no relay");
+    return url;
+  }
+
+  /** This host's device id on the relay. */
+  async deviceId(): Promise<string> {
+    const { deviceId } = await this.client.call("relay.status", {});
+    if (deviceId === null) throw new Error("the daemon has no identity yet");
+    return deviceId;
   }
 
   /** Waits until the daemon reports its relay link up. */

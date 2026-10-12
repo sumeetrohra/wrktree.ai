@@ -1,7 +1,8 @@
 # Agentdeck — guide for coding agents
 
-Agentdeck lets you drive coding agents (Claude Code, Codex, Gemini) running on your machine from
-your phone. Read [`docs/tech-spec.md`](docs/tech-spec.md) for the design and
+Agentdeck lets you drive coding agents (Claude Code, Codex, Gemini) running on your computers from
+your phone or browser. You sign in (Firebase Auth); each computer joins the account once with
+`agentdeck login`, and the account's device list on the relay is the trust root (docs/phase-2.md, 2c). Read [`docs/tech-spec.md`](docs/tech-spec.md) for the design and
 [`docs/phase-1.md`](docs/phase-1.md) for what exists.
 
 ## Before you change anything
@@ -20,6 +21,8 @@ the type checker. The ones that most often matter:
   `.handlers.ts`, `.store.ts`, `.queries.ts`, `.test.ts`).
 - **React.** No `useEffect`, no Context, no `useMemo`/`useCallback`/`memo`. Server state in React
   Query, client state in Zustand, UI from React Native Reusables, strings through i18n.
+- **Hosts.** Every daemon call in the app names its host: `daemonCall(hostId, …)`, and
+  `onDaemonEvent((hostId, e) => …)`. Query keys include the host id.
 - **Crypto.** Only `packages/crypto` touches cryptographic primitives; the relay never sees
   plaintext (SEC13), and an E2E scenario checks it.
 - **Protocol.** `packages/protocol` is the contract. Add commands there first; `tsc` then tells you
@@ -37,7 +40,7 @@ pnpm knip            # unused files, exports, dependencies
 pnpm audit --audit-level high   # exceptions are reviewed in docs/rules/security.md
 pnpm --filter @agentdeck/mobile test        # app unit tests (jest-expo)
 pnpm --filter @agentdeck/mobile export:web  # app web build
-pnpm test:e2e:app    # the app's web build in Chromium against daemon + relay (needs a Playwright Chromium)
+pnpm test:e2e:app    # the app's web build (dev sign-in) in Chromium against two daemons + relay
 ```
 
 The pre-commit hook runs lint-staged and `pnpm typecheck`; never bypass it with `--no-verify`.

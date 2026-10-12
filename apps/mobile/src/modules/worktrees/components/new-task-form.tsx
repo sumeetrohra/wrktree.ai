@@ -22,7 +22,7 @@ export function NewTaskForm({ profiles, busy, onSubmit }: TNewTaskFormProps): Re
   const { t } = useTranslation();
   const form = useForm<TNewTask>({
     resolver: zodResolver(newTaskSchema),
-    defaultValues: { title: "", message: "", profileId: profiles[0]?.id ?? "" },
+    defaultValues: { title: "", message: "", profileId: profiles[0]?.id ?? "", model: "" },
   });
   const profileId = form.watch("profileId");
   return (
@@ -73,6 +73,23 @@ export function NewTaskForm({ profiles, busy, onSubmit }: TNewTaskFormProps): Re
             </Button>
           ))}
         </View>
+      </View>
+      <View className="gap-1.5">
+        <Label nativeID="task-model">{t("newTask.model")}</Label>
+        <Controller
+          control={form.control}
+          name="model"
+          render={({ field }) => (
+            <Input
+              aria-labelledby="task-model"
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder={t("newTask.modelPlaceholder")}
+              value={field.value ?? ""}
+              onChangeText={field.onChange}
+            />
+          )}
+        />
       </View>
       <Button
         disabled={busy}

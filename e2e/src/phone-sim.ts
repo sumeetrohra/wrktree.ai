@@ -1,24 +1,16 @@
 import {
   bytesToUtf8,
-  createHello,
   deviceIdFor,
   finishHandshake,
   fromB64,
   generateIdentity,
   handshakeMessageSchema,
-  linkToOffer,
-  pairingTranscript,
-  pairMessageSchema,
   SecureChannel,
-  shortCode,
   signRegistration,
   startHandshake,
   toB64,
   utf8ToBytes,
-  verifyPairOk,
   type TIdentity,
-  type TPairHello,
-  type TPairingOffer,
 } from "@agentdeck/crypto";
 import {
   blobbedDataSchema,
@@ -29,9 +21,11 @@ import {
   relayFrameSchema,
   type TCommandName,
   type TCommandResult,
+  type TDeviceKind,
   type TEvtFrame,
   type TInner,
   type TProtocolError,
+  type TRelayDevice,
   type TRelayFrame,
 } from "@agentdeck/protocol";
 import { newId } from "@agentdeck/shared";
@@ -44,29 +38,34 @@ class PhoneCommandError extends Error {
 
 type TPending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
+/** One host this phone talks to: its sealed session and the events it sent. */
+type THostSession = {
+  channel: SecureChannel | null;
+  readonly events: TEvtFrame[];
+  readonly lastCursor: Map<string, number>;
+  readonly gaps: string[];
+};
+
 const enc = (v: unknown) => toB64(utf8ToBytes(JSON.stringify(v)));
 const dec = (body: string): unknown => JSON.parse(bytesToUtf8(fromB64(body)));
 
 /**
- * A phone, in a test: it signs in to the relay, claims a pairing offer, proves it saw the QR code,
- * and then talks to the daemon only through end-to-end sealed frames, exactly as the app will.
+ * A phone, in a test: it signs in (a dev ID token standing in for Firebase), registers, finds the
+ * account's hosts in the relay's device list, and talks to each only through end-to-end sealed
+ * frames, exactly as the app does. Calls and event getters act on the current host (`use`).
  */
 export class PhoneSim {
   readonly id: TIdentity = generateIdentity();
   readonly deviceId = deviceIdFor(this.id.signPub);
-  private session = "";
+  idToken = "";
   private deviceToken = "";
-  private offer: TPairingOffer | null = null;
   private ws: WebSocket | null = null;
-  private channel: SecureChannel | null = null;
+  private host: string | null = null;
+  private readonly sessions = new Map<string, THostSession>();
   private readonly pending = new Map<string, TPending>();
   private readonly blobs = new Map<string, string[]>();
   private readonly waiters = new Set<() => void>();
-  private pairWaiter: ((f: TRelayFrame) => void) | null = null;
-  private hsWaiter: ((f: TRelayFrame) => void) | null = null;
-  readonly events: TEvtFrame[] = [];
-  readonly lastCursor = new Map<string, number>();
-  readonly gaps: string[] = [];
+  private readonly hsWaiters = new Map<string, (f: TRelayFrame) => void>();
   /** Raw frames the relay delivered (what an attacker on the relay would see). */
   readonly wire: string[] = [];
   /** Sealed frames this phone sent, for replay/tamper tests. */
@@ -79,6 +78,7 @@ export class PhoneSim {
   constructor(
     readonly relayUrl: string,
     readonly name = "Test phone",
+    readonly kind: TDeviceKind = "phone",
   ) {}
 
   private async http(
@@ -97,62 +97,74 @@ export class PhoneSim {
     return json;
   }
 
-  /** Magic-link sign-in (reads the dev outbox) and device registration. */
-  async signIn(email: string): Promise<void> {
-    await this.http("POST", "/v1/auth/start", { email });
-    const { messages } = (await this.http("GET", "/v1/dev/outbox")) as {
-      messages: { to: string; code: string }[];
-    };
-    const code = messages.filter((m) => m.to === email).at(-1)?.code;
-    const fin = await this.http("POST", "/v1/auth/finish", { email, code });
-    this.session = String(fin["sessionToken"]);
+  /** Signs in as `uid` (the relay's dev issuer stands in for Firebase) and registers this device. */
+  async signIn(uid: string): Promise<void> {
+    const q = `uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(`${uid}@example.com`)}`;
+    this.idToken = String((await this.http("GET", `/v1/dev/id-token?${q}`))["idToken"]);
     const reg = await this.http(
       "POST",
       "/v1/devices/register",
-      { ...signRegistration(this.id, Date.now()), kind: "phone", name: this.name },
-      this.session,
+      { ...signRegistration(this.id, Date.now()), kind: this.kind, name: this.name },
+      this.idToken,
     );
     this.deviceToken = String(reg["deviceToken"]);
+  }
+
+  /** Approves a host's `agentdeck login` code, as the app's Link screen does. */
+  async approve(code: string): Promise<{ deviceId: string; name: string }> {
+    const r = await this.http("POST", "/v1/link/approve", { code }, this.idToken);
+    return { deviceId: String(r["deviceId"]), name: String(r["name"]) };
+  }
+
+  /** The account's devices, from the relay. */
+  async devices(): Promise<TRelayDevice[]> {
+    return (await this.http("GET", "/v1/devices", undefined, this.idToken))["devices"] as TRelayDevice[];
+  }
+
+  /** The account's hosts (computers running the daemon). */
+  async hosts(): Promise<TRelayDevice[]> {
+    return (await this.devices()).filter((d) => d.kind === "daemon");
+  }
+
+  /** Removes a device from the account, as the app's Hosts and Devices screens do. */
+  async remove(deviceId: string): Promise<void> {
+    await this.http("DELETE", `/v1/devices/${deviceId}`, undefined, this.idToken);
   }
 
   async registerPush(token: string): Promise<void> {
     await this.http("POST", "/v1/push/register", { expoPushToken: token }, this.deviceToken);
   }
 
-  /** Scans the link: claims the offer, sends pair.hello, checks pair.ok. Returns the short code. */
-  async pair(link: string, opts: { forgeSecret?: boolean } = {}): Promise<{ code: string; ok: boolean }> {
-    const offer = linkToOffer(link);
-    if (!offer) throw new Error("not a pairing link");
-    this.offer = offer;
-    await this.http(
-      "POST",
-      "/v1/pair/claim",
-      { pairingId: offer.pairingId, phoneDeviceId: this.deviceId },
-      this.session,
-    );
-    await this.open();
-    const helloOffer = opts.forgeSecret ? { ...offer, secret: toB64(new Uint8Array(32)) } : offer;
-    const hello: TPairHello = createHello(this.id, helloOffer, this.name);
-    const reply = new Promise<TRelayFrame>((resolve) => {
-      this.pairWaiter = resolve;
-    });
-    this.sendFrame({
-      v: 1,
-      from: this.deviceId,
-      to: offer.daemonDeviceId,
-      seq: 0,
-      kind: "pair",
-      body: enc(hello),
-    });
-    const frame = await withTimeout(reply, 10_000, "pair reply");
-    const msg = pairMessageSchema.parse(dec(frame.body));
-    const ok = msg.t === "pair.ok" && verifyPairOk(offer, hello, msg);
-    return { code: shortCode(pairingTranscript(offer, hello)), ok };
+  /** Makes `hostId` the host that `connect`, `call` and the event getters act on. */
+  use(hostId: string): this {
+    this.host = hostId;
+    if (!this.sessions.has(hostId)) {
+      this.sessions.set(hostId, { channel: null, events: [], lastCursor: new Map(), gaps: [] });
+    }
+    return this;
   }
 
   get daemonId(): string {
-    if (!this.offer) throw new Error("not paired");
-    return this.offer.daemonDeviceId;
+    if (this.host === null) throw new Error("pick a host first (use)");
+    return this.host;
+  }
+
+  private get current(): THostSession {
+    const s = this.sessions.get(this.daemonId);
+    if (!s) throw new Error("no session");
+    return s;
+  }
+
+  get events(): TEvtFrame[] {
+    return this.current.events;
+  }
+
+  get lastCursor(): Map<string, number> {
+    return this.current.lastCursor;
+  }
+
+  get gaps(): string[] {
+    return this.current.gaps;
   }
 
   private open(): Promise<void> {
@@ -179,19 +191,24 @@ export class PhoneSim {
     });
   }
 
-  /** Opens the socket, runs the signed handshake, then `sync.hello` from the last cursors seen. */
+  /**
+   * Opens the socket, runs the signed handshake with the current host (its key from the account's
+   * device list), then `sync.hello` from the last cursors seen.
+   */
   async connect(opts: { timeoutMs?: number } = {}): Promise<void> {
-    if (!this.offer) throw new Error("pair first");
+    const host = this.daemonId;
+    const signPub = (await this.devices()).find((d) => d.id === host)?.signPub;
+    if (signPub === undefined) throw new Error(`host ${host} is not on the account`);
     if (this.ws?.readyState !== WebSocket.OPEN) await this.open();
-    const peers = { clientId: this.deviceId, serverId: this.offer.daemonDeviceId };
+    const peers = { clientId: this.deviceId, serverId: host };
     const { init, pending } = startHandshake(this.id, peers);
     const accepted = new Promise<TRelayFrame>((resolve) => {
-      this.hsWaiter = resolve;
+      this.hsWaiters.set(host, resolve);
     });
     this.sendFrame({
       v: 1,
       from: this.deviceId,
-      to: this.offer.daemonDeviceId,
+      to: host,
       seq: 0,
       kind: "hs",
       body: enc({ t: "session.init", ...init }),
@@ -199,17 +216,18 @@ export class PhoneSim {
     const frame = await withTimeout(accepted, opts.timeoutMs ?? 10_000, "handshake");
     const msg = handshakeMessageSchema.parse(dec(frame.body));
     if (msg.t !== "session.accept") throw new Error("unexpected handshake reply");
-    const session = finishHandshake(fromB64(this.offer.daemonSignPub), peers, pending, msg);
+    const session = finishHandshake(fromB64(signPub), peers, pending, msg);
     if (!session) throw new Error("forged handshake reply");
-    this.channel = new SecureChannel(session, this.deviceId, this.offer.daemonDeviceId);
+    const s = this.current;
+    s.channel = new SecureChannel(session, this.deviceId, host);
     const cursors: Record<string, number> = { global: 0, "repo:*": 0, "chat:*": 0 };
-    for (const [t, c] of this.lastCursor) cursors[t] = c;
+    for (const [t, c] of s.lastCursor) cursors[t] = c;
     await this.call("sync.hello", { deviceName: this.name, appVersion: "e2e", cursors });
   }
 
   /** Simulates losing the network: the socket goes, the session with it. */
   disconnect(): void {
-    this.channel = null;
+    for (const s of this.sessions.values()) s.channel = null;
     this.ws?.close();
   }
 
@@ -223,12 +241,13 @@ export class PhoneSim {
 
   /** Seals an inner frame for the daemon (returned so tests can tamper with it or replay it). */
   seal(inner: TInner): TRelayFrame {
-    if (!this.channel || !this.offer) throw new Error("no session");
-    const s = this.channel.seal(JSON.stringify(inner));
+    const channel = this.current.channel;
+    if (!channel) throw new Error("no session");
+    const s = channel.seal(JSON.stringify(inner));
     const frame: TRelayFrame = {
       v: 1,
       from: this.deviceId,
-      to: this.offer.daemonDeviceId,
+      to: this.daemonId,
       seq: s.seq,
       sid: s.sessionId,
       kind: "msg",
@@ -268,12 +287,8 @@ export class PhoneSim {
     const parsed = relayFrameSchema.safeParse(safeJson(text));
     if (!parsed.success) return;
     const f = parsed.data;
-    if (f.kind === "pair") {
-      this.pairWaiter?.(f);
-      return;
-    }
     if (f.kind === "hs") {
-      this.hsWaiter?.(f);
+      this.hsWaiters.get(f.from)?.(f);
       return;
     }
     if (f.kind !== "msg") return;
@@ -287,26 +302,27 @@ export class PhoneSim {
       body: "",
       ...(f.sid ? { sid: f.sid } : {}),
     });
+    const session = this.sessions.get(f.from);
     const plain =
-      this.channel && f.sid !== undefined
-        ? this.channel.open({ from: f.from, to: f.to, seq: f.seq, sessionId: f.sid, body: f.body })
+      session?.channel && f.sid !== undefined
+        ? session.channel.open({ from: f.from, to: f.to, seq: f.seq, sessionId: f.sid, body: f.body })
         : null;
-    if (plain === null) {
+    if (!session || plain === null) {
       this.dropped++;
       return;
     }
     const inner = innerSchema.parse(JSON.parse(plain));
-    this.onInner(inner);
+    this.onInner(session, inner);
   }
 
-  private onInner(f: TInner): void {
+  private onInner(session: THostSession, f: TInner): void {
     switch (f.t) {
       case "evt": {
-        const last = this.lastCursor.get(f.topic) ?? 0;
+        const last = session.lastCursor.get(f.topic) ?? 0;
         if (f.cursor <= last) return; // replay overlap after a reconnect
-        if (f.cursor !== last + 1) this.gaps.push(`${f.topic}: ${last} → ${f.cursor}`);
-        this.lastCursor.set(f.topic, f.cursor);
-        this.events.push(f);
+        if (f.cursor !== last + 1) session.gaps.push(`${f.topic}: ${last} → ${f.cursor}`);
+        session.lastCursor.set(f.topic, f.cursor);
+        session.events.push(f);
         this.notify();
         return;
       }
@@ -340,9 +356,10 @@ export class PhoneSim {
   }
 
   waitFor(pred: (f: TEvtFrame) => boolean, what: string, timeoutMs = 20_000): Promise<TEvtFrame> {
+    const events = this.events;
     return new Promise((resolve, reject) => {
       const scan = () => {
-        const hit = this.events.find(pred);
+        const hit = events.find(pred);
         if (hit) {
           this.waiters.delete(scan);
           clearTimeout(timer);

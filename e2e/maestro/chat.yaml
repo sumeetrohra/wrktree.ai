@@ -1,9 +1,9 @@
 appId: dev.agentdeck.app
 ---
 - launchApp
-- assertVisible: "Repositories"
-- tapOn: "shop"
+- assertVisible: "Work"
 - tapOn: "New task"
+- tapOn: "shop"
 - tapOn: "Fix the login redirect"
 - inputText: "Write the notes"
 - tapOn: "Describe the task…"

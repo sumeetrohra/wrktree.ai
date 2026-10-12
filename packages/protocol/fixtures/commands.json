@@ -452,5 +452,80 @@
     "result": {
       "url": "http://127.0.0.1:4317/#code=0123456789abcdef0123456789abcdef"
     }
+  },
+  "account.link": {
+    "args": {},
+    "result": {
+      "code": "ABCD-EFGH",
+      "url": "https://app.agentdeck.dev/link?code=ABCD-EFGH",
+      "expiresAt": 1800000600000
+    }
+  },
+  "account.status": {
+    "args": {},
+    "result": {
+      "state": "linked",
+      "email": "me@example.com"
+    }
+  },
+  "account.logout": {
+    "args": {},
+    "result": {}
+  },
+  "workspace.overview": {
+    "args": {},
+    "result": {
+      "host": {
+        "deviceId": null,
+        "name": "laptop"
+      },
+      "repos": [
+        {
+          "id": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "path": "/home/me/src/app",
+          "name": "app",
+          "defaultBase": "main",
+          "createdAt": 1791600000000
+        }
+      ],
+      "worktrees": [
+        {
+          "id": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "title": "Fix login",
+          "branch": "fix-login",
+          "baseRef": "main",
+          "path": "/home/me/src/.agentdeck-worktrees/app/fix-login",
+          "status": "ready",
+          "port": 41000,
+          "setupError": null,
+          "createdAt": 1791600000000,
+          "archivedAt": null
+        }
+      ],
+      "chats": [
+        {
+          "id": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "title": null,
+          "status": "idle",
+          "resumed": false,
+          "queued": 0,
+          "createdAt": 1791600000000,
+          "updatedAt": 1791600000000
+        }
+      ],
+      "profiles": [
+        {
+          "id": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "name": "Claude Work",
+          "color": null,
+          "createdAt": 1791600000000
+        }
+      ]
+    }
   }
 }

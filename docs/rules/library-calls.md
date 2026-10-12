@@ -16,9 +16,10 @@ library a one-file change.
 | L7 | `dayjs` | `apps/mobile/src/shared/utils/datetime-utils.ts` | `lint:no-restricted-imports` |
 | L8 | `@sentry/react-native` | `apps/mobile/src/modules/sentry/` | `lint:no-restricted-imports` |
 | L9 | `WebSocket`, `fetch` globals | `apps/mobile/src/lib/api/` | `lint:no-restricted-globals` |
+| L23 | `fetch` for signing in (Firebase Auth REST, the relay's dev issuer) | `apps/mobile/src/lib/auth/` | `lint:no-restricted-globals` |
 | L11 | `@noble/curves`, `@noble/ciphers`, `@noble/hashes`, `libsodium-wrappers-sumo` | `packages/crypto/src/` (everything else calls `@agentdeck/crypto`) | `lint:no-restricted-imports` |
 | L12 | `hono`, `@hono/node-server` | `apps/relay/src/app/`, `apps/relay/src/infra/node/` | `lint:no-restricted-imports` |
-| L13 | `jose` | `apps/relay/src/infra/jwt/` | `lint:no-restricted-imports` |
+| L13 | `jose` | `apps/relay/src/infra/idtoken/` | `lint:no-restricted-imports` |
 | L14 | `qrcode-terminal` | `apps/cli/src/shared/output/` | `lint:no-restricted-imports` |
 | L15 | `cloudflare:workers` | `apps/relay/src/app/worker-host.ts`, `apps/relay/src/infra/worker/` | `lint:no-restricted-imports` |
 | L16 | `react-native-mmkv` | `apps/mobile/src/lib/storage/` | `lint:no-restricted-imports` |

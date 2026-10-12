@@ -10,10 +10,12 @@ type TVars = {
   message?: string | undefined;
 };
 
-/** Answers a permission request. Queued and sent on reconnect if the phone is offline. */
-export function useRespondPermissionMutation(): UseMutationResult<Record<string, never>, Error, TVars> {
+/** Answers a permission request on `hostId`. Queued and sent on reconnect if the host is away. */
+export function useRespondPermissionMutation(
+  hostId: string,
+): UseMutationResult<Record<string, never>, Error, TVars> {
   return useMutation({
     mutationFn: ({ message, ...v }) =>
-      daemonCall("permission.respond", { ...v, ...(message === undefined ? {} : { message }) }),
+      daemonCall(hostId, "permission.respond", { ...v, ...(message === undefined ? {} : { message }) }),
   });
 }

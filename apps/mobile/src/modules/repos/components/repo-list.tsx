@@ -9,10 +9,10 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/shared/component
 import { Text } from "@/shared/components/ui/text";
 import { fromNow } from "@/shared/utils/datetime-utils";
 
-export type TRepoListProps = { repos: readonly TRepo[] };
+export type TRepoListProps = { hostId: string; repos: readonly TRepo[] };
 
 /** Presentational list of repositories; data comes in through props (R5). */
-export function RepoList({ repos }: TRepoListProps): React.JSX.Element {
+export function RepoList({ hostId, repos }: TRepoListProps): React.JSX.Element {
   const { t } = useTranslation();
   if (repos.length === 0) {
     return <Text className="text-muted-foreground">{t("repos.empty")}</Text>;
@@ -20,7 +20,11 @@ export function RepoList({ repos }: TRepoListProps): React.JSX.Element {
   return (
     <View className="gap-3">
       {repos.map((repo) => (
-        <Link key={repo.id} href={{ pathname: "/repo/[repoId]", params: { repoId: repo.id } }} asChild>
+        <Link
+          key={repo.id}
+          href={{ pathname: "/h/[hostId]/repo/[repoId]", params: { hostId, repoId: repo.id } }}
+          asChild
+        >
           <Button variant="ghost" className="h-auto p-0">
             <Card className="w-full">
               <CardHeader>

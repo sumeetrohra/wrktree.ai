@@ -12,6 +12,7 @@ describe("RepoList", () => {
     render(
       <I18nextProvider i18n={i18n}>
         <RepoList
+          hostId="local"
           repos={[
             {
               id: "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
@@ -31,7 +32,7 @@ describe("RepoList", () => {
   it("explains how to add a repo when there are none", () => {
     render(
       <I18nextProvider i18n={i18n}>
-        <RepoList repos={[]} />
+        <RepoList hostId="local" repos={[]} />
       </I18nextProvider>,
     );
     expect(screen.getByText(/No repositories yet/)).toBeTruthy();

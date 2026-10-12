@@ -2,7 +2,6 @@ appId: dev.agentdeck.app
 ---
 # Needs at least one image in the simulator's photo library.
 - launchApp
-- tapOn: "shop"
 - tapOn:
     index: 0
     text: "Write the notes"

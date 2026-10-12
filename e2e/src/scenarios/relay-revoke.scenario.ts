@@ -4,21 +4,21 @@ import { newId } from "@agentdeck/shared";
 
 import type { TScenario } from "../scenario.ts";
 
-import { pairPhone } from "./relay-helpers.ts";
+import { signedInPhone } from "./relay-helpers.ts";
 
 const REVOKED = 4003;
 
 export const relayRevoke: TScenario = {
   n: 11,
-  title: "Tampering and revocation",
-  summary: "Flipped bytes, replays and forged headers are dropped; a revoked phone is cut off for good",
+  title: "Tampering and removal",
+  summary: "Flipped bytes, replays and forged headers are dropped; a removed phone is cut off",
   covers: [
-    "Pairing and encryption: tampered header rejection, replay rejection",
-    "Revocation: the daemon refuses the device, the relay drops its sockets",
+    "Encryption: tampered header rejection, replay rejection",
+    "Removal: the relay drops the device and its token; every host stops trusting it",
   ],
   relay: true,
   async run(h) {
-    const phone = await pairPhone(h);
+    const phone = await signedInPhone(h);
     const settle = () => h.pause(400);
 
     h.step("A frame with one flipped ciphertext byte");
@@ -57,16 +57,23 @@ export const relayRevoke: TScenario = {
 
     h.step("Desktop: `agentdeck devices revoke`");
     const { code, out } = await h.cli(["devices", "revoke", phone.deviceId]);
-    await h.check("the relay closes the phone's socket as revoked", async () => {
+    await h.check("the relay closes the phone's socket as removed", async () => {
       assert.equal(code, 0, out);
       assert.equal(await phone.waitClosed(), REVOKED);
     });
-    await h.check("the phone can't reconnect", async () => {
+    await h.check("its device token no longer works", async () => {
       await assert.rejects(phone.connect({ timeoutMs: 1500 }));
     });
     const list = await h.send("device.list", {});
-    await h.check("the daemon lists it as revoked", () => {
-      assert.ok(list.find((d) => d.id === phone.deviceId)?.revokedAt !== null);
+    await h.check("the daemon no longer lists it", () => {
+      assert.ok(!list.some((d) => d.id === phone.deviceId));
+    });
+
+    h.step("The phone signs in again");
+    await phone.signIn("me");
+    await phone.connect();
+    await h.check("signing in is what membership means: it is back", async () => {
+      assert.deepEqual(await phone.call("repo.list", {}), []);
     });
   },
 };

@@ -340,6 +340,11 @@ The relay is a dumb, durable mailbox: one Durable Object per account holds every
 
 ## Pairing and encryption
 
+> **Superseded in Phase 2c.** QR pairing below was replaced by signing in: consumers sign in with
+> Firebase Auth, computers link with `agentdeck login`, and the account's device list on the relay
+> is the trust root. Sessions and frame encryption are unchanged. See
+> [`phase-2.md`](phase-2.md#2c-sign-in-many-hosts-many-consumers).
+
 Each phone-daemon pair shares symmetric keys derived from a key exchange done during QR pairing. The relay can see who talks to whom, when, and how much, but not what.
 
 ### Keys

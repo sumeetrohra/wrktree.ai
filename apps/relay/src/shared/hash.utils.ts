@@ -10,11 +10,16 @@ export function randomToken(bytes = 32): string {
   return toB64(crypto.getRandomValues(new Uint8Array(bytes)));
 }
 
-/** Six random digits, uniformly distributed. */
-export function randomCode(): string {
-  const max = 4_294_967_295 - (4_294_967_296 % 1_000_000);
-  for (;;) {
-    const [n = 0] = crypto.getRandomValues(new Uint32Array(1));
-    if (n <= max) return String(n % 1_000_000).padStart(6, "0");
-  }
+/** No 0/O or 1/I, so a code read off a terminal is typed right. 32 symbols: 5 bits each. */
+const LINK_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Eight uniformly random symbols (40 bits), shown as `ABCD-EFGH`. */
+export function randomLinkCode(): string {
+  const chars = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => LINK_ALPHABET.charAt(b % 32));
+  return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+/** The code as stored: upper case, without the dash. */
+export function normalizeLinkCode(code: string): string {
+  return code.replace("-", "").toUpperCase();
 }

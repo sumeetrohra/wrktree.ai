@@ -18,17 +18,18 @@ One TypeScript monorepo builds three deployables that share one protocol package
 | **Relay** (`apps/relay`) | Cloudflare Workers + Durable Objects (self-host: Node + Docker) | A dumb, durable mailbox: one Durable Object per account forwards sealed frames, buffers for offline devices, sends content-free push wake-ups. |
 | **App** (`apps/mobile`) | iOS, Android, web (Expo) | Thin, cache-first client. The web build doubles as the desktop UI, served by the daemon on localhost. |
 
-Phone and daemon pair by QR code and talk end-to-end encrypted (libsodium X25519 +
+You sign in on your phone or browser; each computer joins your account once with `agentdeck login`.
+Every device on the account sees every computer's work, and talks to it end-to-end encrypted (X25519 +
 XChaCha20-Poly1305, per-connection ephemeral keys). Multiple agent accounts are first-class
 "profiles" (isolated `CLAUDE_CONFIG_DIR` / `CODEX_HOME`), with hand-off to another profile
 when one hits its usage limit.
 
 ## Status
 
-**Phases 1 and 2 are built.** The daemon runs agents in worktrees; a phone pairs through the
-relay by QR code and drives it end to end encrypted, from the app (tested as its web build in
+**Phases 1 and 2 are built.** The daemon runs agents in worktrees; phones and browsers sign in and
+drive any number of linked computers through the relay, end to end encrypted, from the app (tested as its web build in
 Chromium; native builds need an EAS project). The daemon also serves the app as a desktop web UI.
-14 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+15 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md) and [`docs/phase-2.md`](docs/phase-2.md).
 
 | Phase | What | State |
@@ -77,7 +78,8 @@ node apps/cli/dist/main.js profile add fake --name Personal
 - [`docs/rules/`](docs/rules/README.md) — typing, naming, structure, library-call, React,
   data, security and testing rules, each tagged with what enforces it
 - [`docs/phase-1.md`](docs/phase-1.md) — what Phase 1 built, its E2E suite and the video
-- [`docs/phase-2.md`](docs/phase-2.md) — Phase 2: relay, crypto and pairing (2a), the app (2b)
+- [`docs/phase-2.md`](docs/phase-2.md) — Phase 2: relay and crypto (2a), the app (2b), sign-in with
+  many computers and devices (2c)
 - [`docs/relay-deploy.md`](docs/relay-deploy.md) — deploying the relay to Cloudflare or self-hosting it
 - [`docs/spikes.md`](docs/spikes.md) — pinned versions and open Phase 0 questions
 - [`docs/tech-spec.md`](docs/tech-spec.md) — technical specification and implementation

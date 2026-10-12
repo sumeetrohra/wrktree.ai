@@ -1,11 +1,10 @@
 import type { TDeviceKind } from "@agentdeck/protocol";
 import type { ILogger } from "@agentdeck/shared";
 
-import type { JwtService } from "#src/infra/jwt/index.js";
-import type { IMailer } from "#src/infra/mail/index.js";
-import type { IOAuthProvider } from "#src/infra/oauth/index.js";
+import type { DevIdTokens } from "#src/infra/idtoken/index.js";
 import type { IDirectory } from "#src/modules/directory/index.js";
 import type { IClock } from "#src/shared/clock.types.js";
+import type { IIdTokenVerifier } from "#src/shared/id-token.types.js";
 
 /** Every account's hub, reached in process (self-host) or over Durable Object RPC (Worker). */
 export interface IHubs {
@@ -18,10 +17,9 @@ export interface IHubs {
 export type TRelayDeps = {
   directory: IDirectory;
   hubs: IHubs;
-  jwt: JwtService;
-  mailer: IMailer;
-  oauth: IOAuthProvider;
+  idTokens: IIdTokenVerifier;
+  /** The dev issuer; null unless RELAY_DEV=1. */
+  devIdTokens: DevIdTokens | null;
   clock: IClock;
   log: ILogger;
-  dev: boolean;
 };

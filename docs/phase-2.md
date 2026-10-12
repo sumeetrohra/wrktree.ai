@@ -9,6 +9,10 @@ Phase 2 ships in two milestones:
 |---|---|---|
 | **2a** | `packages/crypto`, the relay (Worker + self-host), the daemon's relay transport, pairing, `agentdeck pair / devices / relay / install` | **built** |
 | **2b** | the app: onboarding, QR pairing, repos → worktrees → chats, chat screen, permission sheet, composer, push and deep links, offline cache; the desktop web UI | **built** (web-tested; native builds need EAS) |
+| **2c** | sign in instead of pairing; many computers ("hosts") and many phones and browsers ("consumers") on one account; the Work view across hosts | **built** (dev sign-in tested end to end; real Firebase needs a project) |
+
+**2c replaced QR pairing.** The sections on 2a and 2b below describe pairing as it was built; see
+[2c](#2c-sign-in-many-hosts-many-consumers) for what replaced it.
 
 ## 2a: what exists
 
@@ -186,3 +190,69 @@ These can't run in CI; check them once a staging relay, Expo push credentials an
 - [ ] Ship one real change from the phone.
 
 The automated parts (offline replay with no gaps, no plaintext on the relay) are scenarios 10 and 12.
+
+## 2c: sign in, many hosts, many consumers
+
+Pairing tied one phone to one computer. 2c ties devices to an **account** instead:
+
+- **Consumers** (the app on a phone, a browser) sign in with Firebase Auth (email link; the app
+  talks to Firebase's REST API, so web and native share one code path). The relay verifies the ID
+  token and registers the device on the account.
+- **Hosts** (computers running the daemon) link once with `agentdeck login`, like `gh auth login`:
+  the daemon asks the relay for an eight-character code (`ABCD-EFGH`, also shown as a QR code and a
+  link to the app's Link screen); a signed-in consumer approves it; the daemon, polling with
+  signatures only its key can make, collects its device token and keeps it sealed on disk.
+- **The account's device list is the trust root.** `GET /v1/devices` returns each device's signing
+  key; a host accepts a session only from a consumer on that list, and refreshes it every few
+  minutes, on presence, and whenever an unknown device knocks. Removing a device on the relay drops
+  it everywhere. See the trade-off in [`rules/security.md`](rules/security.md#trust-model).
+- **One machine can be both.** Its daemon hosts; its desktop web UI talks to it locally, and after
+  signing in also reaches the account's other hosts through the relay.
+
+```
+                 ┌── laptop (daemon) ──┐
+phone ══wss══▶ relay ══wss══▶ desktop (daemon)       one socket per device; sessions per host
+browser ═wss═▶   │      ▲
+                 │      └── laptop's web UI (local to laptop, relay to desktop)
+                 └─ GET /v1/devices: who is on the account, with signing keys
+```
+
+### What changed
+
+| Part | Change |
+|---|---|
+| Relay | Accounts keyed by the sign-in uid; `FirebaseVerifier` (Google's JWKS) and a dev issuer (`RELAY_DEV=1`, `GET /v1/dev/id-token`); link routes (`/v1/link/start`, `approve`, `poll`); `GET /v1/devices` with `signPub`, for an ID token or a device token; `DELETE /v1/devices/:id` by the user, a host, or the device itself. Removed: sessions, magic codes, GitHub OAuth, pairing routes, the dev mailer. |
+| Protocol | Additive: `account.link`, `account.status`, `account.logout`, `workspace.overview` (repos, worktrees with branches, chats with agent, profile and model, profiles), `chat.model`, `device.connected`/`self`. `pair.*` stay in the protocol, deprecated; they always fail. |
+| Daemon | `Remote` links, stores the sealed token (`relay-token.sealed`), refreshes the account's device list and drops sessions of removed devices. The `pairing` module is gone; `devices` is now a cache of the account's list. `AGENTDECK_HOST_NAME` names the computer (default: hostname); `AGENTDECK_APP_URL` is where the login link points. |
+| CLI | `agentdeck login [--print]`, `logout`, `hosts`; `devices` lists phones and browsers, `devices revoke` removes one from the account. `pair` is gone. |
+| App | `lib/auth` (Firebase REST + dev sign-in); `lib/api` keeps one relay socket per device and one sealed session per host (`daemonCall(hostId, …)`, `onDaemonEvent((hostId, e) => …)`), per-host cursors and offline queues. Screens: Work (home), Computers, Link a computer, Devices, Sign in; New task picks the computer, repo, profile and model. Pairing screens are gone. |
+
+### End-to-end tests (2c)
+
+| # | Scenario | What it proves |
+|---|---|---|
+| 8 | Sign in, link a computer | A phone signs in; `agentdeck login` → approve → the daemon links; other accounts see nothing and can't open a session; the token survives a restart; `logout` leaves the account |
+| 11 | Tampering and removal | Flipped bytes, replays and rewritten headers are dropped; a removed phone is closed and its token dies; signing in again brings it back |
+| 13 | Two computers, one phone | Both link to one account; the phone runs a task on either; `workspace.overview` shows each host's branches, chats, agent, profile and model; removing a host unlinks it |
+| 14 | The app (web build) | Dev sign-in, link two computers from the Link screen, one Work view with filters, a task with a permission, offline catch-up, push deep link, removal |
+| 15 | The desktop web UI | `agentdeck open` (one-time code), then signing in adds the other computer, without listing this one twice |
+
+Scenarios 9, 10 and 12 (chat, offline, plaintext dump) run unchanged on top of sign-in.
+
+### Try it by hand
+
+```sh
+pnpm build
+RELAY_DEV=1 RELAY_DEV_SECRET=dev-only-secret-dev-only-secret-dev pnpm --filter @agentdeck/relay start
+AGENTDECK_RELAY_URL=http://127.0.0.1:8787 agentdeck daemon &
+agentdeck login                      # shows a code
+EXPO_PUBLIC_DEV_AUTH=1 EXPO_PUBLIC_RELAY_URL=http://127.0.0.1:8787 pnpm --filter @agentdeck/mobile web
+# In the app: Dev sign-in → Computers → Link a computer → type the code.
+```
+
+### Still needs a real project
+
+- A Firebase project: real email-link sign-in on web and on a phone (the link must open the app's
+  `/sign-in` route; pasting it works everywhere).
+- `agentdeck login` on two real machines, and the Work view showing both.
+- Google, Apple and GitHub sign-in buttons (Firebase providers; email link is what 2c ships).

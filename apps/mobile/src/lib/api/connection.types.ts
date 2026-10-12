@@ -1,13 +1,12 @@
 import type { TBlobRef, TCommandArgs, TCommandName, TCommandResult, TEvtFrame } from "@agentdeck/protocol";
 
 /**
- * `unpaired`: no machine yet. `connecting`: socket or handshake in progress (also while the
- * desktop hasn't confirmed the pairing). `online`: a session is up. `offline`: waiting to retry.
- * `revoked`: this device was revoked; nothing will reconnect.
+ * One host's session. `connecting`: socket or handshake in progress. `online`: a session is up and
+ * caught up. `offline`: the host or the network is away; retrying.
  */
-export type TConnStatus = "unpaired" | "connecting" | "online" | "offline" | "revoked";
+export type TConnStatus = "connecting" | "online" | "offline";
 
-/** One machine, however it is reached (the relay, or the local transport on the desktop). */
+/** One host, however it is reached (the relay, or the local transport on the desktop). */
 export interface IDaemonConnection {
   call<N extends TCommandName>(
     name: N,

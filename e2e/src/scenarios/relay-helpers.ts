@@ -5,24 +5,32 @@ import type { TDaemonEvent } from "@agentdeck/protocol";
 import type { Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
 
-const LINK = /(agentdeck:\/\/pair\?o=[A-Za-z0-9_-]+)/;
-
-/** `agentdeck pair --yes` on the desktop, a phone scanning the link: a paired, connected phone. */
-export async function pairPhone(h: Harness, email = "me@example.com", name = "Pixel 9"): Promise<PhoneSim> {
+/**
+ * `agentdeck login --print` on the host, the code approved on a signed-in phone, then the daemon
+ * collects its token and connects. Returns the host's device id.
+ */
+export async function linkHost(h: Harness, phone: PhoneSim): Promise<string> {
+  const { code, out } = await h.cli(["login", "--print"]);
+  const [, linkCode = ""] = /^([A-Z2-9]{4}-[A-Z2-9]{4}) (\S+)$/m.exec(out) ?? [];
+  assert.equal(code, 0, out);
+  const hostId = await h.deviceId();
+  const approved = await phone.approve(linkCode);
+  assert.equal(approved.deviceId, hostId);
+  const end = Date.now() + 10_000;
+  while ((await h.client.call("account.status", {})).state !== "linked") {
+    if (Date.now() > end) throw new Error("the host never collected its token");
+    await new Promise((r) => setTimeout(r, 100));
+  }
   await h.waitRelayConnected();
-  const pairing = h.cliStream(["pair", "--yes"]);
-  const [, link = ""] = await pairing.waitFor(LINK);
+  return hostId;
+}
+
+/** A phone signed in as `uid`, with this host linked to the same account, connected end to end. */
+export async function signedInPhone(h: Harness, uid = "me", name = "Pixel 9"): Promise<PhoneSim> {
   const phone = new PhoneSim(h.relayUrl, name);
-  await phone.signIn(email);
-  const { code, ok } = await phone.pair(link);
-  const [, shown = ""] = await pairing.waitFor(/Pairing code: (\d{3} \d{3})/);
-  const done = await pairing.done;
-  await h.check("the phone verified the daemon's signature and both screens show the same code", () => {
-    assert.ok(ok, "pair.ok signature");
-    assert.equal(shown.replace(" ", ""), code);
-    assert.equal(done.code, 0, done.out);
-  });
-  await phone.connect();
+  await phone.signIn(uid);
+  const hostId = await linkHost(h, phone);
+  await phone.use(hostId).connect();
   return phone;
 }
 

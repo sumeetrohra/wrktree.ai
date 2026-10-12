@@ -38,14 +38,24 @@ const persistedSchema = z.object({
 
 type TChatsState = {
   chats: Record<string, TChatView>;
-  /** Folds one daemon event into the affected chat. Pure apart from persistence and haptics. */
-  apply: (e: TEvtFrame) => void;
+  /** Folds one daemon event from `hostId` into the affected chat. Pure apart from persistence and haptics. */
+  apply: (hostId: string, e: TEvtFrame) => void;
 };
 
 const storageKey = (chatId: string): string => `chat.${chatId}`;
 /** Ids of every chat with saved state, so a cold start can find one that needs the user. */
 const INDEX_KEY = "chats.index";
 const savedChatIds = (): string[] => storage.get(INDEX_KEY, z.array(z.string())) ?? [];
+/** Which host each chat lives on (chat ids are unique across hosts). */
+const HOSTS_KEY = "chats.hosts";
+const savedHosts = (): Record<string, string> =>
+  storage.get(HOSTS_KEY, z.record(z.string(), z.string())) ?? {};
+
+/** Records the host a chat lives on, so a push can open it without knowing the host. */
+export function rememberHost(chatId: string, hostId: string): void {
+  const hosts = savedHosts();
+  if (hosts[chatId] !== hostId) storage.set(HOSTS_KEY, { ...hosts, [chatId]: hostId });
+}
 
 function hydrate(chatId: string): TChatView {
   const saved = storage.get(storageKey(chatId), persistedSchema);
@@ -103,9 +113,10 @@ function chatIdOf(e: TEvtFrame["event"]): string | null {
  */
 export const useChatsStore = create<TChatsState>()((set, get) => ({
   chats: {},
-  apply: (frame) => {
+  apply: (hostId, frame) => {
     const chatId = chatIdOf(frame.event);
     if (chatId === null) return;
+    rememberHost(chatId, hostId);
     const before = get().chats[chatId] ?? hydrate(chatId);
     const after = reduce(before, frame.event);
     if (after === before) return;
@@ -121,8 +132,8 @@ let started = false;
 export function startChatStoreSync(): void {
   if (started) return;
   started = true;
-  onDaemonEvent((e) => {
-    useChatsStore.getState().apply(e);
+  onDaemonEvent((hostId, e) => {
+    useChatsStore.getState().apply(hostId, e);
   });
 }
 
@@ -135,13 +146,17 @@ export function useChatView(chatId: string): TChatView {
   return useChatsStore((s) => s.chats[chatId]) ?? chatView(chatId);
 }
 
-/** The newest chat waiting on a permission (where a push notification should land). */
-export function chatNeedingAttention(): string | null {
-  let best: { id: string; at: number } | null = null;
+/** The newest chat waiting on a permission, and its host (where a push notification should land). */
+export function chatNeedingAttention(): { chatId: string; hostId: string } | null {
+  let best: { chatId: string; hostId: string; at: number } | null = null;
+  const hosts = savedHosts();
   const ids = new Set([...savedChatIds(), ...Object.keys(useChatsStore.getState().chats)]);
   for (const id of ids) {
     const v = chatView(id);
-    if (v.pending && (!best || v.pending.at > best.at)) best = { id, at: v.pending.at };
+    const hostId = hosts[id];
+    if (hostId !== undefined && v.pending && (!best || v.pending.at > best.at)) {
+      best = { chatId: id, hostId, at: v.pending.at };
+    }
   }
-  return best?.id ?? null;
+  return best ? { chatId: best.chatId, hostId: best.hostId } : null;
 }

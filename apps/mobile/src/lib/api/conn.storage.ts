@@ -5,14 +5,9 @@ import { z } from "zod";
 import { secureStore } from "../secure-store";
 import { storage } from "../storage";
 
-/** The paired machine, as learned from its QR code. */
-const machineSchema = z.object({
-  relayUrl: z.url(),
-  daemonDeviceId: z.string(),
-  daemonSignPub: z.string(),
-  name: z.string(),
-});
-export type TMachine = z.infer<typeof machineSchema>;
+/** A host on the account, as last listed by the relay (shown while offline). */
+const hostSchema = z.object({ id: z.string(), name: z.string(), signPub: z.string() });
+export type TStoredHost = z.infer<typeof hostSchema>;
 
 const queuedSchema = z.object({ id: z.string(), name: z.string(), args: z.unknown() });
 export type TQueued = z.infer<typeof queuedSchema>;
@@ -20,33 +15,38 @@ export type TQueued = z.infer<typeof queuedSchema>;
 const identitySchema = z.object({ signPub: z.string(), signSec: z.string() });
 
 const KEYS = {
-  machine: "conn.machine",
-  cursors: "conn.cursors",
-  queue: "conn.queue",
+  relayUrl: "relay.url",
+  hosts: "relay.hosts",
+  cursors: (hostId: string) => `conn.cursors.${hostId}`,
+  queue: (hostId: string) => `conn.queue.${hostId}`,
   identity: "identity",
   deviceToken: "relay.deviceToken",
-  session: "relay.session",
-  email: "relay.email",
 } as const;
 
 /** Where the connection layer keeps its state: secrets in the keychain, the rest in MMKV. */
 export const connStorage = {
-  machine: (): TMachine | undefined => storage.get(KEYS.machine, machineSchema),
-  setMachine: (m: TMachine): void => {
-    storage.set(KEYS.machine, m);
+  relayUrl: (): string | undefined => storage.get(KEYS.relayUrl, z.url()),
+  setRelayUrl: (url: string): void => {
+    storage.set(KEYS.relayUrl, url);
   },
 
-  cursors: (): Record<string, number> => storage.get(KEYS.cursors, z.record(z.string(), z.number())) ?? {},
-  setCursors: (c: Record<string, number>): void => {
-    storage.set(KEYS.cursors, c);
+  hosts: (): TStoredHost[] => storage.get(KEYS.hosts, z.array(hostSchema)) ?? [],
+  setHosts: (hosts: TStoredHost[]): void => {
+    storage.set(KEYS.hosts, hosts);
   },
 
-  queue: (): TQueued[] => storage.get(KEYS.queue, z.array(queuedSchema)) ?? [],
-  setQueue: (q: TQueued[]): void => {
-    storage.set(KEYS.queue, q);
+  cursors: (hostId: string): Record<string, number> =>
+    storage.get(KEYS.cursors(hostId), z.record(z.string(), z.number())) ?? {},
+  setCursors: (hostId: string, c: Record<string, number>): void => {
+    storage.set(KEYS.cursors(hostId), c);
   },
 
-  /** This phone's long-term identity, created on first use. */
+  queue: (hostId: string): TQueued[] => storage.get(KEYS.queue(hostId), z.array(queuedSchema)) ?? [],
+  setQueue: (hostId: string, q: TQueued[]): void => {
+    storage.set(KEYS.queue(hostId), q);
+  },
+
+  /** This device's long-term identity, created on first use. */
   identity(): TIdentity {
     const raw = secureStore.get(KEYS.identity);
     const stored = raw === null ? undefined : tryParseJson(identitySchema, raw);
@@ -60,18 +60,14 @@ export const connStorage = {
   setDeviceToken: (t: string): void => {
     secureStore.set(KEYS.deviceToken, t);
   },
-  session: (): string | null => secureStore.get(KEYS.session),
-  setSession: (t: string): void => {
-    secureStore.set(KEYS.session, t);
-  },
-  email: (): string | undefined => storage.get(KEYS.email, z.string()),
-  setEmail: (e: string): void => {
-    storage.set(KEYS.email, e);
-  },
 
-  /** Forgets the machine and every secret (after a revocation, or "unpair"). */
+  /** Forgets the account: the token, the hosts and their cursors and queues. */
   clear(): void {
-    for (const k of [KEYS.machine, KEYS.cursors, KEYS.queue, KEYS.email]) storage.remove(k);
-    for (const k of [KEYS.deviceToken, KEYS.session]) secureStore.remove(k);
+    for (const h of connStorage.hosts()) {
+      storage.remove(KEYS.cursors(h.id));
+      storage.remove(KEYS.queue(h.id));
+    }
+    storage.remove(KEYS.hosts);
+    secureStore.remove(KEYS.deviceToken);
   },
 };

@@ -20,6 +20,16 @@ import {
 } from "./models.schema.js";
 
 const Empty = z.object({});
+
+const accountLinkSchema = z.object({ code: z.string(), url: z.string(), expiresAt: z.number() });
+const accountStatusSchema = z.discriminatedUnion("state", [
+  /** No relay configured: local only. */
+  z.object({ state: z.literal("local") }),
+  z.object({ state: z.literal("unlinked") }),
+  z.object({ state: z.literal("linking"), ...accountLinkSchema.shape }),
+  z.object({ state: z.literal("linked"), email: z.string().nullable() }),
+]);
+export type TAccountStatus = z.infer<typeof accountStatusSchema>;
 /** A git branch or ref from a client: never empty, never readable as a git option (SEC5). */
 const gitRefSchema = z
   .string()
@@ -181,14 +191,14 @@ export const commands = {
 
   "device.list": { args: Empty, result: z.array(deviceSchema) },
   /**
-   * Additive, local clients only (the desktop CLI or web UI): start pairing a phone. The link is
-   * what the QR code encodes; it carries the pairing secret, so it never goes through the relay.
+   * Deprecated (Phase 2c replaced pairing with signing in): always fails with UNAUTHORIZED. Kept so
+   * the protocol stays additive.
    */
   "pair.start": {
     args: Empty,
     result: z.object({ pairingId: z.string(), link: z.string(), expiresAt: z.number() }),
   },
-  /** Additive, local only: poll a pairing until a phone has said hello and shows its short code. */
+  /** Deprecated, see `pair.start`. */
   "pair.status": {
     args: z.object({ pairingId: z.string() }),
     result: z.object({
@@ -198,7 +208,7 @@ export const commands = {
       deviceName: z.string().optional(),
     }),
   },
-  /** Additive, local only: the user compared the short codes; `accept: false` forgets the phone. */
+  /** Deprecated, see `pair.start`. */
   "pair.confirm": { args: z.object({ pairingId: z.string(), accept: z.boolean() }), result: Empty },
   /**
    * Additive, local only: a link that opens the desktop web UI. It carries a one-time code (60 s)
@@ -215,7 +225,32 @@ export const commands = {
       deviceId: z.string().nullable(),
     }),
   },
+  /** Removes a device from the account (on the relay); every host stops trusting it. */
   "device.revoke": { args: z.object({ deviceId: deviceIdSchema }), result: deviceSchema },
+
+  /**
+   * Additive, local only: link this host to an account. Returns a code the user approves on a
+   * signed-in device (or at `url`); the daemon polls the relay until it is approved or expires.
+   */
+  "account.link": { args: Empty, result: accountLinkSchema },
+  /** Additive: whether this host is linked, and to which account. */
+  "account.status": { args: Empty, result: accountStatusSchema },
+  /** Additive, local only: unlink this host: it leaves the account and forgets its device token. */
+  "account.logout": { args: Empty, result: Empty },
+  /**
+   * Additive: everything this host is working on, in one call: repos, their worktrees (branches),
+   * chats (agent, profile, model, status) and profiles. Clients merge one per host.
+   */
+  "workspace.overview": {
+    args: Empty,
+    result: z.object({
+      host: z.object({ deviceId: deviceIdSchema.nullable(), name: z.string() }),
+      repos: z.array(repoSchema),
+      worktrees: z.array(worktreeSchema),
+      chats: z.array(chatSchema),
+      profiles: z.array(profileSchema),
+    }),
+  },
 } as const;
 
 export type TCommands = typeof commands;

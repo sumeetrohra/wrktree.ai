@@ -15,9 +15,9 @@ class_name = "HubDO"
 tag = "v1"
 new_sqlite_classes = ["DirectoryDO", "HubDO"]
 
-# Local development and the contract tests: dev mailer, dev OAuth, recorded pushes.
+# Local development and the contract tests: dev ID-token issuer, recorded pushes.
 [env.dev]
-vars = { RELAY_DEV = "1", RELAY_PUBLIC_URL = "http://127.0.0.1:8787", RELAY_JWT_SECRET = "dev-only-secret-dev-only-secret-dev-only" }
+vars = { RELAY_DEV = "1", RELAY_PUBLIC_URL = "http://127.0.0.1:8787", RELAY_DEV_SECRET = "dev-only-secret-dev-only-secret-dev-only" }
 
 [[env.dev.durable_objects.bindings]]
 name = "DIRECTORY"
@@ -27,10 +27,10 @@ class_name = "DirectoryDO"
 name = "HUB"
 class_name = "HubDO"
 
-# Staging. Secrets (RELAY_JWT_SECRET, RESEND_API_KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
-# EXPO_ACCESS_TOKEN) are set with `wrangler secret put --env staging`, never committed.
+# Staging. FIREBASE_PROJECT_ID is a plain var; EXPO_ACCESS_TOKEN is set with
+# `wrangler secret put --env staging`, never committed.
 [env.staging]
-vars = { RELAY_DEV = "0", RELAY_PUBLIC_URL = "https://relay-staging.agentdeck.dev" }
+vars = { RELAY_DEV = "0", RELAY_PUBLIC_URL = "https://relay-staging.agentdeck.dev", FIREBASE_PROJECT_ID = "agentdeck-staging" }
 
 [[env.staging.durable_objects.bindings]]
 name = "DIRECTORY"

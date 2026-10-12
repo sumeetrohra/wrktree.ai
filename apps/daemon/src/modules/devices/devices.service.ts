@@ -1,100 +1,87 @@
 import { fromB64 } from "@agentdeck/crypto";
-import { AgentdeckError, type TDevice, type TDeviceKind } from "@agentdeck/protocol";
+import { AgentdeckError, type TDevice, type TRelayDevice } from "@agentdeck/protocol";
 import { now } from "@agentdeck/shared";
 
 import type { TRuntime } from "#src/infra/runtime/index.js";
 
-type TRow = {
-  id: string;
-  name: string;
-  kind: TDeviceKind;
-  public_key: string;
-  paired_at: number;
-  last_seen_at: number | null;
-  revoked_at: number | null;
-  confirmed_at: number | null;
-};
-
-const toDevice = (r: TRow): TDevice => ({
-  id: r.id,
-  name: r.name,
-  kind: r.kind,
-  pairedAt: r.paired_at,
-  lastSeenAt: r.last_seen_at,
-  revokedAt: r.revoked_at,
-});
+const CONSUMER_KINDS: readonly string[] = ["phone", "web"];
 
 /**
- * Devices paired with this daemon. A device is usable only after the user confirmed the short
- * code on the desktop, and never again once revoked.
+ * The account's devices, as last fetched from the relay. Membership is the trust root: a consumer
+ * (phone, web) on the account may open a session with this host; one removed from it may not.
  */
 export class DevicesService {
+  private devices = new Map<string, TRelayDevice>();
+  private readonly lastSeen = new Map<string, number>();
+  private selfId: string | null = null;
+
   constructor(private readonly rt: TRuntime) {}
 
-  private row(id: string): TRow | undefined {
-    return this.rt.db.prepare<[string], TRow>("SELECT * FROM devices WHERE id = ?").get(id);
+  private toDevice(d: TRelayDevice, revokedAt: number | null = null): TDevice {
+    return {
+      id: d.id,
+      name: d.name,
+      kind: d.kind,
+      pairedAt: d.createdAt,
+      lastSeenAt: this.lastSeen.get(d.id) ?? null,
+      revokedAt,
+      connected: d.connected,
+      self: d.id === this.selfId,
+    };
   }
 
-  private publish(id: string): void {
-    const r = this.row(id);
-    if (r) this.rt.bus.publish("global", { type: "device.updated", device: toDevice(r) });
-  }
-
-  /** Confirmed devices, newest first. */
+  /** The account's devices, oldest first, this host included. Empty until linked. */
   list(): TDevice[] {
-    return this.rt.db
-      .prepare<[], TRow>("SELECT * FROM devices WHERE confirmed_at IS NOT NULL ORDER BY paired_at DESC")
-      .all()
-      .map(toDevice);
+    return [...this.devices.values()].map((d) => this.toDevice(d));
   }
 
-  /** Records a phone that proved it saw the QR code; it can't connect until `confirm`. */
-  addPending(d: { id: string; name: string; kind: TDeviceKind; signPub: string }): void {
-    const existing = this.row(d.id);
-    if (existing?.revoked_at != null) throw new AgentdeckError("FORBIDDEN_PATH", "This device was revoked");
-    this.rt.db
-      .prepare(
-        `INSERT INTO devices (id, name, kind, public_key, paired_at) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, public_key = excluded.public_key`,
-      )
-      .run(d.id, d.name, d.kind, d.signPub, now());
+  /**
+   * Replaces the cached list. Publishes `device.updated` for each change and returns the ids that
+   * left the account, so their sessions can be dropped.
+   */
+  replace(selfId: string | null, next: readonly TRelayDevice[]): string[] {
+    this.selfId = selfId;
+    const before = this.devices;
+    this.devices = new Map(next.map((d) => [d.id, d]));
+    const gone = [...before.values()].filter((d) => !this.devices.has(d.id));
+    for (const d of gone) {
+      this.rt.bus.publish("global", { type: "device.updated", device: this.toDevice(d, now()) });
+    }
+    for (const d of next) {
+      const old = before.get(d.id);
+      if (old?.name !== d.name || old.connected !== d.connected) {
+        this.rt.bus.publish("global", { type: "device.updated", device: this.toDevice(d) });
+      }
+    }
+    return gone.map((d) => d.id);
   }
 
-  confirm(id: string): void {
-    this.rt.db
-      .prepare("UPDATE devices SET confirmed_at = ? WHERE id = ? AND revoked_at IS NULL")
-      .run(now(), id);
-    this.publish(id);
+  /** Forgets one device at once (removed by this host), ahead of the next refresh. */
+  forget(id: string): TDevice {
+    const d = this.devices.get(id);
+    if (!d) throw new AgentdeckError("NOT_FOUND", `No device ${id} on this account`);
+    this.devices.delete(id);
+    const removed = this.toDevice(d, now());
+    this.rt.bus.publish("global", { type: "device.updated", device: removed });
+    return removed;
   }
 
-  /** Forgets a pending device the user rejected. Confirmed devices are revoked instead. */
-  forgetPending(id: string): void {
-    this.rt.db.prepare("DELETE FROM devices WHERE id = ? AND confirmed_at IS NULL").run(id);
+  known(id: string): boolean {
+    return this.devices.has(id);
   }
 
-  revoke(id: string): TDevice {
-    const r = this.row(id);
-    if (!r) throw new AgentdeckError("NOT_FOUND", `No device ${id}`);
-    if (r.revoked_at === null)
-      this.rt.db.prepare("UPDATE devices SET revoked_at = ? WHERE id = ?").run(now(), id);
-    this.publish(id);
-    const after = this.row(id);
-    if (!after) throw new AgentdeckError("NOT_FOUND", `No device ${id}`);
-    return toDevice(after);
-  }
-
-  /** The device's signing key if it may open a session: confirmed and not revoked. */
+  /** The signing key of a consumer on the account, or null: hosts don't open sessions with hosts. */
   signPubOf(id: string): Uint8Array | null {
-    const r = this.row(id);
-    if (r?.confirmed_at == null || r.revoked_at !== null) return null;
+    const d = this.devices.get(id);
+    if (!d || !CONSUMER_KINDS.includes(d.kind)) return null;
     try {
-      return fromB64(r.public_key);
+      return fromB64(d.signPub);
     } catch {
       return null;
     }
   }
 
   seen(id: string): void {
-    this.rt.db.prepare("UPDATE devices SET last_seen_at = ? WHERE id = ?").run(now(), id);
+    this.lastSeen.set(id, now());
   }
 }

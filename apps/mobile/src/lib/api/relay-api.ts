@@ -1,14 +1,13 @@
 import { signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
-  authSessionSchema,
+  linkApproveResultSchema,
   meResultSchema,
   okResultSchema,
-  pairClaimResultSchema,
   registerResultSchema,
   relayDevicesResultSchema,
   relayErrorSchema,
   relayRoutes,
-  type TAuthSession,
+  type TDeviceKind,
   type TRelayDevice,
 } from "@agentdeck/protocol";
 import type { z } from "zod";
@@ -42,42 +41,46 @@ async function call<S extends z.ZodType>(
   return schema.parse(json);
 }
 
-/** The relay's HTTP API as the app uses it (sign-in, devices, pairing, push). */
+/**
+ * The relay's HTTP API as the app uses it. Account actions take the sign-in ID token; the rest
+ * take this device's token.
+ */
 export const relayApi = {
-  startSignIn: (relayUrl: string, email: string): Promise<z.infer<typeof okResultSchema>> =>
-    call(relayUrl, relayRoutes.authStart, okResultSchema, { body: { email } }),
-
-  finishSignIn: (relayUrl: string, email: string, code: string): Promise<TAuthSession> =>
-    call(relayUrl, relayRoutes.authFinish, authSessionSchema, { body: { email, code } }),
-
+  /** Joins the signed-in account; returns this device's token. */
   async register(
     relayUrl: string,
-    session: string,
+    idToken: string,
     me: TIdentity,
-    name: string,
+    device: { name: string; kind: TDeviceKind },
     at: number,
   ): Promise<string> {
-    const body = { ...signRegistration(me, at), kind: "phone", name };
-    return (await call(relayUrl, relayRoutes.register, registerResultSchema, { body, token: session }))
+    const body = { ...signRegistration(me, at), ...device };
+    return (await call(relayUrl, relayRoutes.register, registerResultSchema, { body, token: idToken }))
       .deviceToken;
   },
 
-  claim: (
-    relayUrl: string,
-    session: string,
-    pairingId: string,
-    phoneDeviceId: string,
-  ): Promise<z.infer<typeof pairClaimResultSchema>> =>
-    call(relayUrl, relayRoutes.pairClaim, pairClaimResultSchema, {
-      body: { pairingId, phoneDeviceId },
-      token: session,
-    }),
-
-  async devices(relayUrl: string, session: string): Promise<TRelayDevice[]> {
-    return (await call(relayUrl, relayRoutes.devices, relayDevicesResultSchema, { token: session })).devices;
+  /** The account's devices (either kind of token). */
+  async devices(relayUrl: string, token: string): Promise<TRelayDevice[]> {
+    return (await call(relayUrl, relayRoutes.devices, relayDevicesResultSchema, { token })).devices;
   },
 
-  /** Resolves while this device may connect; rejects with 401 once it was revoked. */
+  /** Approves a computer's `agentdeck login` code. */
+  approveLink: (
+    relayUrl: string,
+    idToken: string,
+    code: string,
+  ): Promise<z.infer<typeof linkApproveResultSchema>> =>
+    call(relayUrl, relayRoutes.linkApprove, linkApproveResultSchema, { body: { code }, token: idToken }),
+
+  /** Removes a device from the account: any with the ID token, this device itself with its own token. */
+  async remove(relayUrl: string, token: string, deviceId: string): Promise<void> {
+    await call(relayUrl, { method: "DELETE", path: relayRoutes.devices.path }, okResultSchema, {
+      token,
+      path: `${relayRoutes.devices.path}/${encodeURIComponent(deviceId)}`,
+    });
+  },
+
+  /** Resolves while this device may connect; rejects with 401 once it was removed. */
   me: (relayUrl: string, deviceToken: string): Promise<z.infer<typeof meResultSchema>> =>
     call(relayUrl, relayRoutes.me, meResultSchema, { token: deviceToken }),
 

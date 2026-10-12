@@ -1,1 +1,1 @@
-export { clipboardImage, clipboardText, pickImage, takePhoto, type TPickedImage } from "./media";
+export { clipboardImage, pickImage, takePhoto, type TPickedImage } from "./media";

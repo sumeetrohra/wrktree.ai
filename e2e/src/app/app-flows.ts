@@ -2,47 +2,62 @@ import assert from "node:assert/strict";
 
 import type { Harness } from "../harness.ts";
 
-import { outboxCode, type AppDriver } from "./app-driver.ts";
+import type { AppDriver } from "./app-driver.ts";
 
-const LINK = /(agentdeck:\/\/pair\?o=[A-Za-z0-9_-]+)/;
+/**
+ * The visible element with exactly this text. The router keeps earlier screens mounted (hidden),
+ * so a plain text match can find a copy on a screen underneath.
+ */
+const shown = (page: AppDriver["page"], text: string) =>
+  page.getByText(text, { exact: true }).locator("visible=true").first();
 
-/** Onboarding in the app: paste the link from `agentdeck pair`, sign in, compare codes. */
-export async function pairApp(h: Harness, app: AppDriver, email = "phone@example.com"): Promise<void> {
+/** App: open it signed out, land on sign-in, sign in with the relay's dev issuer as `uid`. */
+export async function signInApp(h: Harness, app: AppDriver, uid = "me"): Promise<void> {
   const { page } = app;
-  await h.waitRelayConnected();
-  h.step("App: open it; an unpaired phone lands on pairing");
+  h.step("App: open it; a device with no account lands on sign-in");
   await app.goto("/");
-  await page.getByText("Pair with your computer").waitFor();
+  await page.getByText("Dev user id").waitFor({ timeout: 30_000 });
+  h.step(`App: sign in (dev issuer standing in for Firebase) as "${uid}"`);
+  await page.getByLabel("Relay").fill(h.relayUrl);
+  await page.getByPlaceholder("me").fill(uid);
+  await page.getByText("Dev sign-in").click();
+  await page.getByText("Work", { exact: true }).waitFor({ timeout: 30_000 });
+}
 
-  h.step("Desktop: `agentdeck pair` prints the QR code and link");
-  const pairing = h.cliStream(["pair", "--yes"]);
-  const [, link = ""] = await pairing.waitFor(LINK);
-
-  h.step("App: paste the link, sign in with the emailed code");
-  await page.getByPlaceholder("agentdeck://pair?o=…").fill(link);
-  await page.getByText("Continue", { exact: true }).click();
-  await page.getByPlaceholder("you@example.com").fill(email);
-  await page.getByText("Email me a code").click();
-  await page.getByPlaceholder("123456").waitFor();
-  await page.getByPlaceholder("123456").fill(await outboxCode(h, email));
-  await page.getByText("Sign in and pair").click();
-
-  h.step("Both screens show the same code; the desktop confirms");
-  const [, desktopCode = ""] = await pairing.waitFor(/Pairing code: (\d{3} \d{3})/, 20_000);
-  const phoneCode = (await page.getByTestId("short-code").textContent({ timeout: 20_000 })) ?? "";
-  await h.check("the app and the desktop show the same six digits", () => {
-    assert.equal(phoneCode.trim(), desktopCode);
-  });
-  await pairing.done;
-  await page.getByText("Repositories").waitFor({ timeout: 30_000 });
+/** Desktop: `agentdeck login --print`; the app approves the code on its Link screen. */
+export async function linkFromApp(h: Harness, app: AppDriver, name: string): Promise<void> {
+  const { page } = app;
+  h.step(`Desktop "${name}": \`agentdeck login\` shows a code`);
+  const { code, out } = await h.cli(["login", "--print"]);
+  assert.equal(code, 0, out);
+  const linkCode = /^([A-Z2-9]{4}-[A-Z2-9]{4}) /m.exec(out)?.[1] ?? "";
+  h.step("App: Computers → Link a computer → type the code → Approve");
+  await app.goto("/link");
+  await page.getByPlaceholder("ABCD-EFGH").fill(linkCode);
+  await page.getByText("Approve", { exact: true }).click();
+  await page.getByText(`${name} is joining your account`, { exact: false }).waitFor({ timeout: 20_000 });
+  const end = Date.now() + 15_000;
+  while ((await h.client.call("account.status", {})).state !== "linked") {
+    if (Date.now() > end) throw new Error(`${name} never collected its token`);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  await h.waitRelayConnected();
 }
 
 /** App: New task on a repo → the chat opens and streams; approve the permission; the turn ends. */
-export async function newTaskFromApp(h: Harness, app: AppDriver, repo: string, title: string): Promise<void> {
+export async function newTaskFromApp(
+  h: Harness,
+  app: AppDriver,
+  host: string,
+  repo: string,
+  title: string,
+): Promise<void> {
   const { page } = app;
-  h.step("App: open the repo, New task");
-  await page.getByText(repo, { exact: true }).click();
+  h.step(`App: New task on "${host}", repo "${repo}"`);
+  await app.goto("/");
   await page.getByText("New task", { exact: true }).first().click();
+  await shown(page, host).click();
+  await shown(page, repo).click();
   await page.getByPlaceholder("Fix the login redirect").fill(title);
   await page.getByPlaceholder("Describe the task…").fill("#script:golden file=NOTES.md");
   await page.getByText("Start task").click();
@@ -58,16 +73,16 @@ export async function newTaskFromApp(h: Harness, app: AppDriver, repo: string, t
   await page.getByText("Done.").waitFor({ timeout: 30_000 });
   await h.check("the sheet is gone and the chat is idle", async () => {
     await page.getByText("Allow once").waitFor({ state: "detached" });
-    assert.ok(await page.getByText("idle", { exact: true }).isVisible());
+    assert.ok(await shown(page, "idle").isVisible());
   });
 }
 
-/** The id of the phone the app registered (the only phone paired with this daemon). */
+/** The id the app registered with (a browser joins the account as a `web` device). */
 async function appDeviceId(h: Harness): Promise<string> {
   const devices = await h.send("device.list", {});
-  const phone = devices.find((d) => d.kind === "phone");
-  if (!phone) throw new Error("no phone paired");
-  return phone.id;
+  const web = devices.find((d) => d.kind === "web");
+  if (!web) throw new Error("the app isn't on the account");
+  return web.id;
 }
 
 /** The chat the app created last, as the desktop saw it. */
@@ -85,8 +100,8 @@ export async function offlineFromApp(h: Harness, app: AppDriver): Promise<void> 
   const phoneId = await appDeviceId(h);
   const chatId = lastChatId(h);
 
-  // The web build gets no Expo push token; register a stand-in with the phone's own device
-  // token, exactly as the native app does after pairing.
+  // The web build gets no Expo push token; register a stand-in with the app's own device
+  // token, exactly as the native app does after signing in.
   const deviceToken = await page.evaluate(() => globalThis.localStorage.getItem("secure.relay.deviceToken"));
   await fetch(`${h.relayUrl}/v1/push/register`, {
     method: "POST",
@@ -132,7 +147,7 @@ export async function wakeLinkFromApp(h: Harness, app: AppDriver): Promise<void>
   const chatId = lastChatId(h);
   h.step("App: on the home screen; the agent asks for permission again");
   await app.goto("/");
-  await page.getByText("Repositories").waitFor();
+  await page.getByText("Work", { exact: true }).waitFor();
   const since = h.mark();
   await h.send("chat.send", { chatId, text: "#script:edit-twice file=wake.txt" });
   await h.waitFor((e) => e.type === "permission.requested" && e.chatId === chatId, "permission", { since });
@@ -147,20 +162,64 @@ export async function wakeLinkFromApp(h: Harness, app: AppDriver): Promise<void>
   await h.waitSettled(chatId);
 }
 
-/** `agentdeck devices revoke` on the desktop: the app is cut off and says so. */
-export async function revokeApp(h: Harness, app: AppDriver): Promise<void> {
-  const phoneId = await appDeviceId(h);
-  h.step("Desktop: `agentdeck devices revoke`");
-  const { code, out } = await h.cli(["devices", "revoke", phoneId]);
-  assert.equal(code, 0, out);
+/** Two computers on the account: the Work view shows each one's repos, branches and chats. */
+export async function twoHostsInApp(h: Harness, b: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step('Desktop "desktop": a repo, a profile and a chat with a chosen model');
+  const repoPath = b.makeRepo("api");
+  const repo = await b.send("repo.add", { path: repoPath });
+  const profileId = await b.addProfile("Work");
+  const since = b.mark();
+  const wt = await b.send("worktree.create", { repoId: repo.id, branch: "fix-login", title: "Fix login" });
+  await b.waitReady(wt.id, since);
+  await b.send("chat.create", {
+    worktreeId: wt.id,
+    agent: "fake",
+    profileId,
+    model: "fake-large",
+    title: "Login bug",
+  });
+  await linkFromApp(b, app, "desktop");
+
+  h.step("App: Work lists both computers, each with its repos, branches and chats");
   await app.goto("/");
-  await app.page.getByText("This phone was removed").waitFor({ timeout: 30_000 });
-  await h.check("the app shows it was revoked", async () => {
-    assert.ok(await app.page.getByText("Pair again to keep using it.", { exact: false }).isVisible());
+  await shown(page, "api").waitFor({ timeout: 30_000 });
+  await shown(page, "shop").waitFor({ timeout: 30_000 });
+  await h.check("both computers' repos and branches are on one screen", async () => {
+    assert.ok(await page.getByText("fix-login · Fix login").isVisible());
+    assert.ok(await page.getByText("Login bug").isVisible());
+  });
+  await h.check("each chat shows its agent, profile and model", async () => {
+    assert.ok(await page.getByText("fake · Work · fake-large").isVisible());
+  });
+
+  h.step('App: filter to "desktop"');
+  await shown(page, "desktop").click();
+  await h.check("only that computer's work is shown", async () => {
+    await page.getByText("shop", { exact: true }).locator("visible=true").waitFor({ state: "detached" });
+    assert.ok(await shown(page, "api").isVisible());
+  });
+  await shown(page, "All computers").click();
+}
+
+/** `agentdeck devices revoke` on a computer: the app is cut off and says so. */
+export async function revokeApp(h: Harness, app: AppDriver): Promise<void> {
+  const deviceId = await appDeviceId(h);
+  await app.goto("/");
+  await app.page.getByText("Work", { exact: true }).waitFor();
+  h.step("Desktop: `agentdeck devices revoke` (removes the app from the account)");
+  const { code, out } = await h.cli(["devices", "revoke", deviceId]);
+  assert.equal(code, 0, out);
+  await app.page.getByText("This device was removed").waitFor({ timeout: 30_000 });
+  await h.check("the app shows it was removed and offers to sign in again", async () => {
+    assert.ok(await app.page.getByText("Sign in again to keep using it.", { exact: false }).isVisible());
   });
 }
 
-/** The desktop web UI served by the daemon itself: `agentdeck open`, no relay, no pairing. */
+/**
+ * The desktop web UI served by the daemon itself: `agentdeck open`, no sign-in for this computer;
+ * signing in adds the account's other computers.
+ */
 export async function desktopWeb(h: Harness, app: AppDriver): Promise<void> {
   const { page } = app;
   h.step("Desktop: `agentdeck open` (a one-time link to the daemon's own web UI)");
@@ -171,16 +230,35 @@ export async function desktopWeb(h: Harness, app: AppDriver): Promise<void> {
   });
   await page.goto(url);
   await page.getByText("shop", { exact: true }).waitFor({ timeout: 30_000 });
-  await h.check("the page lists the repos over the local connection", async () => {
-    assert.ok(await page.getByText("This computer · online").isVisible());
+  await h.check("the page lists this computer's repos over the local connection, signed out", async () => {
+    assert.ok(await page.getByText("This computer", { exact: true }).first().isVisible());
+    assert.ok(await page.getByText("Sign in to see your other computers").isVisible());
   });
 
   h.step("The same link in a fresh browser is refused (single use)");
   const other = await app.browser.newContext();
   const stranger = await other.newPage();
   await stranger.goto(url);
-  await h.check("a used code opens nothing: the second browser lands on pairing", async () => {
-    await stranger.getByText("Pair with your computer").waitFor({ timeout: 30_000 });
+  await h.check("a used code opens nothing: the second browser lands on sign-in", async () => {
+    await stranger.getByText("Dev user id").waitFor({ timeout: 30_000 });
   });
   await other.close();
+}
+
+/** This computer's web UI signs in and also shows `desktop`, without listing itself twice. */
+export async function desktopWebSignsIn(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop web: Sign in to see your other computers");
+  await page.getByText("Sign in to see your other computers").click();
+  await page.getByPlaceholder("me").fill("me");
+  await h.check("the relay comes from this computer's daemon", async () => {
+    assert.equal(await page.getByLabel("Relay").inputValue(), h.relayUrl);
+  });
+  await page.getByText("Dev sign-in").click();
+  await shown(page, "api").waitFor({ timeout: 30_000 });
+  await h.check("this computer (local) and desktop (through the relay), each once", async () => {
+    assert.ok(await shown(page, "shop").isVisible());
+    assert.equal(await page.getByText("laptop", { exact: true }).locator("visible=true").count(), 0);
+    assert.equal(await page.getByText("api", { exact: true }).locator("visible=true").count(), 1);
+  });
 }

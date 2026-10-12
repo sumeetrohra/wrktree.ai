@@ -75,6 +75,8 @@ export const chatSchema = z.object({
   resumed: z.boolean(),
   /** Messages waiting for the current turn to end. */
   queued: z.number().int().nonnegative(),
+  /** Additive: the model asked for at `chat.create`, null for the agent's default. */
+  model: z.string().nullable().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -174,7 +176,10 @@ export type TChatItemPatch = z.infer<typeof chatItemPatchSchema>;
 export const deviceKindSchema = z.enum(["phone", "daemon", "web"]);
 export type TDeviceKind = z.infer<typeof deviceKindSchema>;
 
-/** A device paired with this daemon. */
+/**
+ * A device on the daemon's account: hosts (`daemon`) and consumers (`phone`, `web`). `pairedAt` is
+ * when it joined the account.
+ */
 export const deviceSchema = z.object({
   id: deviceIdSchema,
   name: z.string(),
@@ -182,5 +187,9 @@ export const deviceSchema = z.object({
   pairedAt: z.number(),
   lastSeenAt: z.number().nullable(),
   revokedAt: z.number().nullable(),
+  /** Additive: connected to the relay right now. */
+  connected: z.boolean().optional(),
+  /** Additive: this is the daemon answering. */
+  self: z.boolean().optional(),
 });
 export type TDevice = z.infer<typeof deviceSchema>;

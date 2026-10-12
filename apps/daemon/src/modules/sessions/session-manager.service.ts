@@ -32,6 +32,7 @@ type TRow = {
   title: string | null;
   status: TChatStatus;
   resumed: number;
+  model: string | null;
   created_at: number;
   updated_at: number;
 };
@@ -119,6 +120,7 @@ export class SessionManager {
       status: r.status,
       resumed: r.resumed === 1,
       queued: this.queues.get(r.id)?.length ?? 0,
+      model: r.model,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     };
@@ -166,7 +168,13 @@ export class SessionManager {
 
   // ---------- commands ----------
 
-  create(args: { worktreeId: string; agent: string; profileId: string; title?: string | undefined }): TChat {
+  create(args: {
+    worktreeId: string;
+    agent: string;
+    profileId: string;
+    title?: string | undefined;
+    model?: string | undefined;
+  }): TChat {
     const wt = this.deps.worktrees.get(args.worktreeId);
     if (wt.status !== "ready")
       throw new AgentdeckError("BAD_STATE", `Worktree is ${wt.status}, not ready`, true);
@@ -182,10 +190,10 @@ export class SessionManager {
     const t = now();
     this.rt.db
       .prepare(
-        `INSERT INTO chats (id, worktree_id, agent, profile_id, title, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'starting', ?, ?)`,
+        `INSERT INTO chats (id, worktree_id, agent, profile_id, title, model, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'starting', ?, ?)`,
       )
-      .run(id, args.worktreeId, args.agent, args.profileId, args.title ?? null, t, t);
+      .run(id, args.worktreeId, args.agent, args.profileId, args.title ?? null, args.model ?? null, t, t);
     this.rt.bus.publish(`chat:${id}`, { type: "chat.status", chatId: id, status: "starting", queued: 0 });
     void this.start(id);
     return this.get(id);

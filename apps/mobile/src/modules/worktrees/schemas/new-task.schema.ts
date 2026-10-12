@@ -5,6 +5,8 @@ export const newTaskSchema = z.object({
   title: z.string().trim().min(1).max(120),
   message: z.string().trim().min(1),
   profileId: z.string().min(1),
+  /** Optional: the model to ask the agent for; empty means its default. */
+  model: z.string().trim().max(100).optional(),
 });
 export type TNewTask = z.infer<typeof newTaskSchema>;
 

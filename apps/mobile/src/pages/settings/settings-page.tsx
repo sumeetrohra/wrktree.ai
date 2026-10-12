@@ -2,30 +2,41 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
-import { unpair, useConnectionStore } from "@/lib/api";
-import { ConnectionBadge } from "@/modules/machines";
+import { useHostsStore } from "@/lib/api";
+import { auth } from "@/lib/auth";
+import { useSignOutMutation } from "@/modules/auth";
 import { Button } from "@/shared/components/ui/button";
 import { Text } from "@/shared/components/ui/text";
 
-/** The paired machine and unpairing (spec: `settings`). */
+/** The account this device is signed in to, and signing out. */
 export function SettingsPage(): React.JSX.Element {
   const { t } = useTranslation();
-  const local = useConnectionStore((s) => s.local);
+  const account = useHostsStore((s) => s.account);
+  const signOut = useSignOutMutation();
+  const user = auth.user();
   return (
     <View className="bg-background flex-1 gap-4 p-4">
       <Text variant="h3">{t("settings.title")}</Text>
-      <ConnectionBadge />
-      {local ? null : (
+      <Text>
+        {account === "signedIn"
+          ? t("settings.signedInAs", { email: user?.email ?? user?.uid ?? "" })
+          : t("settings.signedOut")}
+      </Text>
+      {account === "signedIn" ? (
         <Button
           variant="destructive"
+          disabled={signOut.isPending}
           onPress={() => {
-            unpair();
-            router.replace("/pair");
+            signOut.mutate(undefined, {
+              onSuccess: () => {
+                router.replace("/");
+              },
+            });
           }}
         >
-          <Text>{t("settings.unpair")}</Text>
+          <Text>{t("settings.signOut")}</Text>
         </Button>
-      )}
+      ) : null}
     </View>
   );
 }

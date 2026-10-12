@@ -7,6 +7,7 @@
     "start": "expo start",
     "web": "expo start --web",
     "export:web": "expo export --platform web --output-dir dist",
+    "export:web:e2e": "EXPO_PUBLIC_DEV_AUTH=1 expo export --platform web --output-dir dist",
     "typecheck": "tsc -p tsconfig.json",
     "test": "jest --ci"
   },

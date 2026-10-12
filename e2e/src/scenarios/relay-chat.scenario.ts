@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 import type { TScenario } from "../scenario.ts";
 
-import { isEvent, pairPhone, type TRequested } from "./relay-helpers.ts";
+import { isEvent, signedInPhone, type TRequested } from "./relay-helpers.ts";
 
 export const relayChat: TScenario = {
   n: 9,
@@ -14,7 +14,7 @@ export const relayChat: TScenario = {
     h.step("Desktop: a repo and a logged-in profile");
     const repo = await h.send("repo.add", { path: h.makeRepo("shop") });
     const profileId = await h.addProfile("Personal");
-    const phone = await pairPhone(h);
+    const phone = await signedInPhone(h);
 
     h.step("Phone: new task (worktree + chat)");
     const wt = await phone.call("worktree.create", {

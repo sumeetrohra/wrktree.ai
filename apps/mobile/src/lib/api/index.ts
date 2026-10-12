@@ -1,17 +1,20 @@
 export {
-  bootConnection,
-  connectMachine,
+  accountDevices,
+  accountRelayUrl,
+  bootConnections,
   daemonCall,
+  joinAccount,
+  leaveAccount,
+  LOCAL_HOST,
   onDaemonEvent,
+  refreshHosts,
+  registerPushToken,
   setConnection,
-  unpair,
   thisDeviceId,
   uploadBlob,
   type TDaemonCall,
 } from "./daemon";
-export { connStorage, type TMachine } from "./conn.storage";
 export type { IDaemonConnection, TConnStatus } from "./connection.types";
-export { useConnectionStore } from "./connection.store";
-export { linkToOffer, pairWith, type TPairingOffer } from "./pairing";
+export { useHostsStore, type TAccountState, type THost } from "./hosts.store";
 export { queryClient } from "./query-client";
 export { relayApi } from "./relay-api";

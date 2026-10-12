@@ -1,5 +1,5 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, hostname } from "node:os";
 
 import { AgentdeckError } from "@agentdeck/protocol";
 import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
@@ -19,7 +19,7 @@ import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
 import { WorktreesService } from "#src/modules/worktrees/index.js";
-import { daemonConfigSchema } from "#src/shared/config.schema.js";
+import { daemonConfigSchema, type TDaemonConfig } from "#src/shared/config.schema.js";
 import type { TDaemonOptions } from "#src/shared/daemon-options.types.js";
 import { readDaemonEnv } from "#src/shared/env.schema.js";
 import { pathsFor } from "#src/shared/paths.utils.js";
@@ -41,12 +41,12 @@ function portRange(raw: string | undefined): readonly [number, number] {
   return [lo, hi];
 }
 
-/** The relay URL from the environment, else from `config.json`, else none (local-only). */
-function relayUrlFor(home: string, fromEnv: string | undefined): string | null {
-  if (fromEnv !== undefined) return fromEnv;
+const DEFAULT_APP_URL = "https://app.agentdeck.dev";
+
+function configOf(home: string): TDaemonConfig | null {
   const file = pathsFor(home).config;
   if (!existsSync(file)) return null;
-  return tryParseJson(daemonConfigSchema, readFileSync(file, "utf8"))?.relayUrl ?? null;
+  return tryParseJson(daemonConfigSchema, readFileSync(file, "utf8")) ?? null;
 }
 
 export function optionsFromEnv(home: string): TDaemonOptions {
@@ -63,7 +63,9 @@ export function optionsFromEnv(home: string): TDaemonOptions {
       : DEFAULT_BACKOFF_MS,
     patchIntervalMs: 50,
     devOrigins: env.AGENTDECK_DEV_ORIGINS ? env.AGENTDECK_DEV_ORIGINS.split(",").map((o) => o.trim()) : [],
-    relayUrl: relayUrlFor(home, env.AGENTDECK_RELAY_URL),
+    relayUrl: env.AGENTDECK_RELAY_URL ?? configOf(home)?.relayUrl ?? null,
+    hostName: env.AGENTDECK_HOST_NAME ?? hostname(),
+    appUrl: env.AGENTDECK_APP_URL ?? configOf(home)?.appUrl ?? DEFAULT_APP_URL,
     keystore: env.AGENTDECK_KEYSTORE ?? "os",
     webRoot: env.AGENTDECK_WEB_ROOT ?? null,
   };
@@ -128,7 +130,7 @@ export class Daemon {
     this.modules = {
       daemonId: newId("dev"),
       devices,
-      remote: new Remote(opts.relayUrl, devices, log),
+      remote: new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log),
       webLink: () => this.transport?.webLink() ?? null,
       bus: this.rt.bus,
       repos,
@@ -160,12 +162,12 @@ export class Daemon {
       paths.daemonJson,
       JSON.stringify({ pid: process.pid, port: this.port, version: DAEMON_VERSION, startedAt: now() }),
     );
-    const identity = await loadIdentity(
+    const { identity, vault } = await loadIdentity(
       { identity: paths.identity, secretFile: paths.identitySecret },
       this.rt.opts.keystore,
       this.rt.log,
     );
-    this.modules.remote.start(identity, this.rt.bus, this.router);
+    this.modules.remote.start(identity, vault, this.rt.bus, this.router);
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;

@@ -8,45 +8,31 @@ import { deviceKindSchema } from "./models.schema.js";
  * validated on both sides. Signatures and keys are base64url.
  */
 const b64 = z.string().regex(/^[A-Za-z0-9_-]+$/, "expected base64url");
-const email = z.email().max(254);
 
+/**
+ * Who calls what:
+ * - consumers (app, browser) sign in with Firebase and send its ID token as `Authorization: Bearer`;
+ * - hosts (daemons) link with a device code a signed-in consumer approves, then use a device token;
+ * - every device uses its device token for the socket, push registration and `me`.
+ */
 export const relayRoutes = {
-  authStart: { method: "POST", path: "/v1/auth/start" },
-  authFinish: { method: "POST", path: "/v1/auth/finish" },
-  authRefresh: { method: "POST", path: "/v1/auth/refresh" },
-  githubStart: { method: "POST", path: "/v1/auth/github/start" },
-  githubFinish: { method: "POST", path: "/v1/auth/github/finish" },
   register: { method: "POST", path: "/v1/devices/register" },
   devices: { method: "GET", path: "/v1/devices" },
   me: { method: "GET", path: "/v1/devices/me" },
-  pairOffer: { method: "POST", path: "/v1/pair/offer" },
-  pairClaim: { method: "POST", path: "/v1/pair/claim" },
+  linkStart: { method: "POST", path: "/v1/link/start" },
+  linkApprove: { method: "POST", path: "/v1/link/approve" },
+  linkPoll: { method: "POST", path: "/v1/link/poll" },
   pushRegister: { method: "POST", path: "/v1/push/register" },
   ws: { method: "GET", path: "/v1/ws" },
-  devOutbox: { method: "GET", path: "/v1/dev/outbox" },
+  devIdToken: { method: "GET", path: "/v1/dev/id-token" },
   devPushes: { method: "GET", path: "/v1/dev/pushes" },
-  devGithub: { method: "GET", path: "/v1/dev/github" },
   health: { method: "GET", path: "/health" },
 } as const;
 
-/** Magic link: the relay mails a one-time code. */
-export const authStartBodySchema = z.object({ email });
-export const authFinishBodySchema = z.object({ email, code: z.string().regex(/^\d{6}$/) });
-/** Account session: a rotating JWT, sent as `Authorization: Bearer`. */
-export const authSessionSchema = z.object({
-  accountId: z.string(),
-  sessionToken: z.string(),
-  expiresAt: z.number(),
-});
-export type TAuthSession = z.infer<typeof authSessionSchema>;
-
-export const githubStartResultSchema = z.object({ url: z.url(), state: z.string() });
-export const githubFinishBodySchema = z.object({ code: z.string().min(1), state: z.string().min(1) });
-
 /**
- * A device proves it holds the signing key its id is derived from. `at` must be within five
- * minutes of the relay's clock. With an account session header (phone), the device joins that
- * account; without one (daemon), it stays unowned until a phone claims its pairing offer.
+ * A device proves it holds the signing key its id is derived from; `at` must be within five
+ * minutes of the relay's clock. Consumers register with their ID token; hosts send the same body to
+ * `link/start`.
  */
 export const registerBodySchema = z.object({
   deviceId: deviceIdSchema,
@@ -59,35 +45,52 @@ export const registerBodySchema = z.object({
 export type TRegisterBody = z.infer<typeof registerBodySchema>;
 export const registerResultSchema = z.object({ deviceToken: z.string() });
 
-export const pairOfferResultSchema = z.object({ pairingId: z.string(), expiresAt: z.number() });
-export const pairClaimBodySchema = z.object({ pairingId: z.string().min(1), phoneDeviceId: deviceIdSchema });
-export const pairClaimResultSchema = z.object({ daemonDeviceId: deviceIdSchema });
+/** A host asks to join an account; the user approves the code on a signed-in device. */
+export const linkStartResultSchema = z.object({
+  linkId: z.string(),
+  /** Eight characters, shown as `ABCD-EFGH`. */
+  code: z.string().regex(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/),
+  expiresAt: z.number(),
+});
+export const linkApproveBodySchema = z.object({ code: z.string().regex(/^[A-Za-z2-9]{4}-?[A-Za-z2-9]{4}$/) });
+export const linkApproveResultSchema = z.object({ deviceId: deviceIdSchema, name: z.string() });
+/** The host polls, signing like a registration, until the link is approved or expires. */
+export const linkPollBodySchema = z.object({
+  linkId: z.string(),
+  deviceId: deviceIdSchema,
+  at: z.number().int(),
+  sig: b64,
+});
+export const linkPollResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("pending") }),
+  z.object({ status: z.literal("expired") }),
+  z.object({ status: z.literal("approved"), deviceToken: z.string(), accountEmail: z.string().nullable() }),
+]);
+export type TLinkPollResult = z.infer<typeof linkPollResultSchema>;
+
+/** Dev only (`RELAY_DEV=1`): an ID token for any uid, signed by the relay's dev key. */
+export const devIdTokenResultSchema = z.object({ idToken: z.string() });
 
 /** `GET /v1/devices/me` with a device token: 200 while the device may connect, 401 once revoked. */
 export const meResultSchema = z.object({ id: deviceIdSchema });
 
 export const pushRegisterBodySchema = z.object({ expoPushToken: z.string().min(1).max(200) });
 
+/** A device on the account. `signPub` is what hosts trust: the account's device list is the trust root. */
 export const relayDeviceSchema = z.object({
   id: deviceIdSchema,
   kind: deviceKindSchema,
   name: z.string(),
+  signPub: b64,
   connected: z.boolean(),
   createdAt: z.number(),
 });
 export type TRelayDevice = z.infer<typeof relayDeviceSchema>;
 export const relayDevicesResultSchema = z.object({ devices: z.array(relayDeviceSchema) });
 
-/** Revoking needs the daemon's signature over the revoked id, so a stolen account session can't. */
-export const revokeBodySchema = z.object({ daemonDeviceId: deviceIdSchema, at: z.number().int(), sig: b64 });
-
 export const okResultSchema = z.object({ ok: z.literal(true) });
 export const relayErrorSchema = z.object({ error: z.string() });
 
-/** Dev-only inspection endpoints (enabled with RELAY_DEV=1). */
-export const devOutboxResultSchema = z.object({
-  messages: z.array(z.object({ to: z.string(), code: z.string(), at: z.number() })),
-});
 export const devPushesResultSchema = z.object({
   pushes: z.array(
     z.object({

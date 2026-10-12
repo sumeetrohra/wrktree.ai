@@ -12,20 +12,28 @@
   (mode `0600`, inside a `0700` home folder). Browsers can reach localhost, so the daemon also checks
   `Origin` and `Host`.
 - The relay (Phase 2) is a mailbox, not a trusted party. It sees device ids, frame sizes and times,
-  the unencrypted `wake` flag, pairing ids, device names a phone chose, and public keys. It never
+  the unencrypted `wake` flag, link codes (hashed), device names, account emails, and public keys. It never
   holds a key that opens a frame: each phone connection runs a signed X25519 handshake, frames are
   XChaCha20-Poly1305-sealed with the routing header (`from`, `to`, `seq`, session id) as additional
   data, and a replayed or reordered `seq` is rejected. A forged frame, or one the relay redirected,
   fails to open. An E2E scenario dumps the relay's database, log and wire traffic after a chat and
   checks that no prompt, file or reply text appears.
-- Pairing needs the QR secret (an HMAC over the phone's keys proves the phone saw the code), the
-  daemon's signature (the phone checks it against the key in the QR code), and the user's
-  confirmation that both screens show the same six-digit code.
+- **Login is the trust root (Phase 2c).** Phones and browsers sign in with Firebase Auth; the relay
+  verifies the ID token. A computer joins an account when a signed-in device approves the code
+  `agentdeck login` shows (only the computer holding the key it registered with can collect the
+  token). Every host then trusts exactly the devices on the account's list on the relay, with the
+  signing keys listed there. This replaced QR pairing with its short-code check, and it trades
+  something away, plainly: frames stay end-to-end encrypted, so the network and the relay's storage
+  still learn nothing, but **whoever controls the account, or a malicious relay that adds its own
+  device to the list, can open sessions with your computers.** Protect the sign-in account (2FA on
+  the identity provider) and run a relay you trust.
+- Approving a code links whichever computer showed it: approve only a code your own computer shows.
 - The daemon's identity key is sealed with a secret kept in the OS keystore (Keychain, DPAPI,
   libsecret), falling back to a `0600` file with a warning when none is available.
-- Revoking a device needs a paired daemon's signature, so a stolen account session alone can't
-  cut off or impersonate devices. The daemon refuses a revoked device at once; the relay drops its
-  sockets, push token and buffered frames.
+- Removing a device (from the app with the signed-in account, or with `agentdeck devices revoke` on
+  a linked computer) deletes it and its token on the relay, which drops its sockets, push token and
+  buffered frames; every host drops its session on its next refresh of the device list. A removed
+  phone may sign in again, which is what signing in means.
 
 ## Rules
 
@@ -43,12 +51,12 @@
 | SEC10 | No secrets in the repo; `.env*` stays ignored. | `CI`, `review` |
 | SEC11 | Dependencies are pinned, installed with `--frozen-lockfile`, only allow-listed packages may run install scripts, and `pnpm audit --audit-level high` must pass. | `CI` |
 | SEC12 | CodeQL runs on every push to `main` and every PR. | `CI` |
-| SEC13 | Everything after pairing between a phone and the daemon is end-to-end encrypted and bound to its routing header; the relay stores and logs no plaintext. | `test:e2e` |
+| SEC13 | Everything between a consumer (phone, browser) and a host after the signed handshake is end-to-end encrypted and bound to its routing header; the relay stores and logs no plaintext. | `test:e2e` |
 | SEC14 | Pushes carry a fixed body and no content; at most one per device every 30 s. | `test` |
-| SEC15 | Relay tokens are random and stored hashed; account sessions are short-lived signed JWTs; device ids are derived from the device's signing key and proven at registration. | `test` |
-| SEC16 | Pairing commands (`pair.*`, `web.open`) are refused unless the client is local to the daemon. | `review`, `test:e2e` |
+| SEC15 | Relay device tokens and link codes are random and stored hashed; accounts come only from verified ID tokens (Firebase in production; the dev issuer only with `RELAY_DEV=1`); device ids are derived from the device's signing key and proven at registration and on every link poll. | `test` |
+| SEC16 | Account commands that hand out secrets (`account.link`, `account.logout`, `web.open`) are refused unless the client is local to the daemon; the deprecated `pair.*` commands always fail. | `review`, `test:e2e` |
 | SEC17 | The desktop web UI page never contains the local token. `agentdeck open` gets a one-time code (60 s, single use) for the URL fragment; the page trades it with a same-origin POST. Pages are sent with `X-Frame-Options: DENY` and never serve files outside the web export. | `test` |
-| SEC18 | On the phone, the identity key and relay tokens live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. | `review` |
+| SEC18 | On the phone, the identity key, the relay device token and the sign-in refresh token live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. On a computer, the relay device token is sealed with the identity's secret (`relay-token.sealed`, 0600). | `review` |
 
 ## Pinned transitive fixes (SEC11)
 

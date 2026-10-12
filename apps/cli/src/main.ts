@@ -5,8 +5,8 @@ import { devCommand } from "#src/commands/dev.command.js";
 import { devicesCommand } from "#src/commands/devices.command.js";
 import { HELP } from "#src/commands/help.constants.js";
 import { installCommand } from "#src/commands/install.command.js";
+import { loginCommand, logoutCommand } from "#src/commands/login.command.js";
 import { openCommand } from "#src/commands/open.command.js";
-import { pairCommand } from "#src/commands/pair.command.js";
 import { profileCommand } from "#src/commands/profile.command.js";
 import { relayCommand } from "#src/commands/relay.command.js";
 import { repoCommand } from "#src/commands/repo.command.js";
@@ -29,10 +29,14 @@ async function main(argv: readonly string[]): Promise<void> {
       return profileCommand(rest);
     case "dev":
       return devCommand(rest);
-    case "pair":
-      return pairCommand(rest);
+    case "login":
+      return loginCommand(rest);
+    case "logout":
+      return logoutCommand();
     case "devices":
       return devicesCommand(rest);
+    case "hosts":
+      return devicesCommand(rest, true);
     case "relay":
       return relayCommand(rest);
     case "install":

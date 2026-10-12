@@ -4,7 +4,7 @@ import { PUSH_MESSAGE } from "@agentdeck/relay";
 
 import type { TScenario } from "../scenario.ts";
 
-import { isEvent, pairPhone, type TRequested } from "./relay-helpers.ts";
+import { isEvent, signedInPhone, type TRequested } from "./relay-helpers.ts";
 
 export const relayOffline: TScenario = {
   n: 10,
@@ -17,7 +17,7 @@ export const relayOffline: TScenario = {
   relay: true,
   async run(h) {
     const ids = await h.quickstart();
-    const phone = await pairPhone(h);
+    const phone = await signedInPhone(h);
     await phone.registerPush("ExponentPushToken[e2e-phone]");
 
     h.step("The phone goes offline (airplane mode)");

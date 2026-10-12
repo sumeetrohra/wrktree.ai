@@ -3,12 +3,10 @@ import {
   bytesToUtf8,
   fromB64,
   handshakeMessageSchema,
-  pairMessageSchema,
   SecureChannel,
   toB64,
   utf8ToBytes,
   type TIdentity,
-  type TPairMessage,
 } from "@agentdeck/crypto";
 import {
   innerSchema,
@@ -26,15 +24,13 @@ import type { Router } from "../rpc/index.js";
 
 import { Connection } from "./connection.service.js";
 
-/** Who may open a session: confirmed, unrevoked paired devices (port, implemented by `devices`). */
+/** Who may open a session: consumers on the account (port, implemented by the app's `Remote`). */
 export interface IRelayPeers {
-  signPubOf(deviceId: string): Uint8Array | null;
+  /** The device's signing key, or null if it isn't a consumer on this host's account. */
+  signPubOf(deviceId: string): Promise<Uint8Array | null>;
   seen(deviceId: string): void;
-}
-
-/** Pairing messages from not-yet-paired phones (port, implemented by `pairing`). */
-export interface IPairingInbox {
-  onMessage(from: string, msg: TPairMessage): TPairMessage | null;
+  /** A device of the account came online or went offline. */
+  onPresence(deviceId: string, online: boolean): void;
 }
 
 /** The relay socket, as far as the transport cares. */
@@ -57,7 +53,7 @@ function decode<S extends z.ZodType>(schema: S, body: string): z.infer<S> | unde
 }
 
 /**
- * End-to-end encrypted sessions with paired phones, carried by the relay. Each phone connection
+ * End-to-end encrypted sessions with the account's consumers (phones, browsers), carried by the relay. Each phone connection
  * starts with a signed ephemeral handshake; after that every inner frame is sealed with the
  * session's keys and bound to its routing header, so the relay only ever handles ciphertext.
  * Behind each session sits an ordinary `Connection`, so the phone gets exactly the local API.
@@ -74,7 +70,6 @@ export class RelayTransport {
     private readonly bus: EventBus,
     private readonly router: Router,
     private readonly devices: IRelayPeers,
-    private readonly pairing: IPairingInbox,
     private readonly log: ILogger,
   ) {}
 
@@ -92,40 +87,32 @@ export class RelayTransport {
   onText(text: string): void {
     const control = tryParseJson(relayControlSchema, text);
     if (control) {
-      if (control.t === "relay.presence" && !control.online) {
+      if (control.t === "relay.presence") {
         const peer = this.peers.get(control.deviceId);
-        if (peer) peer.online = false;
+        if (peer && !control.online) peer.online = false;
+        this.devices.onPresence(control.deviceId, control.online);
       }
       return;
     }
     const frame = tryParseJson(relayFrameSchema, text);
     if (frame?.to !== this.myId) return;
     switch (frame.kind) {
-      case "pair":
-        this.onPair(frame);
-        return;
       case "hs":
-        this.onHandshake(frame);
+        void this.onHandshake(frame);
         return;
       case "msg":
         this.onSealed(frame);
         return;
+      case "pair": // QR pairing was removed in Phase 2c
       case "ack":
       case "ping":
         return;
     }
   }
 
-  private onPair(frame: TRelayFrame): void {
-    const msg = decode(pairMessageSchema, frame.body);
-    if (!msg) return;
-    const reply = this.pairing.onMessage(frame.from, msg);
-    if (reply) this.link.send(this.frame(frame.from, "pair", encode(reply)));
-  }
-
-  private onHandshake(frame: TRelayFrame): void {
+  private async onHandshake(frame: TRelayFrame): Promise<void> {
     const msg = decode(handshakeMessageSchema, frame.body);
-    const signPub = this.devices.signPubOf(frame.from);
+    const signPub = msg?.t === "session.init" ? await this.devices.signPubOf(frame.from) : null;
     if (msg?.t !== "session.init" || !signPub) {
       this.log.warn({ from: frame.from }, "refused relay handshake");
       return;
@@ -208,7 +195,7 @@ export class RelayTransport {
     return e.status === "idle" && before === "running";
   }
 
-  /** Ends a device's session (revoked, or replaced by a new handshake). */
+  /** Ends a device's session (removed from the account, or replaced by a new handshake). */
   dropPeer(deviceId: string): void {
     const peer = this.peers.get(deviceId);
     if (!peer) return;

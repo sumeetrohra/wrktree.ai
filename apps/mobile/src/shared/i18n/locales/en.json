@@ -5,44 +5,33 @@
   "repos": {
     "title": "Repositories",
     "empty": "No repositories yet. Add one with `agentdeck repo add <path>`.",
-    "loadFailed": "Couldn't reach your computer.",
+    "loadFailed": "Couldn't reach that computer.",
     "added": "Added {{when}}",
     "defaultBranch": "{{branch}}"
   },
   "connection": {
     "label": "{{name}} · {{status}}",
-    "unpaired": "not paired",
     "connecting": "connecting",
     "online": "online",
     "offline": "offline",
-    "revoked": "revoked",
-    "revokedTitle": "This phone was removed",
-    "revokedBody": "Your computer revoked this phone. Pair again to keep using it."
-  },
-  "pairing": {
-    "title": "Pair with your computer",
-    "intro": "On your computer, run `agentdeck pair`. Scan the QR code it shows, or paste the link printed under it.",
-    "cameraNeeded": "Scanning the QR code needs the camera.",
-    "allowCamera": "Allow camera",
-    "linkLabel": "Pairing link",
-    "linkPlaceholder": "agentdeck://pair?o=…",
-    "invalidLink": "That isn't a pairing link. Copy the whole line `agentdeck pair` printed.",
-    "paste": "Paste",
-    "continue": "Continue",
-    "compare": "Check that your computer shows the same code",
-    "code": "{{first}} {{second}}",
-    "codeLabel": "Pairing code {{code}}",
-    "confirmOnComputer": "Confirm on your computer. This screen moves on by itself once it does."
+    "removedTitle": "This device was removed",
+    "removedBody": "It was removed from your account. Sign in again to keep using it."
   },
   "auth": {
     "title": "Sign in",
-    "intro": "Your phone and computer meet through {{relay}}. Sign in with your email to continue.",
+    "intro": "Sign in to see every computer on your account and all the work on them.",
+    "introLocal": "Sign in to see your other computers too. This one stays connected either way.",
+    "relay": "Relay",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
-    "code": "Code from the email",
-    "codePlaceholder": "123456",
-    "sendCode": "Email me a code",
-    "verify": "Sign in and pair",
+    "sendLink": "Email me a sign-in link",
+    "resendLink": "Send another link",
+    "linkLabel": "Open the link on this device, or paste it here",
+    "linkPlaceholder": "https://…",
+    "signIn": "Sign in",
+    "devUid": "Dev user id",
+    "devSignIn": "Dev sign-in",
+    "notConfigured": "Sign-in isn't configured in this build.",
     "failed": "That didn't work: {{reason}}"
   },
   "worktrees": {
@@ -68,7 +57,12 @@
     "start": "Start task",
     "starting": "Setting up the worktree…",
     "noProfiles": "No agent profiles yet. Add one on your computer with `agentdeck profile add`.",
-    "failed": "Couldn't start the task: {{reason}}"
+    "failed": "Couldn't start the task: {{reason}}",
+    "host": "Computer",
+    "repo": "Repository",
+    "model": "Model (optional)",
+    "modelPlaceholder": "the agent's default",
+    "noHosts": "No computer is online."
   },
   "chats": {
     "title": "Chats",
@@ -121,16 +115,49 @@
   },
   "devices": {
     "title": "Devices",
-    "thisDevice": "{{name}} (this phone)",
-    "paired": "Paired {{when}}",
-    "revoked": "Revoked {{when}}",
-    "revoke": "Revoke"
+    "empty": "No phones or browsers yet.",
+    "thisDevice": "{{name}} (this device)",
+    "joined": "Joined {{when}}",
+    "remove": "Remove"
   },
   "settings": {
     "title": "Settings",
-    "unpair": "Unpair this phone"
+    "signedInAs": "Signed in as {{email}}",
+    "signedOut": "Not signed in.",
+    "signOut": "Sign out"
   },
   "wake": {
     "catchingUp": "Catching up with your computer…"
+  },
+  "work": {
+    "title": "Work",
+    "allHosts": "All computers",
+    "filter": {
+      "all": "Everything",
+      "attention": "Needs you",
+      "running": "Working"
+    },
+    "branch": "{{branch}} · {{title}}",
+    "loading": "Loading…",
+    "noHosts": "No computers yet. On a computer, run `agentdeck login`, then approve it under Computers.",
+    "signInForMore": "Sign in to see your other computers"
+  },
+  "hosts": {
+    "title": "Computers",
+    "intro": "Computers running Agentdeck on your account. Each one shows up after `agentdeck login`.",
+    "empty": "No computers yet.",
+    "local": "This computer",
+    "viaRelay": "Through the relay, end to end encrypted",
+    "remove": "Remove",
+    "unknown": "Computer"
+  },
+  "link": {
+    "cta": "Link a computer",
+    "title": "Link a computer",
+    "intro": "On the computer, run `agentdeck login`. Scan its QR code or type the code it shows.",
+    "codeLabel": "Code",
+    "approve": "Approve",
+    "done": "{{name}} is joining your account. It shows up under Work in a moment.",
+    "failed": "Couldn't approve: {{reason}}"
   }
 }

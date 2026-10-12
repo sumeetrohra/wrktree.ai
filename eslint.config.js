@@ -285,8 +285,8 @@ const ZONES = [
     patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
   },
   {
-    name: "relay-infra-jwt",
-    files: ["apps/relay/src/infra/jwt/**/*.ts"],
+    name: "relay-infra-idtoken",
+    files: ["apps/relay/src/infra/idtoken/**/*.ts"],
     allow: ["jwt"],
     patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
   },
@@ -616,6 +616,17 @@ export default tseslint.config(
     name: "mobile-api",
     files: ["apps/mobile/src/lib/api/**/*.ts"],
     rules: { "no-restricted-globals": "off" },
+  },
+  {
+    // L23: sign-in (Firebase Auth REST, the relay's dev issuer) is the only other network caller.
+    name: "mobile-auth",
+    files: ["apps/mobile/src/lib/auth/**/*.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        { name: "WebSocket", message: "L9/A1: only src/lib/api talks to the daemon." },
+      ],
+    },
   },
   {
     name: "mobile-routes-files",

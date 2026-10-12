@@ -21,6 +21,8 @@ export type TPaths = {
   identity: string;
   /** Fallback for the sealing secret when no OS keystore is available, mode 0600. */
   identitySecret: string;
+  /** The relay device token and account, sealed like the identity. Present once linked. */
+  relayToken: string;
 };
 
 /** The daemon's data folder. `AGENTDECK_HOME` overrides it (tests, multiple daemons). */
@@ -51,5 +53,6 @@ export function pathsFor(home: string): TPaths {
     config: join(home, "config.json"),
     identity: join(home, "identity.sealed"),
     identitySecret: join(home, "identity.secret"),
+    relayToken: join(home, "relay-token.sealed"),
   };
 }

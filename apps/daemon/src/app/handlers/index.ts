@@ -9,6 +9,7 @@ import { filesHandlers } from "./files.handlers.js";
 import { profileHandlers } from "./profile.handlers.js";
 import { repoHandlers } from "./repo.handlers.js";
 import { syncHandlers } from "./sync.handlers.js";
+import { workspaceHandlers } from "./workspace.handlers.js";
 import { worktreeHandlers } from "./worktree.handlers.js";
 
 /** Every command's handler. `THandlers` is total, so a missing one fails `tsc`. */
@@ -22,5 +23,6 @@ export function createHandlers(m: TModules): THandlers {
     ...filesHandlers(m),
     ...blobHandlers(m),
     ...deviceHandlers(m),
+    ...workspaceHandlers(m),
   };
 }

@@ -6,18 +6,7 @@ import { fromB64, toB64, utf8ToBytes } from "./bytes.utils.js";
 import { SecureChannel } from "./channel.service.js";
 import { acceptHandshake, finishHandshake, startHandshake } from "./handshake.utils.js";
 import { deviceIdFor, exportIdentity, generateIdentity, importIdentity } from "./keys.utils.js";
-import { clientSessionKeys, kxKeyPair, serverSessionKeys } from "./kx.utils.js";
-import {
-  acceptHello,
-  createHello,
-  createOffer,
-  linkToOffer,
-  offerToLink,
-  pairingTranscript,
-  shortCode,
-  verifyPairOk,
-} from "./pairing.utils.js";
-
+import { clientSessionKeys, serverSessionKeys } from "./kx.utils.js";
 beforeAll(async () => {
   await sodium.ready;
 });
@@ -148,64 +137,9 @@ describe("SecureChannel", () => {
   });
 });
 
-describe("pairing", () => {
-  const relayUrl = "https://relay.example";
-
-  it("pairs, and both sides show the same short code", () => {
-    const daemon = generateIdentity();
-    const phone = generateIdentity();
-    const offer = createOffer(daemon, relayUrl, "pair_1");
-    const scanned = linkToOffer(offerToLink(offer));
-    expect(scanned).toEqual(offer);
-    if (!scanned) return;
-    const hello = createHello(phone, scanned, "Pixel");
-    const ok = acceptHello(daemon, offer, hello);
-    expect(ok).not.toBeNull();
-    if (!ok) return;
-    expect(verifyPairOk(scanned, hello, ok)).toBe(true);
-    const code = shortCode(pairingTranscript(offer, hello));
-    expect(code).toMatch(/^\d{6}$/);
-    expect(shortCode(pairingTranscript(scanned, hello))).toBe(code);
-  });
-
-  it("rejects a hello made without the QR secret", () => {
-    const daemon = generateIdentity();
-    const offer = createOffer(daemon, relayUrl, "pair_1");
-    const forged = createHello(generateIdentity(), { ...offer, secret: toB64(new Uint8Array(32)) }, "x");
-    expect(acceptHello(daemon, offer, forged)).toBeNull();
-  });
-
-  it("rejects a hello whose device id isn't bound to its key", () => {
-    const daemon = generateIdentity();
-    const offer = createOffer(daemon, relayUrl, "pair_1");
-    const hello = createHello(generateIdentity(), offer, "x");
-    expect(acceptHello(daemon, offer, { ...hello, phoneDeviceId: "d_other" })).toBeNull();
-  });
-
-  it("rejects a pair.ok from a daemon other than the one in the QR code", () => {
-    const daemon = generateIdentity();
-    const offer = createOffer(daemon, relayUrl, "pair_1");
-    const hello = createHello(generateIdentity(), offer, "x");
-    const impostor = generateIdentity();
-    const ok = acceptHello(impostor, { ...offer, daemonSignPub: toB64(impostor.signPub) }, hello);
-    expect(ok && verifyPairOk(offer, hello, ok)).toBe(false);
-  });
-
-  it("ignores links that aren't pairing offers", () => {
-    expect(linkToOffer("https://evil.example")).toBeNull();
-    expect(linkToOffer("agentdeck://pair?o=%%%")).toBeNull();
-    expect(linkToOffer(`agentdeck://pair?o=${toB64(utf8ToBytes('{"v":2}'))}`)).toBeNull();
-  });
-
-  it("short codes spread over the whole range", () => {
-    const codes = new Set(Array.from({ length: 50 }, () => shortCode(kxKeyPair().pub)));
-    expect(codes.size).toBeGreaterThan(45);
-  });
-});
-
 describe("relay auth signatures", () => {
   it("accepts a fresh registration and rejects stale, forged or rebound ones", async () => {
-    const { signRegistration, verifyRegistration, signRevocation, verifyRevocation } =
+    const { signRegistration, verifyRegistration, signLinkPoll, verifyLinkPoll } =
       await import("./relay-auth.utils.js");
     const me = generateIdentity();
     const t = 1_800_000_000_000;
@@ -214,9 +148,10 @@ describe("relay auth signatures", () => {
     expect(verifyRegistration(reg, t + 10 * 60 * 1000)).toBe(false);
     expect(verifyRegistration({ ...reg, deviceId: deviceIdFor(generateIdentity().signPub) }, t)).toBe(false);
     expect(verifyRegistration({ ...reg, at: t + 1 }, t)).toBe(false);
-    const sig = signRevocation(me, "d_x", t);
-    expect(verifyRevocation(reg.signPub, "d_x", t, sig, t)).toBe(true);
-    expect(verifyRevocation(reg.signPub, "d_y", t, sig, t)).toBe(false);
+    const sig = signLinkPoll(me, "link_x", t);
+    expect(verifyLinkPoll(reg.signPub, "link_x", t, sig, t)).toBe(true);
+    expect(verifyLinkPoll(reg.signPub, "link_y", t, sig, t)).toBe(false);
+    expect(verifyLinkPoll(reg.signPub, "link_x", t, sig, t + 10 * 60 * 1000)).toBe(false);
   });
 });
 

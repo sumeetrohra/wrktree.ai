@@ -5,18 +5,18 @@ import { daemonCall, onDaemonEvent, queryClient } from "@/lib/api";
 
 import { worktreesKeys } from "./worktrees.keys";
 
-export function useWorktreesQuery(repoId: string): UseQueryResult<TWorktree[]> {
+export function useWorktreesQuery(hostId: string, repoId: string): UseQueryResult<TWorktree[]> {
   return useQuery({
-    queryKey: worktreesKeys.list(repoId),
-    queryFn: () => daemonCall("worktree.list", { repoId }),
+    queryKey: worktreesKeys.list(hostId, repoId),
+    queryFn: () => daemonCall(hostId, "worktree.list", { repoId }),
   });
 }
 
 /** Lists follow `worktree.updated` / `worktree.removed` events, without refetching. Call once at startup. */
 export function startWorktreesSync(): void {
-  onDaemonEvent(({ event: e }) => {
+  onDaemonEvent((hostId, { event: e }) => {
     if (e.type === "worktree.updated") {
-      queryClient.setQueryData<TWorktree[]>(worktreesKeys.list(e.worktree.repoId), (list) => {
+      queryClient.setQueryData<TWorktree[]>(worktreesKeys.list(hostId, e.worktree.repoId), (list) => {
         if (!list) return list;
         return list.some((w) => w.id === e.worktree.id)
           ? list.map((w) => (w.id === e.worktree.id ? e.worktree : w))
@@ -24,7 +24,9 @@ export function startWorktreesSync(): void {
       });
     }
     if (e.type === "worktree.removed") {
-      for (const [key, list] of queryClient.getQueriesData<TWorktree[]>({ queryKey: worktreesKeys.all })) {
+      for (const [key, list] of queryClient.getQueriesData<TWorktree[]>({
+        queryKey: worktreesKeys.host(hostId),
+      })) {
         if (list?.some((w) => w.id === e.worktreeId)) {
           queryClient.setQueryData(
             key,
@@ -37,14 +39,13 @@ export function startWorktreesSync(): void {
 }
 
 /**
- * Creates a worktree and resolves once its setup finished (status `ready`), or rejects if setup
- * failed. Readiness arrives as an event, so this listens instead of polling.
+ * Creates a worktree on `hostId` and resolves once its setup finished (status `ready`), or rejects
+ * if setup failed. Readiness arrives as an event, so this listens instead of polling.
  */
-export async function createReadyWorktree(v: {
-  repoId: string;
-  branch: string;
-  title: string;
-}): Promise<TWorktree> {
+export async function createReadyWorktree(
+  hostId: string,
+  v: { repoId: string; branch: string; title: string },
+): Promise<TWorktree> {
   let stop: () => void = () => undefined;
   const ready = new Promise<TWorktree>((resolve, reject) => {
     let id: string | null = null;
@@ -53,12 +54,12 @@ export async function createReadyWorktree(v: {
       if (w.status === "ready") resolve(w);
       if (w.status === "setup_failed") reject(new Error(w.setupError ?? "Setup failed"));
     };
-    stop = onDaemonEvent(({ event: e }) => {
-      if (e.type !== "worktree.updated") return;
+    stop = onDaemonEvent((from, { event: e }) => {
+      if (from !== hostId || e.type !== "worktree.updated") return;
       if (id === null) seen.push(e.worktree);
       else if (e.worktree.id === id) check(e.worktree);
     });
-    void daemonCall("worktree.create", v).then(
+    void daemonCall(hostId, "worktree.create", v).then(
       (wt) => {
         id = wt.id;
         check(wt);

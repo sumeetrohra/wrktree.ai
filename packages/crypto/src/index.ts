@@ -4,7 +4,6 @@ export * from "./keys.utils.js";
 export * from "./kx.utils.js";
 export * from "./aead.utils.js";
 export * from "./handshake.utils.js";
-export * from "./pairing.schema.js";
-export * from "./pairing.utils.js";
+export * from "./handshake.schema.js";
 export * from "./channel.service.js";
 export * from "./relay-auth.utils.js";

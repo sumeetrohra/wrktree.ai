@@ -33,21 +33,21 @@ export function verifyRegistration(
   }
 }
 
-/** The daemon's confirmation that `deviceId` may be revoked (`DELETE /v1/devices/:id`). */
-export function signRevocation(daemon: TIdentity, deviceId: string, at: number): string {
-  return toB64(sign(daemon, framed(LABELS.revoke, deviceId, String(at))));
+/** A host's proof, while it polls `POST /v1/link/poll`, that it is the device that started the link. */
+export function signLinkPoll(me: TIdentity, linkId: string, at: number): string {
+  return toB64(sign(me, framed(LABELS.linkPoll, linkId, String(at))));
 }
 
-export function verifyRevocation(
-  daemonSignPub: string,
-  deviceId: string,
+export function verifyLinkPoll(
+  signPub: string,
+  linkId: string,
   at: number,
   sig: string,
   nowMs: number,
 ): boolean {
   if (Math.abs(nowMs - at) > RELAY_AUTH_SKEW_MS) return false;
   try {
-    return verify(fromB64(daemonSignPub), framed(LABELS.revoke, deviceId, String(at)), fromB64(sig));
+    return verify(fromB64(signPub), framed(LABELS.linkPoll, linkId, String(at)), fromB64(sig));
   } catch {
     return false;
   }

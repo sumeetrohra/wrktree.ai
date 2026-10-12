@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
 
-import { REPO_ROOT, type Harness } from "../harness.ts";
+import { REPO_ROOT } from "../harness.ts";
 
 import { serveApp } from "./static-server.ts";
 
@@ -46,13 +46,4 @@ export class AppDriver {
     await this.closeServer();
     return video ? video.path() : null;
   }
-}
-
-/** The six-digit code the dev mailer "sent" to `email`. */
-export async function outboxCode(h: Harness, email: string): Promise<string> {
-  const res = await fetch(`${h.relayUrl}/v1/dev/outbox`);
-  const { messages } = (await res.json()) as { messages: { to: string; code: string }[] };
-  const code = messages.filter((m) => m.to === email).at(-1)?.code;
-  if (!code) throw new Error(`no code mailed to ${email}`);
-  return code;
 }

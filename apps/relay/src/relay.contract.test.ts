@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateIdentity, signRegistration, signRevocation, type TIdentity } from "@agentdeck/crypto";
+import { generateIdentity, signLinkPoll, signRegistration, type TIdentity } from "@agentdeck/crypto";
 import {
   RELAY_TOKEN_PROTOCOL_PREFIX,
   RELAY_WS_PROTOCOL,
@@ -19,7 +19,7 @@ import { startNodeRelay, type TNodeRelay } from "./app/node-host.js";
 import { relayEnvSchema } from "./shared/relay-env.schema.js";
 import { CLOSE, PUSH_MESSAGE } from "./shared/relay.constants.js";
 
-const JWT_SECRET = "test-secret-test-secret-test-secret-123";
+const DEV_SECRET = "test-secret-test-secret-test-secret-123";
 
 type THost = { name: string; start(): Promise<{ url: string; stop(): Promise<void> }> };
 
@@ -41,7 +41,7 @@ const nodeHost: THost = {
     const relay: TNodeRelay = await startNodeRelay({
       port: 0,
       dataDir: mkdtempSync(join(tmpdir(), "relay-")),
-      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_JWT_SECRET: JWT_SECRET }),
+      env: relayEnvSchema.parse({ RELAY_DEV: "1", RELAY_DEV_SECRET: DEV_SECRET }),
       log: silentLogger,
     });
     return { url: relay.url, stop: () => relay.close() };
@@ -124,27 +124,60 @@ class Client {
     return { status: res.status, json: text ? (JSON.parse(text) as Record<string, unknown>) : {} };
   }
 
-  async signIn(email: string): Promise<string> {
-    await this.call("POST", "/v1/auth/start", { body: { email } });
-    const { json } = await this.call("GET", "/v1/dev/outbox");
-    const mine = (json["messages"] as { to: string; code: string }[]).filter((m) => m.to === email).at(-1);
-    const fin = await this.call("POST", "/v1/auth/finish", { body: { email, code: mine?.code } });
-    expect(fin.status).toBe(200);
-    return fin.json["sessionToken"] as string;
+  /** A dev ID token, standing in for a Firebase sign-in. */
+  async signIn(uid: string): Promise<string> {
+    const res = await this.call("GET", `/v1/dev/id-token?uid=${uid}&email=${uid}@example.com`);
+    expect(res.status).toBe(200);
+    return res.json["idToken"] as string;
   }
 
   async register(
     id: TIdentity,
     kind: TDeviceKind,
-    session?: string,
+    idToken: string,
   ): Promise<{ deviceId: string; token: string }> {
     const reg = signRegistration(id, Date.now());
     const res = await this.call("POST", "/v1/devices/register", {
       body: { ...reg, kind, name: kind },
-      ...(session === undefined ? {} : { token: session }),
+      token: idToken,
     });
     expect(res.status).toBe(200);
     return { deviceId: reg.deviceId, token: res.json["deviceToken"] as string };
+  }
+
+  async startLink(
+    id: TIdentity,
+    name = "laptop",
+  ): Promise<{ linkId: string; code: string; deviceId: string }> {
+    const reg = signRegistration(id, Date.now());
+    const res = await this.call("POST", "/v1/link/start", { body: { ...reg, kind: "daemon", name } });
+    expect(res.status).toBe(200);
+    return { linkId: res.json["linkId"] as string, code: res.json["code"] as string, deviceId: reg.deviceId };
+  }
+
+  poll(id: TIdentity, link: { linkId: string; deviceId: string }): ReturnType<Client["call"]> {
+    const at = Date.now();
+    return this.call("POST", "/v1/link/poll", {
+      body: { linkId: link.linkId, deviceId: link.deviceId, at, sig: signLinkPoll(id, link.linkId, at) },
+    });
+  }
+
+  /** Links a host to the account signed in with `idToken`, as `agentdeck login` does. */
+  async linkHost(
+    id: TIdentity,
+    idToken: string,
+    name = "laptop",
+  ): Promise<{ deviceId: string; token: string }> {
+    const link = await this.startLink(id, name);
+    expect((await this.poll(id, link)).json).toEqual({ status: "pending" });
+    const approved = await this.call("POST", "/v1/link/approve", {
+      token: idToken,
+      body: { code: link.code },
+    });
+    expect(approved.json).toEqual({ deviceId: link.deviceId, name });
+    const done = await this.poll(id, link);
+    expect(done.json["status"]).toBe("approved");
+    return { deviceId: link.deviceId, token: done.json["deviceToken"] as string };
   }
 
   socket(token: string): Promise<Sock> {
@@ -230,82 +263,108 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
     await relay.stop();
   });
 
-  /** A signed-in phone and a daemon paired onto its account. */
-  async function pairedAccount(email: string) {
-    const session = await c.signIn(email);
+  /** A signed-in phone and a host linked to the same account. */
+  async function pairedAccount(uid: string) {
+    const idToken = await c.signIn(uid);
     const phoneId = generateIdentity();
     const daemonId = generateIdentity();
-    const phone = await c.register(phoneId, "phone", session);
-    const daemon = await c.register(daemonId, "daemon");
-    const offer = await c.call("POST", "/v1/pair/offer", { token: daemon.token });
-    expect(offer.status).toBe(200);
-    const claim = await c.call("POST", "/v1/pair/claim", {
-      token: session,
-      body: { pairingId: offer.json["pairingId"], phoneDeviceId: phone.deviceId },
-    });
-    expect(claim.json).toEqual({ daemonDeviceId: daemon.deviceId });
-    return { session, phone, daemon, daemonId, phoneId, pairingId: offer.json["pairingId"] as string };
+    const phone = await c.register(phoneId, "phone", idToken);
+    const daemon = await c.linkHost(daemonId, idToken);
+    return { idToken, phone, daemon, daemonId, phoneId };
   }
 
-  it("signs in with a magic-link code and rejects a wrong one", async () => {
-    await c.call("POST", "/v1/auth/start", { body: { email: "wrong@example.com" } });
-    const bad = await c.call("POST", "/v1/auth/finish", {
-      body: { email: "wrong@example.com", code: "000000" },
-    });
-    expect(bad.status).toBe(401);
-    const token = await c.signIn("someone@example.com");
-    const refreshed = await c.call("POST", "/v1/auth/refresh", { token });
-    expect(refreshed.status).toBe(200);
-  });
-
-  it("signs in with (dev) GitHub OAuth, and refuses a forged state", async () => {
-    const start = await c.call("POST", "/v1/auth/github/start");
-    const ok = await c.call("POST", "/v1/auth/github/finish", {
-      body: { code: "dev-octocat", state: start.json["state"] },
-    });
-    expect(ok.status).toBe(200);
-    const forged = await c.call("POST", "/v1/auth/github/finish", {
-      body: { code: "dev-octocat", state: "x.y.z" },
-    });
-    expect(forged.status).toBe(401);
-  });
-
-  it("rejects registrations with a bad signature, and phones without an account", async () => {
+  it("accepts only valid ID tokens", async () => {
     const id = generateIdentity();
-    const reg = signRegistration(id, Date.now());
+    const reg = { ...signRegistration(id, Date.now()), kind: "phone", name: "x" };
+    expect((await c.call("POST", "/v1/devices/register", { body: reg })).status).toBe(401);
+    const forged = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl";
+    expect((await c.call("POST", "/v1/devices/register", { body: reg, token: forged })).status).toBe(401);
+    const idToken = await c.signIn("someone");
+    const tampered = idToken.slice(0, -2) + (idToken.endsWith("A") ? "BB" : "AA");
+    expect((await c.call("POST", "/v1/devices/register", { body: reg, token: tampered })).status).toBe(401);
+    expect((await c.call("POST", "/v1/devices/register", { body: reg, token: idToken })).status).toBe(200);
+    expect((await c.call("GET", "/v1/dev/id-token?uid=bad%20uid")).status).toBe(400);
+  });
+
+  it("rejects registrations with a bad signature, and hosts that skip linking", async () => {
+    const idToken = await c.signIn("forger");
+    const reg = signRegistration(generateIdentity(), Date.now());
     const forged = await c.call("POST", "/v1/devices/register", {
+      token: idToken,
       body: {
         ...reg,
         signPub: signRegistration(generateIdentity(), Date.now()).signPub,
-        kind: "daemon",
+        kind: "phone",
         name: "x",
       },
     });
     expect(forged.status).toBe(401);
-    const noAccount = await c.call("POST", "/v1/devices/register", {
+    const host = await c.call("POST", "/v1/devices/register", {
+      token: idToken,
+      body: { ...reg, kind: "daemon", name: "x" },
+    });
+    expect(host.status).toBe(400);
+    const consumerLink = await c.call("POST", "/v1/link/start", {
       body: { ...reg, kind: "phone", name: "x" },
     });
-    expect(noAccount.status).toBe(401);
+    expect(consumerLink.status).toBe(400);
   });
 
-  it("pairs once: a used or unknown pairing id is refused", async () => {
-    const { session, phone, pairingId } = await pairedAccount("pair@example.com");
-    const again = await c.call("POST", "/v1/pair/claim", {
-      token: session,
-      body: { pairingId, phoneDeviceId: phone.deviceId },
+  it("links a host once its code is approved, and only for the polling host", async () => {
+    const idToken = await c.signIn("linker");
+    const hostId = generateIdentity();
+    const link = await c.startLink(hostId);
+    expect(link.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    // Someone else's key can't collect the token.
+    const stranger = generateIdentity();
+    const at = Date.now();
+    const stolen = await c.call("POST", "/v1/link/poll", {
+      body: {
+        linkId: link.linkId,
+        deviceId: link.deviceId,
+        at,
+        sig: signLinkPoll(stranger, link.linkId, at),
+      },
     });
-    expect(again.status).toBe(409);
-    const unknown = await c.call("POST", "/v1/pair/claim", {
-      token: session,
-      body: { pairingId: "pair_nope", phoneDeviceId: phone.deviceId },
-    });
-    expect(unknown.status).toBe(410);
-    const list = await c.call("GET", "/v1/devices", { token: session });
-    expect((list.json["devices"] as unknown[]).length).toBe(2);
+    expect(stolen.status).toBe(403);
+    // Approving needs a signed-in user; codes are case- and dash-insensitive.
+    expect((await c.call("POST", "/v1/link/approve", { body: { code: link.code } })).status).toBe(401);
+    const wrong = await c.call("POST", "/v1/link/approve", { token: idToken, body: { code: "ZZZZ-ZZZZ" } });
+    expect(wrong.status).toBe(410);
+    const lower = link.code.replace("-", "").toLowerCase();
+    expect((await c.call("POST", "/v1/link/approve", { token: idToken, body: { code: lower } })).status).toBe(
+      200,
+    );
+    // Another account can't take over an approved code.
+    const other = await c.signIn("other-linker");
+    expect(
+      (await c.call("POST", "/v1/link/approve", { token: other, body: { code: link.code } })).status,
+    ).toBe(409);
+    const done = await c.poll(hostId, link);
+    expect(done.json).toMatchObject({ status: "approved", accountEmail: "linker@example.com" });
+    // The token is handed out once.
+    expect((await c.poll(hostId, link)).status).toBe(404);
+    const me = await c.call("GET", "/v1/devices/me", { token: done.json["deviceToken"] as string });
+    expect(me.json).toEqual({ id: link.deviceId });
+  });
+
+  it("lists the account's devices with their signing keys, to users and to hosts", async () => {
+    const { idToken, phone, daemon, phoneId } = await pairedAccount("lister");
+    const asUser = await c.call("GET", "/v1/devices", { token: idToken });
+    const asHost = await c.call("GET", "/v1/devices", { token: daemon.token });
+    expect(asHost.json).toEqual(asUser.json);
+    const devices = asUser.json["devices"] as Record<string, unknown>[];
+    expect(devices.map((d) => d["id"]).sort()).toEqual([phone.deviceId, daemon.deviceId].sort());
+    expect(devices.find((d) => d["id"] === phone.deviceId)?.["signPub"]).toBe(
+      signRegistration(phoneId, 0).signPub,
+    );
+    // Another account sees none of them.
+    const stranger = await c.call("GET", "/v1/devices", { token: await c.signIn("stranger") });
+    expect(stranger.json).toEqual({ devices: [] });
   });
 
   it("forwards frames between paired devices, and only frames whose `from` is the sender", async () => {
-    const { phone, daemon } = await pairedAccount("fwd@example.com");
+    const { phone, daemon } = await pairedAccount("fwd");
     const p = await c.socket(phone.token);
     const d = await c.socket(daemon.token);
     p.send({ from: phone.deviceId, to: daemon.deviceId, seq: 1, sid: "s1" });
@@ -321,7 +380,7 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
   });
 
   it("stores frames for an offline phone, push-wakes it once with no content, and deletes on ack", async () => {
-    const { phone, daemon } = await pairedAccount("offline@example.com");
+    const { phone, daemon } = await pairedAccount("offline");
     await c.call("POST", "/v1/push/register", {
       token: phone.token,
       body: { expoPushToken: "ExponentPushToken[test]" },
@@ -348,32 +407,33 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
     d.close();
   });
 
-  it("revokes a device only with a daemon's signature, then drops and locks it out", async () => {
-    const { session, phone, daemon, daemonId } = await pairedAccount("revoke@example.com");
+  it("removes a device, dropping its socket and token; it may sign in again", async () => {
+    const { idToken, phone, daemon, phoneId } = await pairedAccount("remover");
+    const other = await c.register(generateIdentity(), "web", idToken);
+    // A consumer's device token can't remove other devices; the user's ID token or a host can.
+    const denied = await c.call("DELETE", `/v1/devices/${phone.deviceId}`, { token: other.token });
+    expect(denied.status).toBe(403);
+    const elsewhere = await c.call("DELETE", `/v1/devices/${phone.deviceId}`, {
+      token: await c.signIn("not-the-owner"),
+    });
+    expect(elsewhere.status).toBe(404);
     const p = await c.socket(phone.token);
-    const at = Date.now();
-    const forged = await c.call("DELETE", `/v1/devices/${phone.deviceId}`, {
-      token: session,
-      body: {
-        daemonDeviceId: daemon.deviceId,
-        at,
-        sig: signRevocation(generateIdentity(), phone.deviceId, at),
-      },
-    });
-    expect(forged.status).toBe(403);
-    const res = await c.call("DELETE", `/v1/devices/${phone.deviceId}`, {
-      token: session,
-      body: { daemonDeviceId: daemon.deviceId, at, sig: signRevocation(daemonId, phone.deviceId, at) },
-    });
+    const res = await c.call("DELETE", `/v1/devices/${phone.deviceId}`, { token: daemon.token });
     expect(res.status).toBe(200);
     await p.until((s) => s.closeCode !== null);
     expect(p.closeCode).toBe(CLOSE.REVOKED);
     await expect(c.socket(phone.token)).rejects.toThrow();
+    expect((await c.call("GET", "/v1/devices/me", { token: phone.token })).status).toBe(401);
+    // Removing yourself is logging out.
+    expect((await c.call("DELETE", `/v1/devices/${other.deviceId}`, { token: other.token })).status).toBe(
+      200,
+    );
+    await c.register(phoneId, "phone", idToken);
   });
 
   it("refuses sockets with a bad token or a token in the URL", async () => {
     await expect(c.socket("nope")).rejects.toThrow();
-    const { daemon } = await pairedAccount("url@example.com");
+    const { daemon } = await pairedAccount("url");
     const ws = new WebSocket(`${c.url.replace(/^http/, "ws")}/v1/ws?token=${daemon.token}`, [
       RELAY_WS_PROTOCOL,
     ]);
@@ -388,7 +448,7 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
   });
 
   it("closes a phone that floods frames", async () => {
-    const { phone, daemon } = await pairedAccount("flood@example.com");
+    const { phone, daemon } = await pairedAccount("flood");
     const p = await c.socket(phone.token);
     for (let i = 0; i < 80; i++)
       p.send({ from: phone.deviceId, to: daemon.deviceId, seq: i + 1, kind: "ping" });

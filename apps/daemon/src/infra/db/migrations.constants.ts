@@ -64,4 +64,9 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE devices ADD COLUMN kind TEXT NOT NULL DEFAULT 'phone';
   ALTER TABLE devices ADD COLUMN confirmed_at INTEGER;
   `,
+  // 3: Phase 2c. The model a chat was created with. (The devices table is unused since 2c: the
+  // account's device list lives on the relay.)
+  `
+  ALTER TABLE chats ADD COLUMN model TEXT;
+  `,
 ];
