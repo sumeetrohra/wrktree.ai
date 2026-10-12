@@ -2,6 +2,8 @@
 #   docker build -f apps/relay/Dockerfile -t agentdeck-relay .
 FROM node:22-bookworm-slim AS build
 ENV HUSKY=0
+# better-sqlite3 falls back to a source build when no prebuilt binary matches.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
 COPY . .

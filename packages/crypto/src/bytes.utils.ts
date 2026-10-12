@@ -2,10 +2,25 @@ import { concatBytes, randomBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 
 export { concatBytes, randomBytes, utf8ToBytes };
 
-const textDecoder = new TextDecoder();
-
+/** UTF-8 decode; falls back to a manual decoder where TextDecoder is missing (older Hermes). */
 export function bytesToUtf8(bytes: Uint8Array): string {
-  return textDecoder.decode(bytes);
+  if (typeof TextDecoder !== "undefined") return new TextDecoder().decode(bytes);
+  let out = "";
+  for (let i = 0; i < bytes.length;) {
+    const b = bytes[i++] ?? 0;
+    let cp = b;
+    if (b >= 0xf0)
+      cp =
+        ((b & 0x07) << 18) |
+        (((bytes[i++] ?? 0) & 0x3f) << 12) |
+        (((bytes[i++] ?? 0) & 0x3f) << 6) |
+        ((bytes[i++] ?? 0) & 0x3f);
+    else if (b >= 0xe0)
+      cp = ((b & 0x0f) << 12) | (((bytes[i++] ?? 0) & 0x3f) << 6) | ((bytes[i++] ?? 0) & 0x3f);
+    else if (b >= 0xc0) cp = ((b & 0x1f) << 6) | ((bytes[i++] ?? 0) & 0x3f);
+    out += String.fromCodePoint(cp);
+  }
+  return out;
 }
 
 /** URL-safe base64 without padding, the encoding for every key and ciphertext on the wire. */

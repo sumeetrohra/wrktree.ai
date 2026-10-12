@@ -219,3 +219,18 @@ describe("relay auth signatures", () => {
     expect(verifyRevocation(reg.signPub, "d_y", t, sig, t)).toBe(false);
   });
 });
+
+describe("bytesToUtf8 without TextDecoder", () => {
+  it("decodes multi-byte text the same way", async () => {
+    const { bytesToUtf8 } = await import("./bytes.utils.js");
+    const text = "héllo → 世界 🚀";
+    const saved = globalThis.TextDecoder;
+    // @ts-expect-error -- reason: simulate a runtime without TextDecoder
+    delete globalThis.TextDecoder;
+    try {
+      expect(bytesToUtf8(utf8ToBytes(text))).toBe(text);
+    } finally {
+      globalThis.TextDecoder = saved;
+    }
+  });
+});

@@ -73,6 +73,8 @@ const workerHost: THost = {
         env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
         stdio: ["ignore", "pipe", "pipe"],
         shell: process.platform === "win32",
+        // Its own process group, so stopping it also stops workerd and esbuild.
+        detached: process.platform !== "win32",
       },
     );
     await new Promise<void>((resolve, reject) => {
@@ -93,7 +95,8 @@ const workerHost: THost = {
           child.once("exit", () => {
             resolve();
           });
-          child.kill("SIGTERM");
+          if (process.platform !== "win32" && child.pid !== undefined) process.kill(-child.pid, "SIGTERM");
+          else child.kill("SIGTERM");
         }),
     };
   },
