@@ -1,0 +1,47 @@
+{
+  "name": "@agentdeck/relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "agentdeck-relay": "./dist/main.node.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "dev:worker": "wrangler dev --env dev",
+    "deploy:staging": "wrangler deploy --env staging"
+  },
+  "dependencies": {
+    "@agentdeck/crypto": "workspace:*",
+    "@agentdeck/protocol": "workspace:*",
+    "@agentdeck/shared": "workspace:*",
+    "@hono/node-server": "2.1.1",
+    "better-sqlite3": "13.0.3",
+    "hono": "4.13.9",
+    "jose": "6.2.12",
+    "ws": "8.22.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/ws": "8.18.2",
+    "wrangler": "4.141.0"
+  },
+  "imports": {
+    "#src/*": {
+      "types": "./src/*",
+      "default": "./dist/*"
+    }
+  }
+}

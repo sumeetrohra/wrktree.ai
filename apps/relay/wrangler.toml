@@ -1,0 +1,41 @@
+# Cloudflare Worker + Durable Objects build of the relay. See docs/relay-deploy.md.
+name = "agentdeck-relay"
+main = "dist/main.worker.js"
+compatibility_date = "2026-09-01"
+
+[[durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "DirectoryDO"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "HubDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DirectoryDO", "HubDO"]
+
+# Local development and the contract tests: dev mailer, dev OAuth, recorded pushes.
+[env.dev]
+vars = { RELAY_DEV = "1", RELAY_PUBLIC_URL = "http://127.0.0.1:8787", RELAY_JWT_SECRET = "dev-only-secret-dev-only-secret-dev-only" }
+
+[[env.dev.durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "DirectoryDO"
+
+[[env.dev.durable_objects.bindings]]
+name = "HUB"
+class_name = "HubDO"
+
+# Staging. Secrets (RELAY_JWT_SECRET, RESEND_API_KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+# EXPO_ACCESS_TOKEN) are set with `wrangler secret put --env staging`, never committed.
+[env.staging]
+vars = { RELAY_DEV = "0", RELAY_PUBLIC_URL = "https://relay-staging.agentdeck.dev" }
+
+[[env.staging.durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "DirectoryDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "HUB"
+class_name = "HubDO"
