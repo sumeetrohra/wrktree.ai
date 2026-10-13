@@ -174,10 +174,12 @@ export class Connection {
   }
 
   /** Inner frames above the threshold travel as blob parts, then a `{ $blob }` reply. */
-  private sendData(id: string, data: unknown): void {
-    const json = JSON.stringify(data ?? {});
+  private sendData(id: string, raw: unknown): void {
+    // `null` is a real result (e.g. `pr.status` with no PR); only a missing one becomes `{}`.
+    const data = raw === undefined ? {} : raw;
+    const json = JSON.stringify(data);
     if (json.length <= FRAME_BLOB_THRESHOLD) {
-      this.send({ t: "res", id, ok: true, data: data ?? {} });
+      this.send({ t: "res", id, ok: true, data });
       return;
     }
     const blobId = randomBytes(12).toString("hex");

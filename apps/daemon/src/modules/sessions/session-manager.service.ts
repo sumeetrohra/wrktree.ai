@@ -4,6 +4,7 @@ import {
   type TChat,
   type TChatItem,
   type TChatStatus,
+  type TCodeContext,
 } from "@agentdeck/protocol";
 import { newId, now } from "@agentdeck/shared";
 
@@ -37,7 +38,8 @@ type TRow = {
   updated_at: number;
 };
 
-type TQueued = { turnId: string; text: string; attachments: TBlobRef[] };
+/** `quoted`: worktree lines the user attached, already read and fenced (sent before the text). */
+type TQueued = { turnId: string; text: string; attachments: TBlobRef[]; quoted?: string | undefined };
 
 /** One running adapter process and its ACP session, for one chat. */
 type TLive = TAdapter & {
@@ -158,11 +160,18 @@ export class SessionManager {
     this.rt.bus.publish(`chat:${chatId}`, { type: "chat.item", chatId, item });
   }
 
-  private userItem(chatId: string, text: string, attachments: TBlobRef[]): void {
+  private userItem(chatId: string, text: string, attachments: TBlobRef[], context?: TCodeContext[]): void {
     this.rt.bus.publish(`chat:${chatId}`, {
       type: "chat.item",
       chatId,
-      item: { kind: "user", id: newId("item"), at: now(), text, attachments },
+      item: {
+        kind: "user",
+        id: newId("item"),
+        at: now(),
+        text,
+        attachments,
+        ...(context?.length ? { context } : {}),
+      },
     });
   }
 
@@ -199,15 +208,21 @@ export class SessionManager {
     return this.get(id);
   }
 
-  send(chatId: string, text: string, attachments: TBlobRef[] = []): { turnId: string; queued: boolean } {
+  /** `quote`: file lines the user pointed at (`context`), read and fenced by the caller. */
+  send(
+    chatId: string,
+    text: string,
+    attachments: TBlobRef[] = [],
+    quote?: { context: TCodeContext[]; quoted: string },
+  ): { turnId: string; queued: boolean } {
     const status = this.status(chatId);
     if (status === "crashed" || status === "stopped" || status === "limited") {
       throw new AgentdeckError("BAD_STATE", `Chat is ${status}`, status === "limited");
     }
     for (const a of attachments) this.deps.blobs.get(a.blobId);
     const turnId = newId("turn");
-    this.userItem(chatId, text, attachments);
-    this.queue(chatId).push({ turnId, text, attachments });
+    this.userItem(chatId, text, attachments, quote?.context);
+    this.queue(chatId).push({ turnId, text, attachments, quoted: quote?.quoted });
     const queued = status !== "idle";
     if (queued) this.setStatus(chatId, status);
     else this.drain(chatId);
@@ -389,6 +404,7 @@ export class SessionManager {
       });
       live.seed = null;
     }
+    if (msg.quoted) prompt.push({ type: "text", text: `${msg.quoted}\n\n` });
     prompt.push({ type: "text", text: msg.text });
     for (const a of msg.attachments) {
       const { bytes, ref } = this.deps.blobs.get(a.blobId);

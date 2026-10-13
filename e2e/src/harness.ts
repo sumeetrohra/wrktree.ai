@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DaemonClient, CommandError } from "@agentdeck/cli";
+import { fakeGhEntry } from "@agentdeck/fake-gh";
 import type { TCommandName, TCommandResult, TDaemonEvent, TEvtFrame } from "@agentdeck/protocol";
 import { relayEnvSchema, startNodeRelay, type TNodeRelay } from "@agentdeck/relay";
 import type { ILogger } from "@agentdeck/shared";
@@ -111,6 +112,8 @@ export class Harness {
       AGENTDECK_SECRET_CANARY: "sk_live_e2e_canary",
       /** CI machines have no usable OS keystore; keep the identity secret in a 0600 file. */
       AGENTDECK_KEYSTORE: "file",
+      /** Pull requests go to a stand-in for the GitHub CLI and the repo's local bare origin. */
+      GH_BIN: fakeGhEntry,
       FORCE_COLOR: "1",
     };
     delete this.env["NO_COLOR"];
@@ -568,7 +571,16 @@ export class Harness {
   // ---------- fixtures ----------
 
   /** A git repo under the browse root with a README, some code and an `.agentdeck/config.json`. */
-  makeRepo(name: string, config: { setup?: string[]; teardown?: string[] } = {}): string {
+  /** Where `makeRepo(name, …, { origin: true })` keeps the repo's bare `origin`. */
+  origin(name: string): string {
+    return join(this.root, "origins", `${name}.git`);
+  }
+
+  makeRepo(
+    name: string,
+    config: { setup?: string[]; teardown?: string[]; scripts?: Record<string, string> } = {},
+    opts: { origin?: boolean; files?: Record<string, string> } = {},
+  ): string {
     const dir = join(this.src, name);
     mkdirSync(join(dir, "src"), { recursive: true });
     mkdirSync(join(dir, ".agentdeck"));
@@ -579,6 +591,7 @@ export class Harness {
     );
     writeFileSync(join(dir, ".gitignore"), ".setup-ran\nnode_modules/\n");
     writeFileSync(join(dir, ".agentdeck", "config.json"), JSON.stringify(config, null, 2));
+    for (const [rel, text] of Object.entries(opts.files ?? {})) writeFileSync(join(dir, rel), text);
     const git = (...a: string[]) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
     git("init", "-q", "-b", "main");
     git("config", "user.email", "e2e@agentdeck.dev");
@@ -586,6 +599,13 @@ export class Harness {
     git("config", "commit.gpgsign", "false");
     git("add", "-A");
     git("commit", "-q", "-m", "Initial commit");
+    if (opts.origin) {
+      const origin = this.origin(name);
+      mkdirSync(origin, { recursive: true });
+      execFileSync("git", ["init", "-q", "--bare", "-b", "main", origin], { stdio: "ignore" });
+      git("remote", "add", "origin", origin);
+      git("push", "-q", "origin", "main");
+    }
     return dir;
   }
 

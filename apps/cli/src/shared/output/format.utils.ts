@@ -110,6 +110,9 @@ export function formatEvent(f: TEvtFrame): string {
     case "proc.output":
       body = clip(e.chunk);
       break;
+    case "proc.status":
+      body = `${e.proc.script} ${e.proc.status === "running" ? c.green("running") : e.proc.status}${e.proc.exitCode === null ? "" : c.gray(` (exit ${String(e.proc.exitCode)})`)}`;
+      break;
     case "preview.status":
       body = `preview ${e.status}`;
       break;

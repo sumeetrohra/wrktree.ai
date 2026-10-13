@@ -30,7 +30,7 @@ when one hits its usage limit.
 drive any number of linked computers through the relay, end to end encrypted, from the app (tested as its web build in
 Chromium; native builds need an EAS project). The daemon also serves the app as a desktop web UI.
 Every chat is kept in Firebase, so it stays readable when its computer is off.
-17 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+19 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md) and [`docs/phase-3.md`](docs/phase-3.md).
 
 | Phase | What | State |

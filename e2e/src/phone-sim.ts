@@ -253,6 +253,12 @@ export class PhoneSim {
     await this.call("sync.hello", { deviceName: this.name, appVersion: "e2e", cursors });
   }
 
+  /** Also receive `topic` (e.g. `proc:<id>`) from after cursor `from`, as an app does to follow logs. */
+  async follow(topic: string, from = 0): Promise<void> {
+    this.lastCursor.set(topic, from);
+    await this.call("sync.hello", { deviceName: this.name, appVersion: "e2e", cursors: { [topic]: from } });
+  }
+
   /** Simulates losing the network: the socket goes, the session with it. */
   disconnect(): void {
     for (const s of this.sessions.values()) s.channel = null;
@@ -320,16 +326,9 @@ export class PhoneSim {
       return;
     }
     if (f.kind !== "msg") return;
-    // Ack whatever arrives, readable or not, so the relay drops it from its buffer.
-    this.sendFrame({
-      v: 1,
-      from: this.deviceId,
-      to: f.from,
-      seq: f.seq,
-      kind: "ack",
-      body: "",
-      ...(f.sid ? { sid: f.sid } : {}),
-    });
+    // Ack whatever arrives, readable or not, so the relay drops it from its buffer. Acks are
+    // cumulative, so like the app this sends one per host and session every 100 ms.
+    this.ack(f.from, f.seq, f.sid);
     const session = this.sessions.get(f.from);
     const plain =
       session?.channel && f.sid !== undefined
@@ -341,6 +340,29 @@ export class PhoneSim {
     }
     const inner = innerSchema.parse(JSON.parse(plain));
     this.onInner(session, inner);
+  }
+
+  private readonly acks = new Map<string, { to: string; seq: number; sid: string | undefined }>();
+  private ackTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private ack(to: string, seq: number, sid: string | undefined): void {
+    const key = `${to}|${sid ?? ""}`;
+    this.acks.set(key, { to, seq: Math.max(seq, this.acks.get(key)?.seq ?? 0), sid });
+    this.ackTimer ??= setTimeout(() => {
+      this.ackTimer = null;
+      for (const a of this.acks.values()) {
+        this.sendFrame({
+          v: 1,
+          from: this.deviceId,
+          to: a.to,
+          seq: a.seq,
+          kind: "ack",
+          body: "",
+          ...(a.sid ? { sid: a.sid } : {}),
+        });
+      }
+      this.acks.clear();
+    }, 100);
   }
 
   private onInner(session: THostSession, f: TInner): void {

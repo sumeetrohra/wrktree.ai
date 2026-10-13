@@ -58,4 +58,15 @@ describe("FileJail", () => {
     });
     await expect(jail.agentWrite(join(jail.root, "new", "file.txt"), "ok")).resolves.toBeUndefined();
   });
+
+  it("quotes worktree lines for a prompt, and only from client-safe paths", async () => {
+    const { root, jail } = fixture();
+    writeFileSync(join(root, "src", "b.ts"), "one\ntwo\nthree\nfour\n");
+    expect(await jail.quote("src/b.ts", 2, 3)).toBe("From `src/b.ts` lines 2–3:\n```\ntwo\nthree\n```");
+    expect(await jail.quote("src/b.ts", 4)).toBe("From `src/b.ts` line 4:\n```\nfour\n```");
+    await expect(jail.quote("../outside.txt", 1)).rejects.toMatchObject({ code: "FORBIDDEN_PATH" });
+    await expect(jail.quote(".env.local", 1)).rejects.toMatchObject({ code: "FORBIDDEN_PATH" });
+    await expect(jail.quote(join(root, "src", "b.ts"), 1)).rejects.toMatchObject({ code: "FORBIDDEN_PATH" });
+    await expect(jail.quote("src/b.ts", 99)).rejects.toMatchObject({ code: "INVALID_ARGS" });
+  });
 });

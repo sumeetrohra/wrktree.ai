@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   chatIdSchema,
   deviceIdSchema,
+  procIdSchema,
   profileIdSchema,
   repoIdSchema,
   worktreeIdSchema,
@@ -10,11 +11,15 @@ import {
 import {
   blobRefSchema,
   chatSchema,
+  codeContextSchema,
   deviceSchema,
   diffFileSchema,
   fsEntrySchema,
+  gitStatusSchema,
   permissionDecisionSchema,
+  procSchema,
   profileSchema,
+  pullRequestSchema,
   repoSchema,
   worktreeSchema,
 } from "./models.schema.js";
@@ -125,6 +130,8 @@ export const commands = {
       chatId: chatIdSchema,
       text: z.string(),
       attachments: z.array(blobRefSchema).optional(),
+      /** Additive: worktree file lines quoted into the prompt. */
+      context: z.array(codeContextSchema).max(20).optional(),
     }),
     result: z.object({ turnId: z.string(), queued: z.boolean() }),
   },
@@ -265,6 +272,74 @@ export const commands = {
       chats: z.array(chatSchema),
       profiles: z.array(profileSchema),
     }),
+  },
+
+  /** Additive (Phase 3b): branch, upstream, ahead/behind, uncommitted files, last commit. */
+  "git.status": { args: WorktreeArgs, result: gitStatusSchema },
+  /** Additive: commit on the worktree's branch (`all`: stage every change first). */
+  "git.commit": {
+    args: z.object({
+      worktreeId: worktreeIdSchema,
+      message: z.string().trim().min(1).max(10_000),
+      all: z.boolean().optional(),
+    }),
+    result: z.object({ sha: z.string() }),
+  },
+  /** Additive: push the worktree's branch to `origin`, setting the upstream. */
+  "git.push": { args: WorktreeArgs, result: z.object({ branch: z.string(), remote: z.string() }) },
+  /** Additive: merge the worktree's branch into the repo's base checkout (repos without GitHub). */
+  "worktree.mergeToBase": { args: WorktreeArgs, result: z.object({ sha: z.string() }) },
+
+  /** Additive: the branch's pull request (through `gh` on the computer), or null. */
+  "pr.status": { args: WorktreeArgs, result: pullRequestSchema.nullable() },
+  "pr.create": {
+    args: z.object({
+      worktreeId: worktreeIdSchema,
+      title: z.string().trim().min(1).max(300),
+      body: z.string().max(60_000),
+      draft: z.boolean().optional(),
+    }),
+    result: pullRequestSchema,
+  },
+  "pr.merge": {
+    args: z.object({ worktreeId: worktreeIdSchema, method: z.enum(["merge", "squash", "rebase"]) }),
+    result: pullRequestSchema,
+  },
+  /** Additive: asks the chat's agent for a PR title and body; resolves when its turn ends. */
+  "pr.draft": {
+    args: z.object({ chatId: chatIdSchema }),
+    result: z.object({ title: z.string(), body: z.string() }),
+  },
+
+  /** Additive: the repo's scripts (`.agentdeck/config.json` `scripts`) and their processes here. */
+  "proc.list": {
+    args: WorktreeArgs,
+    result: z.object({ scripts: z.array(z.string()), procs: z.array(procSchema) }),
+  },
+  /** Additive: run a script by name (never an arbitrary command). Output streams on `proc:<id>`. */
+  "proc.start": {
+    args: z.object({ worktreeId: worktreeIdSchema, script: z.string().min(1).max(100) }),
+    result: procSchema,
+  },
+  "proc.stop": { args: z.object({ procId: procIdSchema }), result: procSchema },
+  /**
+   * Additive: the last megabyte of a process's output, as a blob, and the `proc:<id>` cursor it
+   * covers: follow live output with `sync.hello` from that cursor.
+   */
+  "proc.output": {
+    args: z.object({ procId: procIdSchema }),
+    result: z.object({ blob: blobRefSchema, cursor: z.number().int().nonnegative() }),
+  },
+
+  /** Additive, local only: open the worktree (at a file and line) in a desktop editor. */
+  "editor.open": {
+    args: z.object({
+      worktreeId: worktreeIdSchema,
+      path: z.string().optional(),
+      line: z.number().int().positive().optional(),
+      editor: z.enum(["vscode", "cursor", "zed"]),
+    }),
+    result: Empty,
   },
 } as const;
 

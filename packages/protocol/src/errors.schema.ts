@@ -15,6 +15,8 @@ export const errorCodeSchema = z.enum([
   "AGENT_CRASHED",
   "PORTS_EXHAUSTED",
   "TOO_LARGE",
+  /** Additive: a tool on the computer (`gh`) is missing or not signed in. */
+  "NOT_AUTHENTICATED",
   "INTERNAL",
 ]);
 export type TErrorCode = z.infer<typeof errorCodeSchema>;

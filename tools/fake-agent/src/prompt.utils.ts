@@ -1,4 +1,5 @@
 import type * as acp from "@agentclientprotocol/sdk";
+import { PR_DRAFT_REQUEST } from "@agentdeck/shared";
 
 import type { TVars } from "./script.schema.js";
 
@@ -28,6 +29,12 @@ export function parsePrompt(prompt: readonly acp.ContentBlock[]): TParsedPrompt 
     else if (i !== scriptAt) kept.push(w);
   });
   vars["text"] = kept.join(" ");
-  const script = scriptAt >= 0 ? (SCRIPT_TOKEN.exec(words[scriptAt] ?? "")?.[1] ?? null) : null;
+  // The daemon's `pr.draft` request gets a scripted draft, like a real agent would write one.
+  const script =
+    scriptAt >= 0
+      ? (SCRIPT_TOKEN.exec(words[scriptAt] ?? "")?.[1] ?? null)
+      : text.includes(PR_DRAFT_REQUEST)
+        ? "pr-draft"
+        : null;
   return { text, script, vars, images };
 }

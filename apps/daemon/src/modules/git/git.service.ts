@@ -1,9 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { AgentdeckError, type TBlobRef, type TDiffFile, type TWorktree } from "@agentdeck/protocol";
+import {
+  AgentdeckError,
+  type TBlobRef,
+  type TDiffFile,
+  type TGitStatus,
+  type TWorktree,
+} from "@agentdeck/protocol";
 
-import { assertSafeGitArg, git } from "#src/infra/process/index.js";
+import { assertSafeGitArg, childEnv, git } from "#src/infra/process/index.js";
 
 import type { IBlobWriter, IPathPolicy, TDiffAgainst } from "./git.types.js";
 
@@ -12,7 +18,14 @@ export type TDiffSummary = { against: string; files: TDiffFile[] };
 const countLines = (text: string): number =>
   text.length === 0 ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 
-/** Read-only git views of a worktree. Commit, push and PRs arrive in Phase 3. */
+/** Never let git wait for a password prompt nobody can answer. */
+const NO_PROMPT = { GIT_TERMINAL_PROMPT: "0" };
+
+/**
+ * Git views of a worktree (diffs, status) and the writes that ship it: commit, push, and a local
+ * merge into the base checkout for repos without a remote. Writes touch only the worktree's own
+ * branch (SEC5: every client value is checked before it reaches git).
+ */
 export class GitService {
   constructor(private readonly blobs: IBlobWriter) {}
 
@@ -77,5 +90,100 @@ export class GitService {
     }
     if (!diff) throw new AgentdeckError("NOT_FOUND", `No changes in ${rel}`);
     return this.blobs.put(Buffer.from(diff), "text/x-diff");
+  }
+
+  async status(wt: TWorktree): Promise<TGitStatus> {
+    const branch = (await git(wt.path, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+    const upstreamOut = await git(
+      wt.path,
+      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+      [128],
+    );
+    const upstream = upstreamOut.trim() || null;
+    // With an upstream: against it. Without one: commits since the base branch, nothing behind.
+    const [behind, ahead] = upstream
+      ? (await git(wt.path, ["rev-list", "--left-right", "--count", "@{u}...HEAD"]))
+          .trim()
+          .split(/\s+/)
+          .map((n) => Number(n) || 0)
+      : [
+          0,
+          Number(
+            (
+              await git(
+                wt.path,
+                ["rev-list", "--count", `${assertSafeGitArg(wt.baseRef, "base ref")}..HEAD`],
+                [128],
+              )
+            ).trim() || 0,
+          ),
+        ];
+    const porcelain = await git(wt.path, [
+      "status",
+      "--porcelain",
+      "-z",
+      "--no-renames",
+      "--untracked-files=all",
+    ]);
+    const dirty = porcelain.split("\0").filter(Boolean).length;
+    const log = (await git(wt.path, ["log", "-1", "--format=%H%x00%s%x00%ct"], [128])).trim();
+    const [sha, subject, at] = log.split("\0");
+    const remotes = (await git(wt.path, ["remote"])).split("\n").map((r) => r.trim());
+    return {
+      branch,
+      upstream,
+      ahead: ahead ?? 0,
+      behind: behind ?? 0,
+      dirty,
+      lastCommit: sha && subject !== undefined ? { sha, subject, at: Number(at) * 1000 } : null,
+      hasRemote: remotes.includes("origin"),
+    };
+  }
+
+  /** Commits staged changes (`all`: everything, untracked files included). The message goes in on stdin. */
+  async commit(wt: TWorktree, message: string, all = false): Promise<{ sha: string }> {
+    if (all) await git(wt.path, ["add", "-A"]);
+    const staged = (await git(wt.path, ["diff", "--cached", "--name-only"])).trim();
+    if (!staged) throw new AgentdeckError("BAD_STATE", "Nothing to commit");
+    await git(wt.path, ["commit", "-F", "-"], [], { input: message });
+    return { sha: (await git(wt.path, ["rev-parse", "HEAD"])).trim() };
+  }
+
+  /** Pushes the worktree's branch to `origin` and sets it as the upstream. */
+  async push(wt: TWorktree): Promise<{ branch: string; remote: string }> {
+    const branch = assertSafeGitArg(wt.branch, "branch");
+    if (!(await this.status(wt)).hasRemote) {
+      throw new AgentdeckError(
+        "BAD_STATE",
+        "This repo has no `origin` remote; merge into the base branch instead",
+      );
+    }
+    await git(wt.path, ["push", "-u", "origin", branch], [], { env: childEnv(NO_PROMPT) });
+    return { branch, remote: "origin" };
+  }
+
+  /**
+   * Merges the worktree's branch into the repo's base checkout (`repoPath`), which must be on the
+   * worktree's base branch with no local changes. A conflict is aborted and reported.
+   */
+  async mergeToBase(wt: TWorktree, repoPath: string): Promise<{ sha: string }> {
+    const branch = assertSafeGitArg(wt.branch, "branch");
+    const base = assertSafeGitArg(wt.baseRef, "base ref");
+    const current = (await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+    if (current !== base) {
+      throw new AgentdeckError("BAD_STATE", `The repo is on ${current}, not ${base}; switch it back first`);
+    }
+    if ((await git(repoPath, ["status", "--porcelain"])).trim()) {
+      throw new AgentdeckError("BAD_STATE", `The repo's ${base} checkout has uncommitted changes`);
+    }
+    try {
+      await git(repoPath, ["merge", "--no-ff", "--no-edit", branch]);
+    } catch (e) {
+      await git(repoPath, ["merge", "--abort"], [128]);
+      throw new AgentdeckError("CONFLICT", `${branch} doesn't merge cleanly into ${base}`, false, {
+        cause: e instanceof Error ? e.message : String(e),
+      });
+    }
+    return { sha: (await git(repoPath, ["rev-parse", "HEAD"])).trim() };
   }
 }

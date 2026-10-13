@@ -11,6 +11,7 @@ import { isInside } from "#src/shared/path.utils.js";
 
 const READ_CHUNK = 256 * 1024;
 const MAX_MATCHES = 200;
+const MAX_QUOTE_LINES = 200;
 
 export type TReadResult = { text: string; size: number; offset: number; eof: boolean };
 export type TSearchResult = { matches: TSearchMatch[]; truncated: boolean };
@@ -133,5 +134,19 @@ export class FileJail {
     const { abs } = this.resolve(path, { allowAbsolute: true });
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, content);
+  }
+
+  /**
+   * Lines `line..endLine` (at most 200) of a worktree file, fenced and labelled, for quoting into a
+   * prompt. Client paths only: relative, inside the worktree, not hidden (SEC2).
+   */
+  async quote(path: string, line: number, endLine = line): Promise<string> {
+    const { abs, rel } = this.resolve(path);
+    const last = Math.min(Math.max(endLine, line), line + MAX_QUOTE_LINES - 1);
+    const lines = (await readFile(abs, "utf8")).split("\n").slice(line - 1, last);
+    if (lines.length === 0) throw new AgentdeckError("INVALID_ARGS", `${rel} has no line ${String(line)}`);
+    const range =
+      last > line ? `lines ${String(line)}–${String(line + lines.length - 1)}` : `line ${String(line)}`;
+    return `From \`${rel}\` ${range}:\n\`\`\`\n${lines.join("\n")}\n\`\`\``;
   }
 }

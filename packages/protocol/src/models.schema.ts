@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   chatIdSchema,
   deviceIdSchema,
+  procIdSchema,
   profileIdSchema,
   repoIdSchema,
   worktreeIdSchema,
@@ -119,8 +120,23 @@ export const planEntryStatusSchema = z.enum(["pending", "in_progress", "done"]);
 export const planEntrySchema = z.object({ text: z.string(), status: planEntryStatusSchema });
 export type TPlanEntry = z.infer<typeof planEntrySchema>;
 
+/** Lines of a worktree file quoted into a prompt ("ask the agent about these lines"). */
+export const codeContextSchema = z.object({
+  path: z.string().min(1),
+  line: z.number().int().positive(),
+  endLine: z.number().int().positive().optional(),
+});
+export type TCodeContext = z.infer<typeof codeContextSchema>;
+
 export const chatItemSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("user"), ...itemBase, text: z.string(), attachments: z.array(blobRefSchema) }),
+  z.object({
+    kind: z.literal("user"),
+    ...itemBase,
+    text: z.string(),
+    attachments: z.array(blobRefSchema),
+    /** Additive: file lines quoted with the message. */
+    context: z.array(codeContextSchema).optional(),
+  }),
   z.object({ kind: z.literal("agent_text"), ...itemBase, text: z.string() }),
   z.object({ kind: z.literal("thought"), ...itemBase, text: z.string() }),
   z.object({
@@ -193,3 +209,37 @@ export const deviceSchema = z.object({
   self: z.boolean().optional(),
 });
 export type TDevice = z.infer<typeof deviceSchema>;
+
+/** A repo script (`.agentdeck/config.json` `scripts`) running in a worktree. */
+export const procStatusSchema = z.enum(["running", "exited", "crashed", "stopped"]);
+export const procSchema = z.object({
+  id: procIdSchema,
+  worktreeId: worktreeIdSchema,
+  script: z.string(),
+  status: procStatusSchema,
+  exitCode: z.number().int().nullable(),
+  startedAt: z.number(),
+  endedAt: z.number().nullable(),
+});
+export type TProc = z.infer<typeof procSchema>;
+
+/** The pull request of a worktree's branch, as `gh` reports it. */
+export const pullRequestSchema = z.object({
+  number: z.number().int().positive(),
+  url: z.string(),
+  state: z.enum(["open", "merged", "closed"]),
+  draft: z.boolean(),
+});
+export type TPullRequest = z.infer<typeof pullRequestSchema>;
+
+export const gitStatusSchema = z.object({
+  branch: z.string(),
+  upstream: z.string().nullable(),
+  ahead: z.number().int().nonnegative(),
+  behind: z.number().int().nonnegative(),
+  /** Changed or untracked files. */
+  dirty: z.number().int().nonnegative(),
+  lastCommit: z.object({ sha: z.string(), subject: z.string(), at: z.number() }).nullable(),
+  hasRemote: z.boolean(),
+});
+export type TGitStatus = z.infer<typeof gitStatusSchema>;

@@ -1,15 +1,10 @@
 import { AgentdeckError } from "@agentdeck/protocol";
 
-import type { TCommandContext, THandlers } from "#src/infra/rpc/index.js";
+import type { THandlers } from "#src/infra/rpc/index.js";
 
 import type { TModules } from "../app.types.js";
 
-/** Linking an account and opening the web UI hand out secrets: only clients on this machine. */
-function localOnly(ctx: TCommandContext): void {
-  if (!ctx.deviceId.startsWith("local-")) {
-    throw new AgentdeckError("UNAUTHORIZED", "Only available on this computer");
-  }
-}
+import { localOnly } from "./local-only.utils.js";
 
 const PAIRING_REMOVED = (): never => {
   throw new AgentdeckError("UNAUTHORIZED", "Pairing was replaced by signing in: run `agentdeck login`");

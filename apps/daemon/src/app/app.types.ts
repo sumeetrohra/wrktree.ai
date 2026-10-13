@@ -3,6 +3,8 @@ import type { BlobStore } from "#src/modules/blobs/index.js";
 import type { DevicesService } from "#src/modules/devices/index.js";
 import type { FileJail } from "#src/modules/files/index.js";
 import type { GitService } from "#src/modules/git/index.js";
+import type { GithubService } from "#src/modules/github/index.js";
+import type { ProcsService } from "#src/modules/procs/index.js";
 import type { ProfilesService } from "#src/modules/profiles/index.js";
 import type { ReposService } from "#src/modules/repos/index.js";
 import type { SessionManager } from "#src/modules/sessions/index.js";
@@ -20,6 +22,10 @@ export type TModules = {
   sessions: SessionManager;
   blobs: BlobStore;
   git: GitService;
+  /** Pull requests through `gh` on this computer. */
+  github: GithubService;
+  /** Repo scripts running in worktrees. */
+  procs: ProcsService;
   devices: DevicesService;
   /** A one-time link to the desktop web UI, or null when none is configured. */
   webLink: () => string | null;

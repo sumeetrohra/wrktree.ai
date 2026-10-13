@@ -6,7 +6,7 @@ first, chats outlive the computer they ran on.
 | Milestone | What | Status |
 |---|---|---|
 | **3a** | Cloud chat history: every device signs in to Firebase, computers included; hosts write worktrees, chats, items and files to Firestore and Storage; the app reads them when the host is offline | **built** (tested against the Firebase emulators; a real project is pending) |
-| **3b** | Changes, Files, Logs tabs; commit, push, PR (agent-drafted body), merge; scripts; open in editor | next |
+| **3b** | Changes, Files, Logs tabs; commit, push, PR (agent-drafted body), merge; scripts; open in editor | **in progress**: daemon and protocol built and tested end to end; the app's tabs next |
 | **3c** | Preview through a relay TLS tunnel | planned |
 
 ## 3a: cloud chat history
@@ -71,6 +71,32 @@ Cloud history is **plaintext** in Firestore and Storage, protected by the securi
 signed-in uid). Google and the Firebase project's admins can read it. The relay still never sees
 plaintext (SEC13); see SEC19 in [`rules/security.md`](rules/security.md).
 
+## 3b: ship it from the phone
+
+The daemon side is built; the app's Changes, Files and Logs tabs and the Ship sheet come next.
+
+| Command | What it does |
+|---|---|
+| `git.status` | branch, upstream, ahead/behind, uncommitted files, last commit, whether `origin` exists |
+| `git.commit {message, all?}` | commits on the worktree's branch (the message on stdin) |
+| `git.push` | `git push -u origin <branch>`, never prompting |
+| `worktree.mergeToBase` | merges the branch into the repo's base checkout (clean, on the base branch) for repos without a remote; a conflict is aborted |
+| `pr.status` / `pr.create` / `pr.merge` | through the user's `gh` in the worktree; a missing or signed-out `gh` is `NOT_AUTHENTICATED` ("run `gh auth login`") |
+| `pr.draft {chatId}` | asks the chat's agent for `Title:` + a Markdown body, resolves when its turn ends |
+| `proc.list` / `proc.start {script}` / `proc.stop` / `proc.output` | the repo's named `scripts`, run with `PORT` = the worktree's preview port; output streams on `proc:<id>` (coalesced, 100 ms), status on `repo:<id>`; `proc.output` returns the newest megabyte and the cursor to follow from |
+| `editor.open` | VS Code, Cursor or Zed at a file and line; local only |
+| `chat.send {context}` | quotes worktree lines (through the jail) before the message; the chat item keeps them |
+
+Writes to a branch (commit, push, merge, PR create) wait while an agent is mid-turn in the
+worktree. Repo config gains `scripts`:
+
+```json
+{ "scripts": { "dev": "pnpm dev --port $PORT", "test": "pnpm test" } }
+```
+
+Tests use `tools/fake-gh`, a Node stand-in for `gh` that keeps pull requests in the repo's git
+dir and really merges into the local bare `origin`.
+
 ## E2E
 
 Both run under the Firebase Emulator Suite (Auth, Firestore, Storage; needs Java 21):
@@ -89,6 +115,15 @@ pnpm emulators "CLOUD_E2E=1 pnpm e2e:record"   # the videos, cloud scenarios inc
 
 CI runs them in the `cloud history (Firebase emulators)` job; the `record` job records them into
 `e2e.mp4` and `app-e2e.mp4`.
+
+3b's scenarios run in the relay suite (`pnpm test:e2e`, every OS in CI), phone-sim against a real
+daemon, relay, fake agent and `tools/fake-gh`:
+
+| # | Scenario | Checks |
+|---|---|---|
+| 18 | Ship it from the phone | status, commit and push to a bare origin; the agent drafts the PR (`Title:` + body); create, status, merge through `gh` (origin's `main` has the change); quoted lines reach the agent and stay on the chat item; a path outside the worktree can't be quoted; a signed-out `gh` reads as `NOT_AUTHENTICATED` |
+| 19 | Scripts and logs from the phone | only named scripts; `dev` streams its output live and serves on the worktree's port; the log reads back as one blob; stop closes the port; a failing script reports its exit code; an arbitrary command and a remote `editor.open` are refused |
+
 
 ## Try it by hand
 

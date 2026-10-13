@@ -44,7 +44,7 @@
 | SEC3 | The local token travels in the `Authorization` header (or `Sec-WebSocket-Protocol`), never in a URL. | `test` |
 | SEC4 | WebSocket upgrades with a foreign `Origin`, or a `Host` other than `127.0.0.1:<port>` / `localhost:<port>`, are rejected (DNS-rebinding and drive-by protection). The only exception is an origin listed in `AGENTDECK_DEV_ORIGINS`, for development. | `test` |
 | SEC5 | Values passed to `git` that come from clients (branch, base ref, paths) are validated: no leading `-`, `check-ref-format` for refs, `--` before paths. | `test` |
-| SEC6 | Child processes get an allow-listed environment (OS essentials + profile env + `AGENTDECK_*`), never the daemon's full environment. | `test` |
+| SEC6 | Child processes get an allow-listed environment (OS essentials + profile env + `AGENTDECK_*`), never the daemon's full environment. The GitHub CLI alone also gets its token variables (SEC21). | `test` |
 | SEC7 | `shell: true` is used only in `infra/process` to run a repo's setup/teardown scripts. | `lint:no-restricted-syntax`, `review` |
 | SEC8 | Never log message text, file contents, diffs, tokens or keys. Log ids, codes and durations. | `test`, `review` |
 | SEC9 | Every connection is resource-limited: frame size, frame rate, pending upload bytes. | `test` |
@@ -58,6 +58,9 @@
 | SEC17 | The desktop web UI page never contains the local token. `agentdeck open` gets a one-time code (60 s, single use) for the URL fragment; the page trades it with a same-origin POST. Pages are sent with `X-Frame-Options: DENY` and never serve files outside the web export. | `test` |
 | SEC18 | On the phone, the identity key, the relay device token and the sign-in refresh token live in the keychain (`expo-secure-store`); only the web build falls back to `localStorage`. On a computer, the relay device token is sealed with the identity's secret (`relay-token.sealed`, 0600). | `review` |
 | SEC19 | Cloud chat history is plaintext in Firebase, readable by Google and the project's admins, never by the relay. Firestore and Storage rules allow a user only `users/{uid}/…` (another account gets 403); Storage objects stay under 50 MB. On a computer, the Firebase refresh token is sealed with the relay device token (`relay-token.sealed`, 0600). | `test` (emulator), `test:e2e` |
+| SEC20 | A client can only start a repo script by name (`.agentdeck/config.json` `scripts`); `proc.start` never takes a command line. Scripts run with the allow-listed environment (SEC6) plus the repo's `env`, `PORT`/`HOST`, in their own process group, killed with the worktree. | `test`, `test:e2e` |
+| SEC21 | Pull requests run through the user's own `gh` on the computer. Only `gh` receives `GH_TOKEN`, `GITHUB_TOKEN`, `GH_CONFIG_DIR` and `GH_HOST` (never agents or scripts); titles and bodies reach it as arguments without a shell, bodies on stdin. A phone can create and merge PRs for its own account's computers: the same trust as running a chat there. | `test`, `test:e2e` |
+| SEC22 | `editor.open` acts on the computer's desktop, so it is local-only like `web.open` (SEC16); it starts the editor without a shell (on Windows through the editor's URL handler). Lines quoted into a prompt (`chat.send` `context`) go through the worktree's jail (SEC2). | `test`, `test:e2e` |
 
 ## Pinned transitive fixes (SEC11)
 

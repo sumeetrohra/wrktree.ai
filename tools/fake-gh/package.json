@@ -1,0 +1,25 @@
+{
+  "name": "@agentdeck/fake-gh",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A stand-in for the GitHub CLI in tests: pull requests against a local bare origin.",
+  "type": "module",
+  "bin": {
+    "fake-gh": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/paths.constants.d.ts",
+      "default": "./dist/paths.constants.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agentdeck/shared": "workspace:*",
+    "zod": "4.6.5"
+  }
+}

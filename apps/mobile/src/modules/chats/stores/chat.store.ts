@@ -97,6 +97,7 @@ function reduce(v: TChatView, e: TEvtFrame["event"]): TChatView {
     case "worktree.removed":
     case "usage.updated":
     case "proc.output":
+    case "proc.status":
     case "preview.status":
     case "device.updated":
       return v;

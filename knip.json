@@ -42,6 +42,10 @@
     "tools/lint-fixtures": {
       "project": ["src/**/*.ts"],
       "entry": ["src/**/*.test.ts"]
+    },
+    "tools/fake-gh": {
+      "entry": ["src/index.ts", "src/paths.constants.ts"],
+      "project": ["src/**/*.ts"]
     }
   },
   "ignoreBinaries": ["ffmpeg"],

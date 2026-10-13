@@ -19,6 +19,8 @@ export type TDaemonOptions = {
   appUrl: string;
   /** The desktop web UI's files, or null to serve none. */
   webRoot: string | null;
+  /** The GitHub CLI: the program, and the variables only it receives (SEC6). */
+  gh: { bin: string; env: Record<string, string> };
   /** Where the identity's sealing secret lives. */
   keystore: "os" | "file";
 };

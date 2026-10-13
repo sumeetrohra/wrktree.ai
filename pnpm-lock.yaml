@@ -138,6 +138,9 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
+      '@agentdeck/fake-gh':
+        specifier: workspace:*
+        version: link:../../tools/fake-gh
       '@types/better-sqlite3':
         specifier: 7.6.13
         version: 7.6.13
@@ -371,6 +374,9 @@ importers:
       '@agentdeck/crypto':
         specifier: workspace:*
         version: link:../packages/crypto
+      '@agentdeck/fake-gh':
+        specifier: workspace:*
+        version: link:../tools/fake-gh
       '@agentdeck/firebase-rest':
         specifier: workspace:*
         version: link:../packages/firebase-rest
@@ -441,6 +447,15 @@ importers:
       '@agentclientprotocol/sdk':
         specifier: 1.8.0
         version: 1.8.0(zod@4.6.5)
+      '@agentdeck/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
+  tools/fake-gh:
+    dependencies:
       '@agentdeck/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -33,9 +33,19 @@ export function run(
 }
 
 /** Runs a program without a shell, writing `input` to its stdin (keeps secrets out of argv). */
-export function runWithInput(file: string, args: readonly string[], input: string): Promise<TExecResult> {
+export function runWithInput(
+  file: string,
+  args: readonly string[],
+  input: string,
+  opts: { cwd?: string; env?: Record<string, string> } = {},
+): Promise<TExecResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(file, args, { env: childEnv(), windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(file, args, {
+      cwd: opts.cwd,
+      env: opts.env ?? childEnv(),
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d: Buffer) => {
@@ -57,8 +67,12 @@ export async function git(
   cwd: string,
   args: readonly string[],
   allow: readonly number[] = [],
+  opts: { input?: string; env?: Record<string, string> } = {},
 ): Promise<string> {
-  const r = await run("git", args, { cwd });
+  const r =
+    opts.input === undefined
+      ? await run("git", args, { cwd, ...(opts.env ? { env: opts.env } : {}) })
+      : await runWithInput("git", args, opts.input, { cwd, ...(opts.env ? { env: opts.env } : {}) });
   if (r.code !== 0 && !allow.includes(r.code)) {
     throw new AgentdeckError(
       "GIT_FAILED",
@@ -105,6 +119,29 @@ export function spawnPiped(
     windowsHide: true,
     // npx and friends are .cmd shims on Windows and need the shell to run.
     shell: process.platform === "win32" && file.endsWith(".cmd"),
+  });
+}
+
+/**
+ * Starts a desktop program (an editor) that outlives the daemon's call: no shell, no stdio, not
+ * waited on. Resolves once it has started; rejects if it can't (e.g. not on PATH).
+ */
+export function spawnDetached(command: readonly string[], opts: { cwd: string }): Promise<void> {
+  const [file, ...args] = command;
+  if (file === undefined) return Promise.reject(new AgentdeckError("INVALID_ARGS", "Empty command"));
+  return new Promise((resolve, reject) => {
+    const child = spawn(file, args, {
+      cwd: opts.cwd,
+      env: childEnv(),
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
   });
 }
 

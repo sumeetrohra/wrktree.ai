@@ -1,0 +1,7 @@
+[
+  { "thought": "Summarising the changes on this branch for a pull request." },
+  {
+    "stream": "Title: Update the notes\n\nWrites the release notes the user asked for.\n\n- Adds `NOTES.md`\n- No code changes",
+    "chunkMs": 5
+  }
+]

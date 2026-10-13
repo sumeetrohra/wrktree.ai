@@ -8,6 +8,7 @@ import {
   deviceSchema,
   permissionDecisionSchema,
   permissionRequestSchema,
+  procSchema,
   usageSnapshotSchema,
   worktreeSchema,
 } from "./models.schema.js";
@@ -48,7 +49,15 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
     auto: z.boolean(),
   }),
   z.object({ type: z.literal("usage.updated"), profileId: profileIdSchema, usage: usageSnapshotSchema }),
-  z.object({ type: z.literal("proc.output"), procId: procIdSchema, chunk: z.string() }),
+  z.object({
+    type: z.literal("proc.output"),
+    procId: procIdSchema,
+    chunk: z.string(),
+    /** Additive: which stream the chunk came from. */
+    stream: z.enum(["stdout", "stderr"]).optional(),
+  }),
+  /** Additive: a repo script started, exited or was stopped (topics `proc:<id>` and `repo:<id>`). */
+  z.object({ type: z.literal("proc.status"), proc: procSchema }),
   /** Additive: a device was paired, seen or revoked (topic `global`). */
   z.object({ type: z.literal("device.updated"), device: deviceSchema }),
   z.object({

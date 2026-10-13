@@ -16,6 +16,8 @@ import { CloudSync } from "#src/modules/cloud/index.js";
 import { DevicesService } from "#src/modules/devices/index.js";
 import { FileJail } from "#src/modules/files/index.js";
 import { GitService } from "#src/modules/git/index.js";
+import { GithubService } from "#src/modules/github/index.js";
+import { ProcsService } from "#src/modules/procs/index.js";
 import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
@@ -70,6 +72,15 @@ export function optionsFromEnv(home: string): TDaemonOptions {
     appUrl: env.AGENTDECK_APP_URL ?? configOf(home)?.appUrl ?? DEFAULT_APP_URL,
     keystore: env.AGENTDECK_KEYSTORE ?? "os",
     webRoot: env.AGENTDECK_WEB_ROOT ?? null,
+    gh: {
+      bin: env.GH_BIN ?? "gh",
+      env: Object.fromEntries(
+        (["GH_TOKEN", "GITHUB_TOKEN", "GH_CONFIG_DIR", "GH_HOST"] as const).flatMap((k) => {
+          const v = env[k];
+          return v === undefined ? [] : [[k, v]];
+        }),
+      ),
+    },
   };
 }
 
@@ -118,9 +129,16 @@ export class Daemon {
         },
       },
     });
+    const procs = new ProcsService(
+      this.rt,
+      { worktree: (id) => worktrees.get(id), config: (wt) => repos.config(repos.get(wt.repoId)) },
+      blobs,
+    );
     worktrees.hooks = {
+      // Archiving or deleting a worktree stops its chats and its running scripts.
       stopChats: (id) => {
         sessions.stopWorktree(id);
+        void procs.stopAll(id);
       },
       startChats: (id) => {
         sessions.startWorktree(id);
@@ -188,6 +206,8 @@ export class Daemon {
       sessions,
       blobs,
       git: new GitService(blobs),
+      github: new GithubService(opts.gh),
+      procs,
       jailFor,
     };
     this.router = new Router(db, createHandlers(this.modules), log);
@@ -225,6 +245,7 @@ export class Daemon {
 
   async stop(): Promise<void> {
     this.cloud.stop();
+    await this.modules.procs.stopAll();
     this.modules.remote.stop();
     this.modules.sessions.shutdown();
     await this.modules.worktrees.idle();

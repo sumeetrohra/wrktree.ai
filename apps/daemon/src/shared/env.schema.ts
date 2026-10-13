@@ -30,6 +30,13 @@ const daemonEnvSchema = z.object({
   AGENTDECK_WEB_ROOT: z.string().min(1).optional(),
   /** `file` skips the OS keystore and keeps the identity secret in a 0600 file (tests, headless). */
   AGENTDECK_KEYSTORE: z.enum(["os", "file"]).optional(),
+  /** The GitHub CLI used for pull requests (default `gh`; a `.js` file runs under Node, for tests). */
+  GH_BIN: z.string().min(1).optional(),
+  /** Passed to `gh` only (never to agents or scripts): how it signs in when not via `gh auth login`. */
+  GH_TOKEN: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
+  GH_CONFIG_DIR: z.string().optional(),
+  GH_HOST: z.string().optional(),
   APPDATA: z.string().optional(),
   XDG_DATA_HOME: z.string().optional(),
 });

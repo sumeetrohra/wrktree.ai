@@ -244,6 +244,13 @@
           "mime": "image/png",
           "size": 1234
         }
+      ],
+      "context": [
+        {
+          "path": "src/login.ts",
+          "line": 12,
+          "endLine": 14
+        }
       ]
     },
     "result": {
@@ -551,5 +558,166 @@
       "state": "linked",
       "email": "me@example.com"
     }
+  },
+  "git.status": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "branch": "fix-login",
+      "upstream": "origin/fix-login",
+      "ahead": 1,
+      "behind": 0,
+      "dirty": 2,
+      "lastCommit": {
+        "sha": "0123abc",
+        "subject": "Fix the redirect",
+        "at": 1760000000000
+      },
+      "hasRemote": true
+    }
+  },
+  "git.commit": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "message": "Fix the redirect",
+      "all": true
+    },
+    "result": {
+      "sha": "0123abc"
+    }
+  },
+  "git.push": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "branch": "fix-login",
+      "remote": "origin"
+    }
+  },
+  "worktree.mergeToBase": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "sha": "0123abc"
+    }
+  },
+  "pr.status": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "number": 42,
+      "url": "https://github.com/acme/shop/pull/42",
+      "state": "open",
+      "draft": false
+    }
+  },
+  "pr.create": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Fix the login redirect",
+      "body": "Stops the double redirect.",
+      "draft": false
+    },
+    "result": {
+      "number": 42,
+      "url": "https://github.com/acme/shop/pull/42",
+      "state": "open",
+      "draft": false
+    }
+  },
+  "pr.merge": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "method": "squash"
+    },
+    "result": {
+      "number": 42,
+      "url": "https://github.com/acme/shop/pull/42",
+      "state": "merged",
+      "draft": false
+    }
+  },
+  "pr.draft": {
+    "args": {
+      "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "title": "Fix the login redirect",
+      "body": "Stops the double redirect."
+    }
+  },
+  "proc.list": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "scripts": ["dev", "test"],
+      "procs": [
+        {
+          "id": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "script": "dev",
+          "status": "running",
+          "exitCode": null,
+          "startedAt": 1760000000000,
+          "endedAt": null
+        }
+      ]
+    }
+  },
+  "proc.start": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "script": "dev"
+    },
+    "result": {
+      "id": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "script": "dev",
+      "status": "running",
+      "exitCode": null,
+      "startedAt": 1760000000000,
+      "endedAt": null
+    }
+  },
+  "proc.stop": {
+    "args": {
+      "procId": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "script": "dev",
+      "status": "stopped",
+      "exitCode": null,
+      "startedAt": 1760000000000,
+      "endedAt": 1760000005000
+    }
+  },
+  "proc.output": {
+    "args": {
+      "procId": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "blob": {
+        "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mime": "text/plain",
+        "size": 1234
+      },
+      "cursor": 12
+    }
+  },
+  "editor.open": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "path": "src/login.ts",
+      "line": 12,
+      "editor": "vscode"
+    },
+    "result": {}
   }
 }

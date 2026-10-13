@@ -150,7 +150,8 @@
   {
     "type": "proc.output",
     "procId": "proc_1",
-    "chunk": "ready in 300ms\n"
+    "chunk": "ready in 300ms\n",
+    "stream": "stdout"
   },
   {
     "type": "preview.status",
@@ -167,6 +168,18 @@
       "pairedAt": 1791600000000,
       "lastSeenAt": 1791600100000,
       "revokedAt": null
+    }
+  },
+  {
+    "type": "proc.status",
+    "proc": {
+      "id": "proc_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "script": "dev",
+      "status": "exited",
+      "exitCode": 0,
+      "startedAt": 1760000000000,
+      "endedAt": 1760000005000
     }
   }
 ]
