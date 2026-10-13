@@ -89,3 +89,25 @@ export function planFor(platform: NodeJS.Platform, home: string, node: string, c
       return systemdPlan(home, node, cli);
   }
 }
+
+/** Undoing `install`: files to delete and programs to run (missing ones are fine). */
+export type TUninstallPlan = { remove: string[]; commands: string[][] };
+
+export function uninstallPlanFor(platform: NodeJS.Platform, home: string): TUninstallPlan {
+  switch (platform) {
+    case "darwin": {
+      const path = join(home, "Library", "LaunchAgents", `${LABEL}.plist`);
+      return { remove: [path], commands: [["launchctl", "unload", "-w", path]] };
+    }
+    case "win32":
+      return { remove: [], commands: [["schtasks", "/Delete", "/TN", "Agentdeck", "/F"]] };
+    default:
+      return {
+        remove: [join(home, ".config", "systemd", "user", "agentdeck.service")],
+        commands: [
+          ["systemctl", "--user", "disable", "--now", "agentdeck.service"],
+          ["systemctl", "--user", "daemon-reload"],
+        ],
+      };
+  }
+}

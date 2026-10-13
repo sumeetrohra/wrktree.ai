@@ -33,8 +33,8 @@ Every chat is kept in Firebase, so it stays readable when its computer is off. F
 can review an agent's changes, read the code, ask about specific lines, run the repo's scripts and
 ship the work as a pull request the agent drafted, and open the app it is building in a preview
 tunnelled through the relay, with hot reload.
-Phase 4 is under way: per-profile usage and limits, handing a chat to another profile, and config shared by every profile (instructions, MCP servers, skills) are built.
-28 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+Phase 4 is under way: per-profile usage and limits, handing a chat to another profile, and config shared by every profile (instructions, MCP servers, skills), and `agentdeck status`/`doctor`/`uninstall` with keep-awake and Windows path fixes are built.
+29 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md), [`docs/phase-3.md`](docs/phase-3.md) and
 [`docs/phase-4.md`](docs/phase-4.md).
 
@@ -44,7 +44,7 @@ Phase 4 is under way: per-profile usage and limits, handing a chat to another pr
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
-| 4 | Multi-account power features and public launch | 4a–4c (usage and limits, hand-off, shared config) ✅ built; 4d–4g next |
+| 4 | Multi-account power features and public launch | 4a–4d (usage and limits, hand-off, shared config, status/doctor) ✅ built; 4e–4g next |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
@@ -127,6 +127,7 @@ daemon and CLI; loaded by `pnpm relay` and `pnpm agentdeck`) and
 | `FIREBASE_*_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST` | relay (dev) | optional | the Firebase Emulator Suite (`pnpm emulators`) |
 | `PORT`, `HOST`, `RELAY_DATA_DIR` | relay (self-host) | optional | defaults `8787`, `127.0.0.1`, `~/.agentdeck-relay` |
 | `AGENTDECK_HOME`, `AGENTDECK_HOST_NAME` | daemon | optional | data folder; this computer's name |
+| `AGENTDECK_WORKTREE_ROOT`, `AGENTDECK_KEEP_AWAKE` | daemon | optional | where new worktrees go (default: next to the repo; `%LOCALAPPDATA%\agentdeck\wt` on Windows); `0` lets the computer sleep while agents work |
 | `AGENTDECK_BROWSE_ROOTS`, `AGENTDECK_WEB_ROOT`, `AGENTDECK_KEYSTORE`, `AGENTDECK_PORT_RANGE`, `AGENTDECK_LOCAL_PORT`, `AGENTDECK_DEV_AGENTS`, `AGENTDECK_DEV_ORIGINS`, `AGENTDECK_LOG_STDERR` | daemon | optional | see `.env.example` |
 
 No secret ever goes into the app: the Firebase Web API key is public by design, and the relay

@@ -2,7 +2,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { planFor } from "./service-files.utils.js";
+import { planFor, uninstallPlanFor } from "./service-files.utils.js";
 
 describe("install plans", () => {
   it("macOS: a LaunchAgent with escaped paths", () => {
@@ -26,5 +26,22 @@ describe("install plans", () => {
     const plan = planFor("win32", "C:\\Users\\me", "C:\\node.exe", "C:\\cli.js");
     expect(plan.files).toEqual({});
     expect(plan.commands[0]).toContain('"C:\\node.exe" "C:\\cli.js" daemon');
+  });
+
+  it("uninstall undoes each OS's install", () => {
+    const mac = uninstallPlanFor("darwin", "/Users/me");
+    expect(mac.remove).toEqual([join("/Users/me", "Library", "LaunchAgents", "dev.agentdeck.daemon.plist")]);
+    expect(mac.commands).toEqual([["launchctl", "unload", "-w", mac.remove[0]]]);
+    expect(uninstallPlanFor("linux", "/home/me").commands[0]).toEqual([
+      "systemctl",
+      "--user",
+      "disable",
+      "--now",
+      "agentdeck.service",
+    ]);
+    expect(uninstallPlanFor("win32", "C:\\Users\\me")).toEqual({
+      remove: [],
+      commands: [["schtasks", "/Delete", "/TN", "Agentdeck", "/F"]],
+    });
   });
 });

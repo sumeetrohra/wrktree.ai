@@ -23,4 +23,8 @@ export type TDaemonOptions = {
   gh: { bin: string; env: Record<string, string> };
   /** Where the identity's sealing secret lives. */
   keystore: "os" | "file";
+  /** Where new worktrees go, or null for next to their repo (Phase 4d). */
+  worktreeRoot: string | null;
+  /** Keep the computer awake while an agent is working (Phase 4d). */
+  keepAwake: boolean;
 };

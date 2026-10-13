@@ -37,7 +37,15 @@ const daemonEnvSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   GH_CONFIG_DIR: z.string().optional(),
   GH_HOST: z.string().optional(),
+  /**
+   * Phase 4d: where new worktrees go (default: next to the repo; on Windows a short folder under
+   * %LOCALAPPDATA%, so deep paths stay under the 260-character limit).
+   */
+  AGENTDECK_WORKTREE_ROOT: z.string().min(1).optional(),
+  /** Phase 4d: `0` lets the computer sleep while agents work (default: kept awake). */
+  AGENTDECK_KEEP_AWAKE: flag,
   APPDATA: z.string().optional(),
+  LOCALAPPDATA: z.string().optional(),
   XDG_DATA_HOME: z.string().optional(),
 });
 export type TDaemonEnv = z.infer<typeof daemonEnvSchema>;

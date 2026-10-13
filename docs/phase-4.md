@@ -9,7 +9,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 | **4a** | Usage and limits per profile | **built** |
 | **4b** | Hand-off to another profile or agent | **built** |
 | **4c** | Shared config (MCP, skills, instructions) | **built** |
-| **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | planned |
+| **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | **built** |
 | **4e** | Open source files, npm packages, docker-compose | planned |
 | **4f** | Store-ready app, Sentry | planned |
 | **4g** | Landing page and docs site | planned |
@@ -133,3 +133,41 @@ servers and skills.
 |---|---|---|
 | 27 | Shared instructions and MCP servers | `config shared mcp add` from the CLI; the phone sees it but can't change MCP servers; instructions set from the phone land as the agent's own file; the agent reads them and its session lists the MCP server; a profile's own file survives a shared edit and is listed; only the computer can drop it, after which the shared file applies |
 | 28 (app) | The app: instructions every profile shares | Settings lists the MCP server added on the computer; saving instructions there reaches the next turn |
+
+## 4d: Windows, keep-awake, and looking after the computer
+
+### Windows
+
+- **Short worktree paths:** new worktrees go under `%LOCALAPPDATA%\agentdeck\wt\<repo>-<id>\<branch>`
+  instead of next to the repo, so deep `node_modules` paths stay under 260 characters.
+  `AGENTDECK_WORKTREE_ROOT` moves them anywhere, on any OS.
+- **Long paths in git:** `git worktree add` runs with `core.longpaths=true` on Windows;
+  `agentdeck doctor` suggests turning it on globally.
+- **Process trees:** scripts and agents are stopped with `taskkill /T /F`, which takes the whole
+  tree. Job objects would need a native helper; they are not used.
+- **Service:** `agentdeck install` registers a logon task (`schtasks`), `agentdeck uninstall`
+  deletes it. CI checks both plans on Windows (`--dry-run`); a real create and delete is manual.
+
+### Keep-awake
+
+While any chat is running or waiting for approval, the daemon holds a sleep lock, and lets go
+when none is: `caffeinate -i -w <daemon pid>` on macOS, `systemd-inhibit --what=idle:sleep` on
+Linux, PowerShell calling `SetThreadExecutionState` on Windows. The display may still sleep. A
+missing helper is logged once and ignored. Off with `"keepAwake": false` in the daemon's
+`config.json` or `AGENTDECK_KEEP_AWAKE=0`.
+
+### New commands
+
+| Command | What it does |
+|---|---|
+| `agentdeck uninstall [--dry-run]` | undoes `install` (launchd, systemd or the logon task); chats and settings stay |
+| `agentdeck status` | the daemon, account and relay, repos/worktrees/chats (working, limited), and each profile's limit state and tokens today |
+| `agentdeck doctor [--bundle <file>]` | Node.js, git (and long paths on Windows), `gh` and its sign-in, the adapters (`npx`), Gemini CLI, the daemon, the relay, the worktree ports; each problem with its fix. `--bundle` writes the checks and the daemon's recent logs with tokens, keys and emails removed |
+
+| # | Scenario | Checks |
+|---|---|---|
+| 29 | Status, doctor, install and uninstall | `status` shows the daemon, one repo/worktree/chat and the profile's tokens; `doctor` passes and its bundle has the logs without the planted email, token and bearer value; `install`/`uninstall --dry-run` print this OS's service plan |
+
+Unit tests cover the uninstall plans, every doctor check against a fake machine, redaction, the
+keep-awake helpers and the worktree paths. E2E runs put worktrees under the test folder
+(`AGENTDECK_WORKTREE_ROOT`), so every OS exercises the short-root layout.

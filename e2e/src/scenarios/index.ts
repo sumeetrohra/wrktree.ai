@@ -3,6 +3,7 @@ import type { TScenario } from "../scenario.ts";
 import { chatLifecycle } from "./chat-lifecycle.scenario.ts";
 import { crashRestart } from "./crash-restart.scenario.ts";
 import { goldenPath } from "./golden-path.scenario.ts";
+import { housekeeping } from "./housekeeping.scenario.ts";
 import { pathJail } from "./path-jail.scenario.ts";
 import { permissions } from "./permissions.scenario.ts";
 import { relayChat } from "./relay-chat.scenario.ts";
@@ -29,6 +30,7 @@ export const scenarios: TScenario[] = [
   permissions,
   worktreeLifecycle,
   streamingBlobs,
+  housekeeping,
 ];
 
 /** Phase 2: the same daemon, reached from a phone through a local relay. */

@@ -11,3 +11,4 @@ export {
 export { childEnv } from "./child-env.utils.js";
 export { assertSafeGitArg } from "./git-args.utils.js";
 export type { ChildProcess } from "node:child_process";
+export { KeepAwake, keepAwakeCommand } from "./keep-awake.service.js";

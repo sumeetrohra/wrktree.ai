@@ -114,6 +114,10 @@ export class Harness {
       AGENTDECK_KEYSTORE: "file",
       /** Pull requests go to a stand-in for the GitHub CLI and the repo's local bare origin. */
       GH_BIN: fakeGhEntry,
+      /** Worktrees under the test's own folder (short, like the Windows default), removed with it. */
+      AGENTDECK_WORKTREE_ROOT: join(this.root, "wt"),
+      /** No sleep lock from tests. */
+      AGENTDECK_KEEP_AWAKE: "0",
       FORCE_COLOR: "1",
     };
     delete this.env["NO_COLOR"];

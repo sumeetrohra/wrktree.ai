@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { dirname } from "node:path";
 
 import { AgentdeckError, type TRepo, type TWorktree, type TWorktreeStatus } from "@agentdeck/protocol";
 import { newId, now } from "@agentdeck/shared";
@@ -7,6 +7,7 @@ import { newId, now } from "@agentdeck/shared";
 import { assertSafeGitArg, childEnv, git, killTree, spawnShell } from "#src/infra/process/index.js";
 import type { TRuntime } from "#src/infra/runtime/index.js";
 
+import { longPathArgs, worktreePath } from "./worktree-path.utils.js";
 import type { IRepoSource, IWorktreeHooks } from "./worktrees.types.js";
 
 type TRow = {
@@ -108,12 +109,7 @@ export class WorktreesService {
 
   /** Default location: `<repo>/../.agentdeck-worktrees/<repo-name>/<branch>`. */
   private pathFor(repo: TRepo, branch: string): string {
-    return join(
-      dirname(repo.path),
-      ".agentdeck-worktrees",
-      basename(repo.path),
-      branch.replace(/[\\/]/g, "-"),
-    );
+    return worktreePath(repo, branch, this.rt.opts.worktreeRoot);
   }
 
   async create(args: {
@@ -165,7 +161,7 @@ export class WorktreesService {
     try {
       if (addArgs) {
         mkdirSync(dirname(this.row(id).path), { recursive: true });
-        await git(repo.path, addArgs);
+        await git(repo.path, [...longPathArgs(process.platform), ...addArgs]);
       }
       const wt = this.update(id, { status: "setting_up" });
       const config = this.repos.config(repo);

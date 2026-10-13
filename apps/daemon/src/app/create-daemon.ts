@@ -1,5 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
+import { join } from "node:path";
 
 import { AgentdeckError } from "@agentdeck/protocol";
 import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
@@ -7,6 +8,7 @@ import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
 import { EventBus } from "#src/infra/bus/index.js";
 import { openDb } from "#src/infra/db/index.js";
 import { loadIdentity } from "#src/infra/keystore/index.js";
+import { KeepAwake, keepAwakeCommand } from "#src/infra/process/index.js";
 import { Router } from "#src/infra/rpc/index.js";
 import type { TRuntime } from "#src/infra/runtime/index.js";
 import { LocalTransport, waitForPort } from "#src/infra/transport/index.js";
@@ -73,6 +75,15 @@ export function optionsFromEnv(home: string): TDaemonOptions {
     hostName: env.AGENTDECK_HOST_NAME ?? hostname(),
     appUrl: env.AGENTDECK_APP_URL ?? configOf(home)?.appUrl ?? DEFAULT_APP_URL,
     keystore: env.AGENTDECK_KEYSTORE ?? "os",
+    worktreeRoot:
+      env.AGENTDECK_WORKTREE_ROOT ??
+      (process.platform === "win32"
+        ? join(env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "agentdeck", "wt")
+        : null),
+    keepAwake:
+      env.AGENTDECK_KEEP_AWAKE === undefined
+        ? configOf(home)?.keepAwake !== false
+        : env.AGENTDECK_KEEP_AWAKE === "1",
     webRoot: env.AGENTDECK_WEB_ROOT ?? null,
     gh: {
       bin: env.GH_BIN ?? "gh",
@@ -93,6 +104,7 @@ export class Daemon {
   private readonly router: Router;
   private transport: LocalTransport | null = null;
   private readonly cloud: CloudSync;
+  private keepAwake: KeepAwake | null = null;
   port = 0;
 
   constructor(opts: TDaemonOptions, log: ILogger) {
@@ -258,12 +270,28 @@ export class Daemon {
     });
     this.cloud.start();
     this.modules.profiles.syncShared();
+    this.startKeepAwake();
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;
   }
 
+  /** Holds a "don't sleep" lock while any chat is running or waiting for approval (Phase 4d). */
+  private startKeepAwake(): void {
+    const command = this.rt.opts.keepAwake ? keepAwakeCommand(process.platform, process.pid) : null;
+    const keepAwake = new KeepAwake(command, this.rt.log);
+    this.keepAwake = keepAwake;
+    const busy = new Set<string>();
+    this.rt.bus.on(({ event: e }) => {
+      if (e.type !== "chat.status") return;
+      if (e.status === "running" || e.status === "awaiting_permission") busy.add(e.chatId);
+      else busy.delete(e.chatId);
+      keepAwake.set(busy.size > 0);
+    });
+  }
+
   async stop(): Promise<void> {
+    this.keepAwake?.set(false);
     this.cloud.stop();
     await this.modules.preview.stopAll();
     await this.modules.procs.stopAll();

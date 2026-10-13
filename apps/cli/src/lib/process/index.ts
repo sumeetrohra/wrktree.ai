@@ -1,2 +1,2 @@
 export { runInteractive } from "./run-interactive.utils.js";
-export { runQuiet } from "./run-quiet.utils.js";
+export { runCapture, runQuiet } from "./run-quiet.utils.js";

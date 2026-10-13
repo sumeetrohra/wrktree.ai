@@ -1,1 +1,1 @@
-export { planFor, type TInstallPlan } from "./service-files.utils.js";
+export { planFor, uninstallPlanFor, type TInstallPlan, type TUninstallPlan } from "./service-files.utils.js";
