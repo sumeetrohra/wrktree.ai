@@ -26,7 +26,16 @@ describe("spawnPty", () => {
     const prompt = process.platform === "win32" ? /PS .*>/ : /[$#%>] ?$/m;
     for (let i = 0; i < 400 && !prompt.test(out); i++) await new Promise((r) => setTimeout(r, 50));
     // The sum proves the shell ran it (the echoed command line alone doesn't contain "pty-42").
-    p.write(process.platform === "win32" ? 'Write-Output ("pty-" + (40+2))\r' : "echo pty-$((40+2))\r");
+    // On Windows, type key by key like a person: PowerShell's line editor garbles a whole line
+    // written at once through the console.
+    if (process.platform === "win32") {
+      for (const key of 'Write-Output ("pty-" + (40+2))\r') {
+        p.write(key);
+        await new Promise((r) => setTimeout(r, 30));
+      }
+    } else {
+      p.write("echo pty-$((40+2))\r");
+    }
     for (let i = 0; i < 400 && !out.includes("pty-42"); i++) await new Promise((r) => setTimeout(r, 50));
     expect(out).toContain("pty-42");
     p.write("exit\r");

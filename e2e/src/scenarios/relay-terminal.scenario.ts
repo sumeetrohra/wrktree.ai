@@ -45,18 +45,24 @@ export const relayTerminal: TScenario = {
 
     h.step("Phone: open a terminal and run commands in the worktree");
     const term = await phone.call("term.open", { worktreeId: wt.id, cols: 80, rows: 24 });
+    /** Key by key on Windows, like a person: PowerShell garbles a whole line written at once. */
+    const type = async (text: string): Promise<void> => {
+      for (const key of WIN ? Array.from(text) : [text]) {
+        await phone.call("term.input", { termId: term.id, data: key });
+      }
+    };
     await phone.follow(`term:${term.id}`);
     // Type at the prompt, like a person: PowerShell mangles what arrives while it is starting.
     await phone.waitFor(
       isEvent("term.output", (e) => e.termId === term.id && (WIN ? /PS .*>/ : /[$#%>] ?$/m).test(e.data)),
       "the shell's prompt",
     );
-    await phone.call("term.input", { termId: term.id, data: SUM });
+    await type(SUM);
     await phone.waitFor(
       isEvent("term.output", (e) => e.termId === term.id && e.data.includes("sum-42")),
       "the command's output",
     );
-    await phone.call("term.input", { termId: term.id, data: "git status\r" });
+    await type("git status\r");
     await phone.waitFor(
       isEvent("term.output", (e) => e.termId === term.id && e.data.includes("On branch term")),
       "git status in the worktree",

@@ -83,11 +83,7 @@ export class TerminalsService {
       this.append(live, d);
     });
     pty.onExit((code) => {
-      this.flush(live);
-      if (live.idleTimer) clearTimeout(live.idleTimer);
-      live.pty = null;
-      live.term = { ...live.term, status: "exited", exitCode: code, endedAt: now() };
-      this.publishStatus(live);
+      this.ended(live, code);
     });
     this.touch(live);
     this.publishStatus(live);
@@ -121,7 +117,19 @@ export class TerminalsService {
     });
     pty.kill();
     await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
+    // Windows may report a killed shell's exit late, or never: it's gone either way.
+    this.ended(live, null);
     return live.term;
+  }
+
+  /** Marks the shell exited, once (its exit event, or `close` giving up waiting for it). */
+  private ended(live: TLive, code: number | null): void {
+    if (live.pty === null) return;
+    this.flush(live);
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.pty = null;
+    live.term = { ...live.term, status: "exited", exitCode: code, endedAt: now() };
+    this.publishStatus(live);
   }
 
   /** The newest scrollback and the `term:<id>` cursor it covers (pending output is published first). */

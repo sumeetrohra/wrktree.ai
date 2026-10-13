@@ -13,6 +13,12 @@ import { pathsFor } from "#src/shared/paths.utils.js";
 
 import { TerminalsService } from "./terminals.service.js";
 
+/**
+ * On Windows, type key by key like a person: PowerShell's line editor garbles a whole line
+ * written at once through the console (it showed "W> Write-Output …" and never ran it).
+ */
+const KEY_DELAY_MS = process.platform === "win32" ? 30 : 0;
+const keystrokes = (s: string): string[] => (process.platform === "win32" ? Array.from(s) : [s]);
 const PROMPT = process.platform === "win32" ? /PS .*>/ : /[$#%>] ?$/m;
 const SUM = process.platform === "win32" ? 'Write-Output ("sum-" + (20+22))\r' : "echo sum-$((20+22))\r";
 
@@ -67,7 +73,10 @@ describe("TerminalsService", { timeout: 30_000 }, () => {
     expect(t).toMatchObject({ worktreeId: wt.id, status: "running", cols: 80, rows: 24 });
     // Type only at the prompt: PowerShell mangles what arrives while it is still starting.
     await until(() => PROMPT.test(output(t.id)));
-    terms.input(t.id, SUM);
+    for (const key of keystrokes(SUM)) {
+      terms.input(t.id, key);
+      await new Promise((r) => setTimeout(r, KEY_DELAY_MS));
+    }
     await until(() => output(t.id).includes("sum-42"));
     expect(events.some((e) => e.topic === `repo:${wt.repoId}` && e.event.type === "term.status")).toBe(true);
 
