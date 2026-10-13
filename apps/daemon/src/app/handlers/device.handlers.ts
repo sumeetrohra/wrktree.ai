@@ -3,8 +3,7 @@ import { AgentdeckError } from "@agentdeck/protocol";
 import type { THandlers } from "#src/infra/rpc/index.js";
 
 import type { TModules } from "../app.types.js";
-
-import { localOnly } from "./local-only.utils.js";
+import { localOnly } from "../local-only.utils.js";
 
 const PAIRING_REMOVED = (): never => {
   throw new AgentdeckError("UNAUTHORIZED", "Pairing was replaced by signing in: run `agentdeck login`");

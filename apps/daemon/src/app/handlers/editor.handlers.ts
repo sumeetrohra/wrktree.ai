@@ -2,9 +2,8 @@ import { spawnDetached } from "#src/infra/process/index.js";
 import type { THandlers } from "#src/infra/rpc/index.js";
 
 import type { TModules } from "../app.types.js";
-
-import { editorCommand } from "./editor.utils.js";
-import { localOnly } from "./local-only.utils.js";
+import { editorCommand } from "../editor.utils.js";
+import { localOnly } from "../local-only.utils.js";
 
 export function editorHandlers(m: TModules): Pick<THandlers, "editor.open"> {
   return {
