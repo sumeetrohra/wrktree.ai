@@ -827,5 +827,94 @@
       "name": "CLAUDE.md"
     },
     "result": {}
+  },
+  "term.list": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "terminals": [
+        {
+          "id": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "status": "running",
+          "exitCode": null,
+          "cols": 80,
+          "rows": 24,
+          "startedAt": 1760000000000,
+          "endedAt": null
+        }
+      ],
+      "enabled": true
+    }
+  },
+  "term.open": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "cols": 80,
+      "rows": 24
+    },
+    "result": {
+      "id": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "status": "running",
+      "exitCode": null,
+      "cols": 80,
+      "rows": 24,
+      "startedAt": 1760000000000,
+      "endedAt": null
+    }
+  },
+  "term.input": {
+    "args": {
+      "termId": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "data": "git status\r"
+    },
+    "result": {}
+  },
+  "term.resize": {
+    "args": {
+      "termId": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "cols": 120,
+      "rows": 40
+    },
+    "result": {
+      "id": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "status": "running",
+      "exitCode": null,
+      "cols": 120,
+      "rows": 40,
+      "startedAt": 1760000000000,
+      "endedAt": null
+    }
+  },
+  "term.close": {
+    "args": {
+      "termId": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "status": "exited",
+      "exitCode": 0,
+      "cols": 80,
+      "rows": 24,
+      "startedAt": 1760000000000,
+      "endedAt": 1760000005000
+    }
+  },
+  "term.output": {
+    "args": {
+      "termId": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "blob": {
+        "blobId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mime": "text/plain",
+        "size": 1234
+      },
+      "cursor": 7
+    }
   }
 }

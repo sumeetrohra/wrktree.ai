@@ -4,6 +4,7 @@ import {
   chatIdSchema,
   deviceIdSchema,
   procIdSchema,
+  termIdSchema,
   profileIdSchema,
   repoIdSchema,
   worktreeIdSchema,
@@ -255,6 +256,19 @@ export const procSchema = z.object({
   endedAt: z.number().nullable(),
 });
 export type TProc = z.infer<typeof procSchema>;
+
+/** Additive (Phase 5): a shell in a worktree, on a pseudo-terminal. */
+export const terminalSchema = z.object({
+  id: termIdSchema,
+  worktreeId: worktreeIdSchema,
+  status: z.enum(["running", "exited"]),
+  exitCode: z.number().int().nullable(),
+  cols: z.number().int().positive(),
+  rows: z.number().int().positive(),
+  startedAt: z.number(),
+  endedAt: z.number().nullable(),
+});
+export type TTerminal = z.infer<typeof terminalSchema>;
 
 /** The pull request of a worktree's branch, as `gh` reports it. */
 export const pullRequestSchema = z.object({

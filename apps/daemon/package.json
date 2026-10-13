@@ -42,5 +42,8 @@
       "types": "./src/*",
       "default": "./dist/*"
     }
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
   }
 }

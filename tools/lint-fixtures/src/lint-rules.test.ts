@@ -131,6 +131,7 @@ const CASES: TCase[] = [
     ["L12", "hono"],
     ["L13", "jose"],
     ["L15", "cloudflare:workers"],
+    ["L27", "node-pty"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its wrapper`,
     rule: "no-restricted-imports",
@@ -308,6 +309,7 @@ const CASES: TCase[] = [
     ["L22", "expo-crypto"],
     ["L25", "shiki"],
     ["L26", "react-native-webview"],
+    ["L28", "@xterm/xterm"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its app wrapper`,
     rule: "no-restricted-imports",

@@ -10,6 +10,7 @@ import {
   handoffFromApp,
   limitFromApp,
   sharedConfigFromApp,
+  terminalFromApp,
   linkFromApp,
   newTaskFromApp,
   offlineFromApp,
@@ -154,6 +155,14 @@ export const appScenarios: TAppScenario[] = [
     covers: ["Phase 4c: shared config in Settings (instructions editable, MCP servers shown)"],
     harness: { relay: true },
     run: sharedConfigFromApp,
+  },
+  {
+    n: 31,
+    title: "The app: a terminal on the computer",
+    summary: "The Terminal tab says how to allow it; once allowed, a shell in the worktree with a key bar",
+    covers: ["Phase 5: the Terminal tab (xterm.js), sealed end to end like chats; SEC25"],
+    harness: { relay: true },
+    run: terminalFromApp,
   },
 ];
 

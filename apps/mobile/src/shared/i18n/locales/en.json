@@ -275,7 +275,8 @@
       "files": "Files",
       "logs": "Logs",
       "ship": "Ship",
-      "preview": "Preview"
+      "preview": "Preview",
+      "terminal": "Terminal"
     },
     "openInEditor": "Open in editor",
     "editors": {
@@ -302,5 +303,28 @@
       "full": "Full"
     },
     "via": "Through the relay; only this device can open it."
+  },
+  "terminal": {
+    "intro": "A shell in this worktree, on its computer. It runs anything you type there, with no approvals.",
+    "new": "New terminal",
+    "close": "Close",
+    "name": "Terminal {{n}}",
+    "label": "Terminal",
+    "exited": "The shell has exited.",
+    "off": {
+      "title": "Terminals are off for your other devices",
+      "body": "A terminal runs anything you type on that computer, so it only works from other devices once you turn it on there:",
+      "command": "agentdeck config terminal remote on"
+    },
+    "keys": {
+      "esc": "Esc",
+      "tab": "Tab",
+      "ctrlC": "Ctrl-C",
+      "ctrlD": "Ctrl-D",
+      "up": "↑",
+      "down": "↓",
+      "left": "←",
+      "right": "→"
+    }
   }
 }

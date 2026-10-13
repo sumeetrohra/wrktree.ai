@@ -11,6 +11,8 @@ export interface IDoctorProbe {
   reachable(url: string): Promise<boolean>;
   /** Something already listens on this local port. */
   portInUse(port: number): Promise<boolean>;
+  /** The terminal's native addon (node-pty, optional) loads. */
+  terminal(): Promise<boolean>;
 }
 
 export type TCheck = { name: string; status: "ok" | "warn" | "fail"; detail: string; fix?: string };
@@ -141,6 +143,17 @@ export async function runChecks(p: IDoctorProbe, portRangeStart = 41000): Promis
           fix: "Previews skip busy ports; set AGENTDECK_PORT_RANGE to move the range",
         }
       : { name: "Worktree ports", status: "ok", detail: `${String(portRangeStart)} is free` },
+  );
+
+  checks.push(
+    (await p.terminal())
+      ? { name: "Terminal", status: "ok", detail: "node-pty loads" }
+      : {
+          name: "Terminal",
+          status: "warn",
+          detail: "node-pty didn't install (optional): no terminal tab",
+          fix: "Install build tools (Xcode Command Line Tools, build-essential or Visual Studio Build Tools), then reinstall agentdeck",
+        },
   );
   return checks;
 }

@@ -119,6 +119,12 @@ export function formatEvent(f: TEvtFrame): string {
     case "device.updated":
       body = `device ${e.device.name} ${e.device.revokedAt === null ? c.green("paired") : c.red("revoked")}`;
       break;
+    case "term.output":
+      body = clip(e.data);
+      break;
+    case "term.status":
+      body = `terminal ${short(e.terminal.id)} ${e.terminal.status === "running" ? c.green("running") : e.terminal.status}`;
+      break;
   }
   return `${where} ${body}`;
 }

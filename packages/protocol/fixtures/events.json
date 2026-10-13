@@ -181,5 +181,23 @@
       "startedAt": 1760000000000,
       "endedAt": 1760000005000
     }
+  },
+  {
+    "type": "term.output",
+    "termId": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+    "data": "On branch main\r\n"
+  },
+  {
+    "type": "term.status",
+    "terminal": {
+      "id": "term_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "status": "running",
+      "exitCode": null,
+      "cols": 80,
+      "rows": 24,
+      "startedAt": 1760000000000,
+      "endedAt": null
+    }
   }
 ]

@@ -34,9 +34,9 @@ can review an agent's changes, read the code, ask about specific lines, run the 
 ship the work as a pull request the agent drafted, and open the app it is building in a preview
 tunnelled through the relay, with hot reload.
 Phase 4 is built: per-profile usage and limits, handing a chat to another profile, and config shared by every profile (instructions, MCP servers, skills), `agentdeck status`/`doctor`/`uninstall` with keep-awake and Windows path fixes, npm packaging, a store-ready app and the landing and docs site (`apps/site`) are built.
-29 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
-[`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md), [`docs/phase-3.md`](docs/phase-3.md) and
-[`docs/phase-4.md`](docs/phase-4.md).
+31 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+[`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md), [`docs/phase-3.md`](docs/phase-3.md),
+[`docs/phase-4.md`](docs/phase-4.md) and [`docs/phase-5.md`](docs/phase-5.md).
 
 | Phase | What | State |
 |---|---|---|
@@ -45,7 +45,7 @@ Phase 4 is built: per-profile usage and limits, handing a chat to another profil
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
 | 4 | Multi-account power features and public launch | ✅ built (store submission, npm token and the site's domain are the owner's) |
-| 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
+| 5 | After launch: terminal, parallel compare, voice, video, E2E preview, single binary | 5a (terminal) ✅ built; see [`docs/phase-5.md`](docs/phase-5.md) |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.

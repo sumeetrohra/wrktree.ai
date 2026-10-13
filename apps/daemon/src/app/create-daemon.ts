@@ -25,6 +25,7 @@ import { ProcsService } from "#src/modules/procs/index.js";
 import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
+import { TerminalsService } from "#src/modules/terminals/index.js";
 import { UsageService } from "#src/modules/usage/index.js";
 import { WorktreesService } from "#src/modules/worktrees/index.js";
 import { daemonConfigSchema, type TDaemonConfig } from "#src/shared/config.schema.js";
@@ -158,6 +159,7 @@ export class Daemon {
       { worktree: (id) => worktrees.get(id), config: (wt) => repos.config(repos.get(wt.repoId)) },
       blobs,
     );
+    const terminals = new TerminalsService(this.rt, { worktree: (id) => worktrees.get(id) }, blobs);
     const devices = new DevicesService(this.rt);
     const remote = new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log);
     const preview = new PreviewService(this.rt.bus, {
@@ -175,6 +177,7 @@ export class Daemon {
       stopChats: (id) => {
         sessions.stopWorktree(id);
         void preview.stop(id).finally(() => procs.stopAll(id));
+        void terminals.closeAll(id);
       },
       startChats: (id) => {
         sessions.startWorktree(id);
@@ -244,6 +247,11 @@ export class Daemon {
       procs,
       preview,
       usage,
+      terminals,
+      remoteTerminal: () => {
+        const env = readDaemonEnv().AGENTDECK_REMOTE_TERMINAL;
+        return env === undefined ? configOf(opts.home)?.remoteTerminal === true : env === "1";
+      },
       jailFor,
     };
     this.router = new Router(db, createHandlers(this.modules), log);
@@ -303,6 +311,7 @@ export class Daemon {
     this.cloud.stop();
     await this.modules.preview.stopAll();
     await this.modules.procs.stopAll();
+    await this.modules.terminals.closeAll();
     this.modules.remote.stop();
     this.modules.sessions.shutdown();
     await this.modules.worktrees.idle();

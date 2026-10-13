@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { chatIdSchema, procIdSchema, profileIdSchema, worktreeIdSchema } from "./ids.schema.js";
+import { chatIdSchema, procIdSchema, profileIdSchema, termIdSchema, worktreeIdSchema } from "./ids.schema.js";
 import {
   chatItemPatchSchema,
   chatItemSchema,
@@ -9,12 +9,18 @@ import {
   permissionDecisionSchema,
   permissionRequestSchema,
   procSchema,
+  terminalSchema,
   usageSnapshotSchema,
   worktreeSchema,
 } from "./models.schema.js";
 
-/** `global`, `repo:<id>`, `chat:<id>` or `proc:<id>`. Subscriptions may use `repo:*` / `chat:*`. */
-export const topicSchema = z.string().regex(/^(global|(repo|chat|proc):[A-Za-z0-9_*]+)$/, "invalid topic");
+/**
+ * `global`, `repo:<id>`, `chat:<id>`, `proc:<id>` or (additive) `term:<id>`. Subscriptions may use
+ * `repo:*` / `chat:*`.
+ */
+export const topicSchema = z
+  .string()
+  .regex(/^(global|(repo|chat|proc|term):[A-Za-z0-9_*]+)$/, "invalid topic");
 export type TTopic = z.infer<typeof topicSchema>;
 
 export const daemonEventSchema = z.discriminatedUnion("type", [
@@ -66,6 +72,10 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
     status: z.enum(["starting", "ready", "crashed", "stopped"]),
     url: z.string().optional(),
   }),
+  /** Additive (Phase 5): terminal output, coalesced (topic `term:<id>`). */
+  z.object({ type: z.literal("term.output"), termId: termIdSchema, data: z.string() }),
+  /** Additive: a terminal opened, resized or exited (topics `term:<id>` and `repo:<id>`). */
+  z.object({ type: z.literal("term.status"), terminal: terminalSchema }),
 ]);
 export type TDaemonEvent = z.infer<typeof daemonEventSchema>;
 export type TDaemonEventType = TDaemonEvent["type"];

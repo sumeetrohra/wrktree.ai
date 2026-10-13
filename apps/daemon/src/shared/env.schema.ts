@@ -49,6 +49,8 @@ const daemonEnvSchema = z.object({
   AGENTDECK_WORKTREE_ROOT: z.string().min(1).optional(),
   /** Phase 4d: `0` lets the computer sleep while agents work (default: kept awake). */
   AGENTDECK_KEEP_AWAKE: flag,
+  /** Overrides `remoteTerminal` in config.json (tests). */
+  AGENTDECK_REMOTE_TERMINAL: flag,
   APPDATA: z.string().optional(),
   LOCALAPPDATA: z.string().optional(),
   XDG_DATA_HOME: z.string().optional(),

@@ -7,6 +7,7 @@ export const HELP = `agentdeck — drive coding agents on this machine
   agentdeck config shared [instructions <file> | mcp add|remove …]
                                                 instructions, MCP servers, skills for every profile
   agentdeck config overrides <profileId>        a profile's own files that win over the shared ones
+  agentdeck config terminal remote on|off       let your other devices open terminals here
   agentdeck relay set <url> | relay status      choose the relay your devices connect through
   agentdeck login [--email <e>] [--dev <uid>]   sign this computer in to your account
   agentdeck logout                              unlink this computer from your account

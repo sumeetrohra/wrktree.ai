@@ -49,9 +49,10 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "@vscode/ripgrep",
-      "esbuild"
+      "better-sqlite3",
+      "esbuild",
+      "node-pty"
     ],
     "overrides": {
       "miniflare>undici": "7.29.1",

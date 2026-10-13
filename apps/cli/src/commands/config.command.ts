@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import type { TMcpServer, TSharedConfig } from "@agentdeck/protocol";
 
+import { updateConfigFile } from "#src/shared/config-file/index.js";
 import { c, print } from "#src/shared/output/index.js";
 
 import { withClient } from "./with-client.utils.js";
@@ -12,7 +13,8 @@ const USAGE = `usage:
   agentdeck config shared mcp add <name> -- <command> [args…]
   agentdeck config shared mcp add <name> --url <url> [--sse]
   agentdeck config shared mcp remove <name>
-  agentdeck config overrides <profileId> [remove <file>]    a profile's own files that win over the shared ones`;
+  agentdeck config overrides <profileId> [remove <file>]    a profile's own files that win over the shared ones
+  agentdeck config terminal remote on|off                   let your other devices open terminals here (off by default)`;
 
 function show(cfg: TSharedConfig): void {
   const lines = cfg.instructions.split("\n");
@@ -51,6 +53,16 @@ function parseMcp(args: readonly string[]): TMcpServer {
 /** `agentdeck config …` (Phase 4c): the config every profile on this computer shares. */
 export async function configCommand(args: readonly string[]): Promise<void> {
   const [area, sub, ...rest] = args;
+  if (area === "terminal" && sub === "remote" && (rest[0] === "on" || rest[0] === "off")) {
+    const on = rest[0] === "on";
+    updateConfigFile({ remoteTerminal: on });
+    print(
+      on
+        ? `Your other devices can now open terminals on this computer. ${c.gray("Turn off: agentdeck config terminal remote off")}`
+        : "Terminals are only available on this computer.",
+    );
+    return;
+  }
   if (area === "overrides" && sub !== undefined) {
     const [action, file] = rest;
     if (action === "remove" && file !== undefined) {

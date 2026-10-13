@@ -3,7 +3,7 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-import { defaultHome, pathsFor } from "@agentdeck/daemon";
+import { defaultHome, pathsFor, ptyAvailable } from "@agentdeck/daemon";
 
 import { DaemonClient } from "#src/lib/daemon-client/index.js";
 import { runCapture } from "#src/lib/process/index.js";
@@ -58,6 +58,7 @@ const probe: IDoctorProbe = {
     }
   },
   portInUse,
+  terminal: ptyAvailable,
 };
 
 const MARK: Record<TCheck["status"], string> = { ok: c.green("✓"), warn: c.yellow("!"), fail: c.red("✗") };

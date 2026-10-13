@@ -17,6 +17,12 @@ describe("runtimeDeps", () => {
     expect(Object.keys(deps)).toEqual([...Object.keys(deps)].sort((a, b) => a.localeCompare(b)));
   });
 
+  it("keeps native extras optional (the terminal's node-pty), so installing never needs a compiler", () => {
+    expect(runtimeDeps(ROOT, "apps/cli")).not.toHaveProperty("node-pty");
+    expect(runtimeDeps(ROOT, "apps/cli", "optionalDependencies")).toHaveProperty("node-pty");
+    expect(runtimeDeps(ROOT, "apps/relay", "optionalDependencies")).toEqual({});
+  });
+
   it("the relay doesn't pull in the daemon's", () => {
     const deps = runtimeDeps(ROOT, "apps/relay");
     expect(deps).toHaveProperty("hono");

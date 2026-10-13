@@ -7,7 +7,12 @@ import type { TCommandContext } from "#src/infra/rpc/index.js";
  * link, opening an editor): only clients on this machine, never through the relay.
  */
 export function localOnly(ctx: TCommandContext): void {
-  if (!ctx.deviceId.startsWith("local-")) {
+  if (!isLocalDevice(ctx)) {
     throw new AgentdeckError("UNAUTHORIZED", "Only available on this computer");
   }
+}
+
+/** A client on this computer (local transport), not a device through the relay. */
+export function isLocalDevice(ctx: TCommandContext): boolean {
+  return ctx.deviceId.startsWith("local-");
 }

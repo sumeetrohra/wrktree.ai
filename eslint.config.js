@@ -38,6 +38,8 @@ const LIBRARIES = [
   { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
   { id: "L25", names: ["shiki"], zone: "highlight" },
   { id: "L26", names: ["react-native-webview"], zone: "webview" },
+  { id: "L27", names: ["node-pty"], zone: "daemon-infra-pty" },
+  { id: "L28", names: ["@xterm/xterm", "@xterm/addon-fit"], zone: "terminal" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -219,6 +221,12 @@ const ZONES = [
     name: "daemon-infra-process",
     files: ["apps/daemon/src/infra/process/**/*.ts"],
     allow: ["process"],
+    patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
+  },
+  {
+    name: "daemon-infra-pty",
+    files: ["apps/daemon/src/infra/pty/**/*.ts"],
+    allow: ["daemon-infra-pty"],
     patterns: [UP_TWO, ban(["app", "modules"], "S4: infra knows nothing of modules.")],
   },
   {
@@ -427,6 +435,14 @@ const ZONES = [
     paths: MOBILE_PATHS,
     patterns: [UP_TWO, banApp(["modules", "pages", "app", "providers"], "lib")],
   })),
+  // The terminal view: xterm.js on the web, xterm.js in a WebView on phones (L26, L28).
+  {
+    name: "mobile-lib-terminal",
+    files: ["apps/mobile/src/lib/terminal/**/*.{ts,tsx}"],
+    allow: ["terminal", "webview"],
+    paths: MOBILE_PATHS,
+    patterns: [UP_TWO, banApp(["modules", "pages", "app", "providers"], "lib")],
+  },
   {
     name: "mobile-providers",
     files: ["apps/mobile/src/providers/**/*.{ts,tsx}"],

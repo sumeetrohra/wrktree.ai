@@ -6,6 +6,7 @@ import {
   procIdSchema,
   profileIdSchema,
   repoIdSchema,
+  termIdSchema,
   worktreeIdSchema,
 } from "./ids.schema.js";
 import {
@@ -24,6 +25,7 @@ import {
   mcpServerSchema,
   pullRequestSchema,
   repoSchema,
+  terminalSchema,
   worktreeSchema,
 } from "./models.schema.js";
 
@@ -49,6 +51,8 @@ const gitRefSchema = z
   .refine((v) => !v.startsWith("-"), "must not start with '-'");
 
 const WorktreeArgs = z.object({ worktreeId: worktreeIdSchema });
+const TermCols = z.number().int().min(10).max(500);
+const TermRows = z.number().int().min(4).max(200);
 
 /**
  * Every command the daemon accepts: its args and the `data` of a successful reply.
@@ -397,6 +401,35 @@ export const commands = {
   "profile.removeOverride": {
     args: z.object({ profileId: profileIdSchema, name: z.string().min(1).max(200) }),
     result: Empty,
+  },
+
+  /**
+   * Additive (Phase 5): shells in a worktree. `enabled` says whether this caller may use them:
+   * always on this computer; from other devices only when the host turned it on (SEC25).
+   */
+  "term.list": {
+    args: WorktreeArgs,
+    result: z.object({ terminals: z.array(terminalSchema), enabled: z.boolean() }),
+  },
+  /** Starts the user's shell in the worktree. Output streams on `term:<id>`. */
+  "term.open": {
+    args: z.object({ worktreeId: worktreeIdSchema, cols: TermCols, rows: TermRows }),
+    result: terminalSchema,
+  },
+  /** Keystrokes, as the terminal encodes them (`\r` for Enter, `\u0003` for Ctrl-C). */
+  "term.input": {
+    args: z.object({ termId: termIdSchema, data: z.string().min(1).max(65_536) }),
+    result: Empty,
+  },
+  "term.resize": {
+    args: z.object({ termId: termIdSchema, cols: TermCols, rows: TermRows }),
+    result: terminalSchema,
+  },
+  "term.close": { args: z.object({ termId: termIdSchema }), result: terminalSchema },
+  /** The newest scrollback, as a blob, and the `term:<id>` cursor it covers (like `proc.output`). */
+  "term.output": {
+    args: z.object({ termId: termIdSchema }),
+    result: z.object({ blob: blobRefSchema, cursor: z.number().int().nonnegative() }),
   },
 } as const;
 

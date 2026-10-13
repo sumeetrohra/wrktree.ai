@@ -19,6 +19,7 @@ function fakeProbe(over: Partial<IDoctorProbe> & { installed?: string[] } = {}):
     relayUrl: () => Promise.resolve("https://relay.example.com"),
     reachable: () => Promise.resolve(true),
     portInUse: () => Promise.resolve(false),
+    terminal: () => Promise.resolve(true),
     ...over,
   };
 }
@@ -40,6 +41,7 @@ describe("runChecks", () => {
         daemonRunning: () => Promise.resolve(false),
         reachable: () => Promise.resolve(false),
         portInUse: () => Promise.resolve(true),
+        terminal: () => Promise.resolve(false),
       }),
     );
     expect(byName(checks)).toMatchObject({
@@ -50,6 +52,7 @@ describe("runChecks", () => {
       Daemon: "fail",
       Relay: "fail",
       "Worktree ports": "warn",
+      Terminal: "warn",
     });
     for (const c of checks.filter((x) => x.status !== "ok")) expect(c.fix).toBeTruthy();
   });

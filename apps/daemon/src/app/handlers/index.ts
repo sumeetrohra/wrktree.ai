@@ -16,6 +16,7 @@ import { procHandlers } from "./proc.handlers.js";
 import { profileHandlers } from "./profile.handlers.js";
 import { repoHandlers } from "./repo.handlers.js";
 import { syncHandlers } from "./sync.handlers.js";
+import { termHandlers } from "./term.handlers.js";
 import { workspaceHandlers } from "./workspace.handlers.js";
 import { worktreeHandlers } from "./worktree.handlers.js";
 
@@ -38,5 +39,6 @@ export function createHandlers(m: TModules): THandlers {
     ...configHandlers(m),
     ...previewHandlers(m),
     ...editorHandlers(m),
+    ...termHandlers(m),
   };
 }

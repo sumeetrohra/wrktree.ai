@@ -20,11 +20,15 @@
 
 ## Review and ship
 
-A worktree has tabs: **Chats, Changes, Files, Logs, Preview, Ship**.
+A worktree has tabs: **Chats, Changes, Files, Logs, Terminal, Preview, Ship**.
 
 - **Changes:** what changed since the base branch, file by file.
 - **Files:** browse, filter by name, or search contents.
 - **Logs:** the repo's named scripts (`.agentdeck/config.json` → `scripts`), with live output.
+- **Terminal:** a shell in the worktree, on its computer, with a row of keys phones lack (Esc,
+  Tab, Ctrl-C, arrows). It runs anything you type there, with no approvals, so from your other
+  devices it's off until you run `agentdeck config terminal remote on` on that computer. It
+  closes after 30 minutes without typing.
 - **Preview:** the app the worktree is building, opened through the relay
   (`preview: {"script": "dev"}` in the repo config turns it on).
 - **Ship:** commit, push, and create, then squash and merge, a pull request through your own
@@ -62,5 +66,6 @@ servers only change on the computer.
 | `agentdeck profile add <agent> --name <n>` | add an agent account |
 | `agentdeck repo add <path>` | add a repository |
 | `agentdeck config shared …` | shared instructions, MCP servers, skills |
+| `agentdeck config terminal remote on\|off` | allow terminals from your other devices |
 | `agentdeck open` | the app in your desktop browser |
 | `agentdeck hosts` / `devices` | your computers; your phones and browsers |

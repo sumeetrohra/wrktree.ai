@@ -20,6 +20,8 @@ library a one-file change.
 | L24 | Firebase and Google REST endpoints (`googleapis.com`) | `packages/firebase-rest/` (and the relay's ID-token verifier) | `lint:no-restricted-syntax` |
 | L25 | `shiki` (syntax highlighting) | `apps/mobile/src/lib/highlight/` | `lint:no-restricted-imports` |
 | L26 | `react-native-webview` (Preview on phones) | `apps/mobile/src/lib/webview/` | `lint:no-restricted-imports` |
+| L27 | `node-pty` (the terminal; optional, loaded on first use) | `apps/daemon/src/infra/pty/` | `lint:no-restricted-imports` |
+| L28 | `@xterm/xterm`, `@xterm/addon-fit` (the terminal view; phones load the same version in a WebView) | `apps/mobile/src/lib/terminal/` | `lint:no-restricted-imports` |
 | L11 | `@noble/curves`, `@noble/ciphers`, `@noble/hashes`, `libsodium-wrappers-sumo` | `packages/crypto/src/` (everything else calls `@agentdeck/crypto`) | `lint:no-restricted-imports` |
 | L12 | `hono`, `@hono/node-server` | `apps/relay/src/app/`, `apps/relay/src/infra/node/` | `lint:no-restricted-imports` |
 | L13 | `jose` | `apps/relay/src/infra/idtoken/` | `lint:no-restricted-imports` |

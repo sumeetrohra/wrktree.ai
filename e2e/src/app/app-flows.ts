@@ -767,3 +767,66 @@ export async function sharedConfigFromApp(h: Harness, app: AppDriver): Promise<v
     await h.waitText(chat.id, "Instructions: Prefer small commits.", since);
   });
 }
+
+/** Phase 5 in the app: the Terminal tab, off until the computer allows it, then a live shell. */
+export async function terminalFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo and a worktree");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+  const since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "shell", title: "Shell" });
+  await h.waitReady(wt.id, since);
+
+  h.step("App: the worktree's Terminal tab, before the computer allows it");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/wt/${wt.id}/terminal`);
+  await h.check("it says how to turn terminals on", async () => {
+    await shown(page, "Terminals are off for your other devices").waitFor({ timeout: 30_000 });
+    await shown(page, "agentdeck config terminal remote on").waitFor();
+  });
+
+  h.step("Desktop: agentdeck config terminal remote on; app: reopen the tab, New terminal");
+  const on = await h.cli(["config", "terminal", "remote", "on"]);
+  assert.equal(on.code, 0, on.out);
+  await page.reload();
+  await shown(page, "New terminal").click();
+  const term = page.getByLabel("Terminal", { exact: true });
+  await term.locator(".xterm-rows").waitFor({ timeout: 30_000 });
+
+  h.step("App: type commands");
+  await term.click();
+  await page.keyboard.type(
+    process.platform === "win32" ? 'Write-Output ("sum-" + (20+22))' : "echo sum-$((20+22))",
+  );
+  await page.keyboard.press("Enter");
+  await h.check("the shell ran it on the computer", async () => {
+    await term.getByText("sum-42", { exact: true }).waitFor({ timeout: 30_000 });
+  });
+  await page.keyboard.type("git status");
+  await page.keyboard.press("Enter");
+  await h.check("in the worktree's branch", async () => {
+    await term.getByText(/On branch shell/).waitFor({ timeout: 30_000 });
+  });
+
+  h.step("App: the key bar's Ctrl-C, then Close");
+  await page.keyboard.type("sleep 30");
+  await page.keyboard.press("Enter");
+  await shown(page, "Ctrl-C").click();
+  await term.click();
+  await page.keyboard.type("echo back");
+  await page.keyboard.press("Enter");
+  await h.check("Ctrl-C stopped the command; the prompt is back", async () => {
+    await term.getByText("back", { exact: true }).waitFor({ timeout: 30_000 });
+  });
+  await shown(page, "Close").click();
+  await h.check("the shell is gone from the computer", async () => {
+    await eventually(
+      "no running terminal",
+      async () => (await h.send("term.list", { worktreeId: wt.id })).terminals,
+      (ts) => ts.length > 0 && ts.every((x) => x.status === "exited"),
+    );
+  });
+}

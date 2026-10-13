@@ -3,6 +3,7 @@ import { startPreviewSync } from "@/modules/preview";
 import { startProcsSync } from "@/modules/procs";
 import { startUsageSync } from "@/modules/profiles";
 import { initSentry } from "@/modules/sentry";
+import { startTerminalSync } from "@/modules/terminal";
 import { startOverviewSync } from "@/modules/workspace";
 import { startWorktreesSync } from "@/modules/worktrees";
 import { RootLayout } from "@/providers";
@@ -18,6 +19,7 @@ startOverviewSync();
 startProcsSync();
 startPreviewSync();
 startUsageSync();
+startTerminalSync();
 
 /** The app shell: providers, the connections, and every module's event sync. */
 export function RootPage(): React.JSX.Element {

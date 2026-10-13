@@ -9,6 +9,7 @@ import type { ProcsService } from "#src/modules/procs/index.js";
 import type { ProfilesService } from "#src/modules/profiles/index.js";
 import type { ReposService } from "#src/modules/repos/index.js";
 import type { SessionManager } from "#src/modules/sessions/index.js";
+import type { TerminalsService } from "#src/modules/terminals/index.js";
 import type { UsageService } from "#src/modules/usage/index.js";
 import type { WorktreesService } from "#src/modules/worktrees/index.js";
 
@@ -32,6 +33,10 @@ export type TModules = {
   preview: PreviewService;
   /** Per-profile usage and limits (Phase 4a). */
   usage: UsageService;
+  /** Shells in worktrees (Phase 5). */
+  terminals: TerminalsService;
+  /** Whether other devices may use terminals here (config.json `remoteTerminal`; SEC25). */
+  remoteTerminal: () => boolean;
   devices: DevicesService;
   /** A one-time link to the desktop web UI, or null when none is configured. */
   webLink: () => string | null;

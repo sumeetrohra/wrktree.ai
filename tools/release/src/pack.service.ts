@@ -11,6 +11,7 @@ const manifestSchema = z.looseObject({
   name: z.string(),
   version: z.string(),
   dependencies: z.record(z.string(), z.string()).optional(),
+  optionalDependencies: z.record(z.string(), z.string()).optional(),
 });
 type TManifest = z.infer<typeof manifestSchema>;
 
@@ -38,7 +39,11 @@ function workspace(root: string): Map<string, string> {
  * The npm dependencies a bundle needs: every non-workspace dependency of the package and of the
  * workspace packages it pulls in, transitively, at the versions pinned in the repo.
  */
-export function runtimeDeps(root: string, from: string): Record<string, string> {
+export function runtimeDeps(
+  root: string,
+  from: string,
+  kind: "dependencies" | "optionalDependencies" = "dependencies",
+): Record<string, string> {
   const ws = workspace(root);
   const deps: Record<string, string> = {};
   const seen = new Set<string>();
@@ -49,8 +54,9 @@ export function runtimeDeps(root: string, from: string): Record<string, string> 
     for (const [name, version] of Object.entries(m.dependencies ?? {})) {
       const local = ws.get(name);
       if (local !== undefined) visit(local);
-      else deps[name] = version;
+      else if (kind === "dependencies") deps[name] = version;
     }
+    if (kind === "optionalDependencies") Object.assign(deps, m.optionalDependencies ?? {});
   };
   visit(join(root, from));
   return Object.fromEntries(Object.entries(deps).sort(([a], [b]) => a.localeCompare(b)));
@@ -114,6 +120,9 @@ export async function packTarget(
     files: ["dist", "README.md", "LICENSE"],
     dependencies:
       t.bundle.length > 0 ? runtimeDeps(root, t.from) : (readManifest(join(root, t.from)).dependencies ?? {}),
+    ...(t.bundle.length > 0 && Object.keys(runtimeDeps(root, t.from, "optionalDependencies")).length > 0
+      ? { optionalDependencies: runtimeDeps(root, t.from, "optionalDependencies") }
+      : {}),
     publishConfig: { access: "public", provenance: true },
   };
   writeFileSync(join(dir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
