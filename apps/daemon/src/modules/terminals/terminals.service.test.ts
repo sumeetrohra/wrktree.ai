@@ -52,13 +52,14 @@ function setup(idleMs?: number) {
       .flatMap((e) => (e.event.type === "term.output" && e.event.termId === termId ? [e.event.data] : []))
       .join("");
   const until = async (check: () => boolean): Promise<void> => {
-    for (let i = 0; i < 200 && !check(); i++) await new Promise((r) => setTimeout(r, 25));
+    for (let i = 0; i < 800 && !check(); i++) await new Promise((r) => setTimeout(r, 25));
     expect(check()).toBe(true);
   };
   return { wt, terms, events, blobs, output, until };
 }
 
-describe("TerminalsService", () => {
+// PowerShell takes seconds to start on a Windows runner.
+describe("TerminalsService", { timeout: 30_000 }, () => {
   it("runs commands in the worktree and streams their output on term:<id>", async () => {
     const { wt, terms, events, blobs, output, until } = setup();
     const t = await terms.open(wt.id, 80, 24);

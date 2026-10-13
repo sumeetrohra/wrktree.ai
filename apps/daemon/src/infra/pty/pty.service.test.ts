@@ -24,9 +24,10 @@ describe("spawnPty", () => {
     p.resize(100, 30);
     // The sum proves the shell ran it (the echoed command line alone doesn't contain "pty-42").
     p.write(process.platform === "win32" ? 'Write-Output ("pty-" + (40+2))\r' : "echo pty-$((40+2))\r");
-    for (let i = 0; i < 100 && !out.includes("pty-42"); i++) await new Promise((r) => setTimeout(r, 50));
+    for (let i = 0; i < 400 && !out.includes("pty-42"); i++) await new Promise((r) => setTimeout(r, 50));
     expect(out).toContain("pty-42");
     p.write("exit\r");
     expect(await exited).toBe(0);
-  });
+    // PowerShell takes seconds to start on a Windows runner.
+  }, 30_000);
 });

@@ -70,7 +70,9 @@ export async function spawnPty(
       "The terminal needs node-pty, which didn't install on this computer (agentdeck doctor)",
     );
   }
-  const p = pty.spawn(shell, [], {
+  // PowerShell's banner is noise in a phone-sized terminal.
+  const args = /powershell|pwsh/i.test(shell) ? ["-NoLogo"] : [];
+  const p = pty.spawn(shell, args, {
     name: "xterm-256color",
     cols: opts.cols,
     rows: opts.rows,
