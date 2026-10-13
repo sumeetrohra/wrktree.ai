@@ -15,25 +15,38 @@ permissions:
 
 env:
   HUSKY: 0
+  # Publishing waits until the repository has this secret (Settings → Secrets → Actions).
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 jobs:
   release:
     name: version or publish
     runs-on: ubuntu-latest
+    if: github.repository == 'sumeetrohra/wrktree.ai'
     steps:
+      - name: Skip until an NPM_TOKEN secret exists
+        if: env.NPM_TOKEN == ''
+        run: echo "No NPM_TOKEN secret yet; nothing to version or publish."
       - uses: actions/checkout@v4
+        if: env.NPM_TOKEN != ''
       - uses: pnpm/action-setup@v4
+        if: env.NPM_TOKEN != ''
       - uses: actions/setup-node@v4
+        if: env.NPM_TOKEN != ''
         with:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+        if: env.NPM_TOKEN != ''
       - run: pnpm build
+        if: env.NPM_TOKEN != ''
       - run: pnpm --filter @agentdeck/mobile export:web
+        if: env.NPM_TOKEN != ''
       # With changesets pending: opens (or updates) the "Version packages" PR.
       # Once that PR is merged: builds the npm packages and publishes new versions.
       - uses: changesets/action@v1
+        if: env.NPM_TOKEN != ''
         with:
           version: pnpm changeset version
           publish: pnpm release publish
