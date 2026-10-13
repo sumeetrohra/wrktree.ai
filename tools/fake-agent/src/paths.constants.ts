@@ -8,3 +8,6 @@ export const CRASH_ON_START_FILE = "fake-crash-on-start";
 
 /** The fake agent's instructions file in its config folder (like CLAUDE.md for Claude Code). */
 export const INSTRUCTIONS_FILE = "FAKE.md";
+
+/** In its config folder: the script to run when a prompt names none (store screenshots). */
+export const DEFAULT_SCRIPT_FILE = "fake-default-script";

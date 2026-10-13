@@ -136,9 +136,12 @@ export class Harness {
       hostName?: string;
       /** Show `agentdeck dev watch` in the events pane (default true). */
       watch?: boolean;
+      /** Extra environment for the daemon and CLI. */
+      env?: Record<string, string>;
     } = {},
   ): Promise<Harness> {
     const h = new Harness(sink);
+    Object.assign(h.env, opts.env ?? {});
     if (opts.webRoot) h.env["AGENTDECK_WEB_ROOT"] = opts.webRoot;
     h.env["AGENTDECK_HOST_NAME"] = opts.hostName ?? "laptop";
     if (opts.relayUrl !== undefined) h.env["AGENTDECK_RELAY_URL"] = opts.relayUrl;
@@ -619,8 +622,8 @@ export class Harness {
   }
 
   /** `agentdeck profile add fake --name <name>`: creates the profile and runs its login. */
-  async addProfile(name: string): Promise<string> {
-    const { code, out } = await this.cli(["profile", "add", "fake", "--name", name]);
+  async addProfile(name: string, agent = "fake"): Promise<string> {
+    const { code, out } = await this.cli(["profile", "add", agent, "--name", name]);
     if (code !== 0) throw new Error(`profile add failed: ${out}`);
     const id = /(prof_[0-9A-Z]{26})/.exec(out)?.[1];
     if (!id) throw new Error(`no profile id in: ${out}`);

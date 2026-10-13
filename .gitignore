@@ -30,3 +30,4 @@ Thumbs.db
 !.vscode/extensions.json
 artifacts/
 /release/
+store/google-service-account.json

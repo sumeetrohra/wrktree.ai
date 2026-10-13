@@ -11,5 +11,7 @@ declare namespace NodeJS {
     EXPO_PUBLIC_RELAY_URL?: string;
     /** Where the web app lives (email sign-in links come back to it). */
     EXPO_PUBLIC_APP_URL?: string;
+    /** Crash reporting (Sentry); unset in development and self-built apps: nothing is sent. */
+    EXPO_PUBLIC_SENTRY_DSN?: string;
   }
 }

@@ -5,6 +5,8 @@ export type TDaemonOptions = {
   portRange: readonly [number, number];
   /** Register the scripted `fake` agent (tests and demos only). */
   devAgents: boolean;
+  /** The id it registers under (default `fake`; store screenshots use a real agent's). */
+  devAgentId: string;
   /** Backoff before each automatic adapter restart, in ms. */
   restartBackoffMs: readonly number[];
   /** Coalescing window for streaming patches (≤ 20 per second per chat by default). */

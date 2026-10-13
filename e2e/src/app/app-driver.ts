@@ -26,14 +26,22 @@ export class AppDriver {
    * `appHost` serves the app under another loopback name, e.g. `preview.localhost`, so a dev
    * relay's `<token>.preview.localhost` previews are same-site with it (their cookie works in a frame).
    */
-  static async start(opts: { videoDir?: string; appHost?: string } = {}): Promise<AppDriver> {
+  static async start(
+    opts: {
+      videoDir?: string;
+      appHost?: string;
+      /** Store screenshots: a device's size in points and its pixel ratio. */
+      viewport?: { width: number; height: number };
+      scale?: number;
+    } = {},
+  ): Promise<AppDriver> {
     const served = await serveApp(APP_DIST);
     const app = opts.appHost ? { ...served, url: served.url.replace("127.0.0.1", opts.appHost) } : served;
     const browser = await chromium.launch();
     if (opts.videoDir) mkdirSync(opts.videoDir, { recursive: true });
     const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-      deviceScaleFactor: 2,
+      viewport: opts.viewport ?? { width: 390, height: 844 },
+      deviceScaleFactor: opts.scale ?? 2,
       ...(opts.videoDir ? { recordVideo: { dir: opts.videoDir, size: { width: 390, height: 844 } } } : {}),
     });
     const page = await context.newPage();

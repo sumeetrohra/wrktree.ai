@@ -1,0 +1,17 @@
+{
+  "$comment": "Store listing text (both stores). Screenshots: ./screenshots (pnpm --filter @agentdeck/e2e store:screenshots).",
+  "en-US": {
+    "name": "Agentdeck",
+    "subtitle": "Your coding agents, in your pocket",
+    "shortDescription": "Drive Claude Code, Codex and Gemini on your computers from your phone.",
+    "promotionalText": "Start a task on the train, approve the edit from the queue, ship the pull request from the couch. Your agents keep running on your own computers.",
+    "description": "Agentdeck lets you drive the coding agents running on your own computers (Claude Code, Codex, Gemini CLI) from your phone.\n\n• Start a task in a fresh branch on any of your computers, and watch the agent work as it streams.\n• Approve or deny what it wants to do, from a notification.\n• Review what changed, read the code with syntax highlighting, and ask about a specific line.\n• Run the repo's scripts, follow their logs, and open the app it's building in a live preview.\n• Commit, push, and create and merge a pull request the agent drafted.\n• Several accounts per agent: see each one's usage, and hand a chat to another when one hits its limit.\n\nYour code stays on your computers. Agents run there with your own logins; the app talks to them end to end encrypted through a relay that never sees your chats. Install the free, open-source agentdeck CLI on each computer (npm install -g agentdeck), sign in with the same email, and your computers show up in the app.",
+    "keywords": "claude,codex,gemini,coding agent,ai,developer,git,pull request,remote,terminal",
+    "supportUrl": "https://github.com/sumeetrohra/wrktree.ai/issues",
+    "marketingUrl": "https://agentdeck.dev",
+    "privacyUrl": "https://agentdeck.dev/privacy",
+    "termsUrl": "https://agentdeck.dev/terms",
+    "category": { "ios": "DEVELOPER_TOOLS", "android": "TOOLS" },
+    "contentRating": "4+ / Everyone: no user-generated content is shared with other users"
+  }
+}

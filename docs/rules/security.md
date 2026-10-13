@@ -46,7 +46,7 @@
 | SEC5 | Values passed to `git` that come from clients (branch, base ref, paths) are validated: no leading `-`, `check-ref-format` for refs, `--` before paths. | `test` |
 | SEC6 | Child processes get an allow-listed environment (OS essentials + profile env + `AGENTDECK_*`), never the daemon's full environment. The GitHub CLI alone also gets its token variables (SEC21). | `test` |
 | SEC7 | `shell: true` is used only in `infra/process` to run a repo's setup/teardown scripts. | `lint:no-restricted-syntax`, `review` |
-| SEC8 | Never log message text, file contents, diffs, tokens or keys. Log ids, codes and durations. | `test`, `review` |
+| SEC8 | Never log message text, file contents, diffs, tokens or keys. Log ids, codes and durations. Crash reports (Sentry, Phase 4f) are off without a DSN; breadcrumbs keep only their kind, and events drop the user, request and extras. | `test`, `review` |
 | SEC9 | Every connection is resource-limited: frame size, frame rate, pending upload bytes. | `test` |
 | SEC10 | No secrets in the repo; `.env*` stays ignored. | `CI`, `review` |
 | SEC11 | Dependencies are pinned, installed with `--frozen-lockfile`, only allow-listed packages may run install scripts, and `pnpm audit --audit-level high` must pass. | `CI` |

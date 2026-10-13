@@ -11,7 +11,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 | **4c** | Shared config (MCP, skills, instructions) | **built** |
 | **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | **built** |
 | **4e** | Open source files, npm packages, docker-compose | **built** (publishing needs the npm token) |
-| **4f** | Store-ready app, Sentry | planned |
+| **4f** | Store-ready app, Sentry | **built** (submission is the owner's) |
 | **4g** | Landing page and docs site | planned |
 
 ## 4a: usage and limits per profile
@@ -199,3 +199,33 @@ keep-awake helpers and the worktree paths. E2E runs put worktrees under the test
   image and keeps its data in a volume; see [`relay-deploy.md`](relay-deploy.md).
 
 Pending (the owner's): the `NPM_TOKEN` secret, then merging the first "Version packages" PR.
+
+## 4f: store-ready app
+
+- **Identity:** `dev.agentdeck.app` on both stores; icon, Android adaptive icon, splash and web
+  favicon in `apps/mobile/assets/`, rendered from one SVG by `pnpm --filter @agentdeck/e2e
+  store:assets`.
+- **Permissions, with the reason shown to the user:** camera and photos (attach an image to a
+  message), notifications. Microphone and location are blocked on Android.
+- **EAS:** `eas.json` builds `production` against the hosted relay and app URLs, and has `submit`
+  profiles: iOS (App Store Connect API key via `EXPO_ASC_*`, or interactive), Android (a Play
+  service account key at `apps/mobile/store/google-service-account.json`, git-ignored; internal
+  track, draft).
+- **Listing:** `apps/mobile/store/metadata.json` (name, subtitle, description, keywords, URLs,
+  categories), `data-safety.md` (App Privacy and Play Data safety answers, export compliance),
+  `review-notes.md` (how a reviewer gets a working account).
+- **Screenshots:** `pnpm --filter @agentdeck/e2e store:screenshots` drives the real web build
+  against a real daemon and relay at App Store 6.9", iPad 13" and Play phone sizes into
+  `apps/mobile/store/screenshots/`: Work, an approval, a finished chat, a diff, Settings. The
+  scripted agent stands in for Claude Code there (`AGENTDECK_DEV_AGENT_ID`, dev mode only) and
+  runs a showcase script per profile.
+- **Privacy and terms:** [`privacy.md`](privacy.md) and [`terms.md`](terms.md) (also on the site).
+- **Crash reporting:** Sentry through `modules/sentry` (L8), only when the build sets
+  `EXPO_PUBLIC_SENTRY_DSN`: no personal data, no tracing, no screenshots; breadcrumbs keep their
+  kind but never their text or data, and events lose the user, request and extras (SEC8,
+  unit-tested).
+- **CI** checks that the Expo config resolves with every plugin and asset.
+
+Pending (the owner's): Apple and Google developer accounts, `eas init` (project id), `eas build
+--profile production`, filling in App Store Connect / Play Console from `store/`, and
+`eas submit`. A Sentry project's DSN as an EAS secret, if wanted.

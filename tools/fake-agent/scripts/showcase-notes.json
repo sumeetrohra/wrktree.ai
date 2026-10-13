@@ -1,0 +1,35 @@
+[
+  { "thought": "Let me see what changed since 1.9 and write it up for users, not as a commit log." },
+  {
+    "plan": [
+      { "text": "Read the changelog", "status": "in_progress" },
+      { "text": "Write NOTES.md", "status": "pending" }
+    ]
+  },
+  { "tool": { "id": "read_1", "title": "Read CHANGELOG.md", "kind": "read", "locations": ["CHANGELOG.md"] } },
+  { "toolUpdate": { "id": "read_1", "status": "completed" } },
+  {
+    "plan": [
+      { "text": "Read the changelog", "status": "completed" },
+      { "text": "Write NOTES.md", "status": "in_progress" }
+    ]
+  },
+  { "tool": { "id": "edit_1", "title": "Write NOTES.md", "kind": "edit", "locations": ["NOTES.md"] } },
+  { "permission": { "toolId": "edit_1", "title": "Write NOTES.md", "kind": "edit", "path": "NOTES.md" } },
+  {
+    "write": {
+      "path": "NOTES.md",
+      "content": "# What's new in 2.0\n\n## Highlights\n\n- **Offline sync.** Edits made without a connection upload when you're back online.\n- **Search is 4× faster** on large projects.\n- **Dark mode** follows your system setting.\n\n## Breaking change\n\n`config.yml` is now `config.json`. Run `shop migrate` once to convert it.\n\n## Upgrading\n\n`npm install shop@2` and restart.\n",
+      "toolId": "edit_1"
+    }
+  },
+  {
+    "plan": [
+      { "text": "Read the changelog", "status": "completed" },
+      { "text": "Write NOTES.md", "status": "completed" }
+    ]
+  },
+  {
+    "text": "Wrote NOTES.md: three highlights (offline sync, faster search, dark mode), the one breaking change with its migration, and how to upgrade. Want me to open a pull request?"
+  }
+]

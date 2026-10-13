@@ -12,6 +12,11 @@ const daemonEnvSchema = z.object({
     .regex(/^\d+-\d+$/, "expected e.g. 41000-41999")
     .optional(),
   AGENTDECK_DEV_AGENTS: flag,
+  /** With AGENTDECK_DEV_AGENTS: the id the scripted agent registers under (store screenshots). */
+  AGENTDECK_DEV_AGENT_ID: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{0,30}$/)
+    .optional(),
   AGENTDECK_RESTART_BACKOFF_MS: z
     .string()
     .refine((v) => v.split(",").every((n) => /^\d+$/.test(n)), "expected e.g. 1000,4000,15000")

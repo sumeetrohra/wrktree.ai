@@ -73,6 +73,7 @@ export function optionsFromEnv(home: string): TDaemonOptions {
       : [homedir()],
     portRange: portRange(env.AGENTDECK_PORT_RANGE),
     devAgents: env.AGENTDECK_DEV_AGENTS === "1",
+    devAgentId: env.AGENTDECK_DEV_AGENT_ID ?? "fake",
     restartBackoffMs: env.AGENTDECK_RESTART_BACKOFF_MS
       ? env.AGENTDECK_RESTART_BACKOFF_MS.split(",").map(Number)
       : DEFAULT_BACKOFF_MS,
@@ -125,7 +126,7 @@ export class Daemon {
     const db = openDb(paths.db);
     this.rt = { db, bus: new EventBus(paths.events, db), paths, log, opts };
 
-    const agents = new AgentRegistry(opts.devAgents);
+    const agents = new AgentRegistry(opts.devAgents, opts.devAgentId);
     const repos = new ReposService(this.rt);
     const profiles = new ProfilesService(this.rt, agents);
     const worktrees = new WorktreesService(this.rt, repos);

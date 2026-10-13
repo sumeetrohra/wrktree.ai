@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 
 import * as acp from "@agentclientprotocol/sdk";
 
-import { CRASH_ON_START_FILE, INSTRUCTIONS_FILE, LOGIN_FILE } from "./paths.constants.js";
+import {
+  CRASH_ON_START_FILE,
+  DEFAULT_SCRIPT_FILE,
+  INSTRUCTIONS_FILE,
+  LOGIN_FILE,
+} from "./paths.constants.js";
 import { parsePrompt, type TParsedPrompt } from "./prompt.utils.js";
 import { loadScript, type TStep } from "./script.schema.js";
 import { loadSession, saveSession, type TStoredSession } from "./session-store.utils.js";
@@ -127,8 +132,10 @@ export class FakeAgent implements acp.Agent {
     const session = this.sessions.get(params.sessionId);
     if (!session) throw acp.RequestError.resourceNotFound(params.sessionId);
     const prompt = parsePrompt(params.prompt);
-    const steps: TStep[] =
-      prompt.script === null ? [{ echo: true }] : loadScript(SCRIPTS_DIR, prompt.script, prompt.vars);
+    const defaultScript = join(this.home, DEFAULT_SCRIPT_FILE);
+    const script =
+      prompt.script ?? (existsSync(defaultScript) ? readFileSync(defaultScript, "utf8").trim() : null);
+    const steps: TStep[] = script === null ? [{ echo: true }] : loadScript(SCRIPTS_DIR, script, prompt.vars);
 
     const abort = new AbortController();
     this.turns.set(params.sessionId, abort);
