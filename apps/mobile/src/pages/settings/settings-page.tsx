@@ -5,7 +5,7 @@ import { ScrollView, View } from "react-native";
 import { useHostsStore } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { useSignOutMutation } from "@/modules/auth";
-import { ProfileUsageList } from "@/modules/profiles";
+import { ProfileUsageList, SharedConfigSection } from "@/modules/profiles";
 import { Button } from "@/shared/components/ui/button";
 import { Text } from "@/shared/components/ui/text";
 
@@ -44,6 +44,10 @@ export function SettingsPage(): React.JSX.Element {
         <View key={h.id} className="gap-1">
           <Text className="text-muted-foreground text-sm">{h.name}</Text>
           <ProfileUsageList hostId={h.id} />
+          <Text variant="h4" className="mt-4">
+            {t("settings.shared.title")}
+          </Text>
+          <SharedConfigSection hostId={h.id} />
         </View>
       ))}
     </ScrollView>

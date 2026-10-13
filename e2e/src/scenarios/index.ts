@@ -15,6 +15,7 @@ import { relayPlaintext } from "./relay-plaintext.scenario.ts";
 import { relayPreview } from "./relay-preview.scenario.ts";
 import { relayProcs } from "./relay-procs.scenario.ts";
 import { relayRevoke } from "./relay-revoke.scenario.ts";
+import { relaySharedConfig } from "./relay-shared-config.scenario.ts";
 import { relayShip } from "./relay-ship.scenario.ts";
 import { relayUsage } from "./relay-usage.scenario.ts";
 import { streamingBlobs } from "./streaming-blobs.scenario.ts";
@@ -43,6 +44,7 @@ export const relayScenarios: TScenario[] = [
   relayPreview,
   relayUsage,
   relayHandoff,
+  relaySharedConfig,
 ];
 
 /** Phase 3a: chat history in Firebase (needs the emulators). */

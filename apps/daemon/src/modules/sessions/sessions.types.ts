@@ -1,4 +1,4 @@
-import type { TBlobRef, TProfile, TWorktree } from "@agentdeck/protocol";
+import type { TBlobRef, TMcpServer, TProfile, TWorktree } from "@agentdeck/protocol";
 
 import type { IAgentFiles } from "#src/infra/acp/index.js";
 import type { TAgentSpec } from "#src/shared/agent-spec.types.js";
@@ -8,6 +8,8 @@ export interface IProfileSource {
   get: (id: string) => TProfile;
   spec: (agent: string) => TAgentSpec;
   env: (profileId: string) => Record<string, string>;
+  /** The MCP servers this profile's sessions get (shared config, Phase 4c). */
+  mcpServers: (profileId: string) => TMcpServer[];
 }
 
 /** Worktrees (the worktrees module provides it). */

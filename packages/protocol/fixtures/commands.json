@@ -766,5 +766,66 @@
       "updatedAt": 1791600000000,
       "handedOffFrom": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
     }
+  },
+  "config.shared.get": {
+    "args": {},
+    "result": {
+      "instructions": "Use pnpm. Run the tests before you finish.\n",
+      "mcpServers": [
+        {
+          "type": "stdio",
+          "name": "github",
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-github"],
+          "env": {}
+        },
+        {
+          "type": "http",
+          "name": "docs",
+          "url": "https://mcp.example.com/",
+          "headers": {}
+        }
+      ],
+      "skills": ["release-notes"]
+    }
+  },
+  "config.shared.set": {
+    "args": {
+      "instructions": "Use pnpm. Run the tests before you finish.\n"
+    },
+    "result": {
+      "instructions": "Use pnpm. Run the tests before you finish.\n",
+      "mcpServers": [
+        {
+          "type": "stdio",
+          "name": "github",
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-github"],
+          "env": {}
+        },
+        {
+          "type": "http",
+          "name": "docs",
+          "url": "https://mcp.example.com/",
+          "headers": {}
+        }
+      ],
+      "skills": ["release-notes"]
+    }
+  },
+  "profile.overrides": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "files": ["CLAUDE.md"]
+    }
+  },
+  "profile.removeOverride": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "name": "CLAUDE.md"
+    },
+    "result": {}
   }
 }

@@ -257,6 +257,7 @@ export class Daemon {
       portOf: (token) => preview.portOf(token),
     });
     this.cloud.start();
+    this.modules.profiles.syncShared();
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;

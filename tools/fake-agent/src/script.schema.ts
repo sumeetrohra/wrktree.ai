@@ -56,6 +56,10 @@ const stepSchema = z.union([
   z.object({ echo: z.literal(true) }),
   /** Reports whether an env var reached the agent (never its value). */
   z.object({ envReport: z.string() }),
+  /** Names the MCP servers the session was given. */
+  z.object({ mcpReport: z.literal(true) }),
+  /** The first line of FAKE.md in its config folder (the shared instructions, Phase 4c). */
+  z.object({ instructionsReport: z.literal(true) }),
 ]);
 export type TStep = z.infer<typeof stepSchema>;
 

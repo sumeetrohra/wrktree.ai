@@ -8,7 +8,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 |---|---|---|
 | **4a** | Usage and limits per profile | **built** |
 | **4b** | Hand-off to another profile or agent | **built** |
-| **4c** | Shared config (MCP, skills, instructions) | planned |
+| **4c** | Shared config (MCP, skills, instructions) | **built** |
 | **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | planned |
 | **4e** | Open source files, npm packages, docker-compose | planned |
 | **4f** | Store-ready app, Sentry | planned |
@@ -96,3 +96,40 @@ In the app, the limit banner offers **Continue on another profile**, and every c
 
 The fake agent only reads a `#script:` token from the last paragraph of a prompt's last text
 block, so a brief (or a resume seed) quoting earlier scripted prompts doesn't rerun them.
+
+## 4c: shared config (instructions, MCP servers, skills)
+
+Everything every profile on a computer shares lives in the daemon's `shared/` folder:
+
+| In `shared/` | In each profile folder | How the agent gets it |
+|---|---|---|
+| `instructions.md` | `CLAUDE.md` (Claude Code), `AGENTS.md` (Codex), `GEMINI.md` (Gemini CLI) | linked; the agent reads its own file |
+| `skills/` | `skills/` (Claude Code) | linked folder |
+| `mcp.json` | — | passed as `mcpServers` with every ACP `session/new` and `session/load` |
+| anything else | the same name | linked as is |
+
+- **Linking** runs at profile creation, on every daemon start, and after each change. On
+  Windows folders are junctions and files are copies (refreshed on each sync).
+- **Overrides:** a profile folder's own file wins: a real file where the link would go (or a copy
+  someone changed) is left alone and listed by `profile.overrides`. `agentdeck-mcp.json` in a
+  profile folder adds or replaces MCP servers by name for that profile.
+- **Protocol:** `config.shared.get`, `config.shared.set {instructions?, mcpServers?}`,
+  `profile.overrides`, `profile.removeOverride`.
+- **Who may change what (SEC24):** instructions can be edited from any device; MCP servers start
+  programs on the computer, so changing them, and dropping an override, is local only.
+
+```sh
+agentdeck config shared                                   # show
+agentdeck config shared instructions ./team-rules.md
+agentdeck config shared mcp add github -- npx -y @modelcontextprotocol/server-github
+agentdeck config shared mcp add docs --url https://mcp.example.com/
+agentdeck config overrides <profileId> [remove CLAUDE.md]
+```
+
+In the app, **Settings → Shared with every profile** edits the instructions and lists the MCP
+servers and skills.
+
+| # | Scenario | Checks |
+|---|---|---|
+| 27 | Shared instructions and MCP servers | `config shared mcp add` from the CLI; the phone sees it but can't change MCP servers; instructions set from the phone land as the agent's own file; the agent reads them and its session lists the MCP server; a profile's own file survives a shared edit and is listed; only the computer can drop it, after which the shared file applies |
+| 28 (app) | The app: instructions every profile shares | Settings lists the MCP server added on the computer; saving instructions there reaches the next turn |

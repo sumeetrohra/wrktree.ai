@@ -4,6 +4,7 @@ import type { TModules } from "../app.types.js";
 
 import { blobHandlers } from "./blob.handlers.js";
 import { chatHandlers } from "./chat.handlers.js";
+import { configHandlers } from "./config.handlers.js";
 import { deviceHandlers } from "./device.handlers.js";
 import { editorHandlers } from "./editor.handlers.js";
 import { filesHandlers } from "./files.handlers.js";
@@ -34,6 +35,7 @@ export function createHandlers(m: TModules): THandlers {
     ...prHandlers(m),
     ...procHandlers(m),
     ...handoffHandlers(m),
+    ...configHandlers(m),
     ...previewHandlers(m),
     ...editorHandlers(m),
   };

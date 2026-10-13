@@ -10,6 +10,7 @@ import { newId, now } from "@agentdeck/shared";
 
 import {
   ACP_PROTOCOL_VERSION,
+  acpMcpServers,
   CLIENT_CAPABILITIES,
   spawnAdapter,
   type TAcpContentBlock,
@@ -381,10 +382,14 @@ export class SessionManager {
     return live;
   }
 
+  private mcpServers(chatId: string): ReturnType<typeof acpMcpServers> {
+    return acpMcpServers(this.deps.profiles.mcpServers(this.row(chatId).profile_id));
+  }
+
   private async load(live: TLive, sessionId: string, cwd: string): Promise<void> {
     live.loading = true;
     try {
-      await live.conn.loadSession({ sessionId, cwd, mcpServers: [] });
+      await live.conn.loadSession({ sessionId, cwd, mcpServers: this.mcpServers(live.chatId) });
       live.sessionId = sessionId;
     } catch (e) {
       this.rt.log.warn({ chatId: live.chatId, err: errorMessage(e) }, "session/load failed; starting fresh");
@@ -394,7 +399,7 @@ export class SessionManager {
   }
 
   private async fresh(live: TLive, previousSessionId: string | null, cwd: string): Promise<void> {
-    const res = await live.conn.newSession({ cwd, mcpServers: [] });
+    const res = await live.conn.newSession({ cwd, mcpServers: this.mcpServers(live.chatId) });
     live.sessionId = res.sessionId;
     if (previousSessionId !== null) {
       live.seed = this.transcriptSummary(live.chatId);

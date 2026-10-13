@@ -7,6 +7,8 @@ import { z } from "zod";
 const storedSessionSchema = z.object({
   cwd: z.string(),
   history: z.array(z.object({ role: z.enum(["user", "agent"]), text: z.string() })),
+  /** Names of the MCP servers the client passed to the session. */
+  mcp: z.array(z.string()).default([]),
 });
 export type TStoredSession = z.infer<typeof storedSessionSchema>;
 

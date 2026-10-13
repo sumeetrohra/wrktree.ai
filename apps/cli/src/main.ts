@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { runDaemon } from "@agentdeck/daemon";
 
+import { configCommand } from "#src/commands/config.command.js";
 import { devCommand } from "#src/commands/dev.command.js";
 import { devicesCommand } from "#src/commands/devices.command.js";
 import { HELP } from "#src/commands/help.constants.js";
@@ -27,6 +28,8 @@ async function main(argv: readonly string[]): Promise<void> {
       return repoCommand(rest);
     case "profile":
       return profileCommand(rest);
+    case "config":
+      return configCommand(rest);
     case "dev":
       return devCommand(rest);
     case "login":

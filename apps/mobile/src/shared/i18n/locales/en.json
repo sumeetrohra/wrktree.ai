@@ -151,6 +151,19 @@
       "noTokens": "No token counts from this agent today",
       "noProfiles": "No profiles on this computer",
       "profile": "{{name}} · {{agent}}"
+    },
+    "shared": {
+      "title": "Shared with every profile",
+      "instructions": "Instructions",
+      "instructionsHint": "Every agent on this computer reads these (as CLAUDE.md, AGENTS.md, GEMINI.md). A profile can keep its own file instead.",
+      "save": "Save instructions",
+      "saved": "Saved",
+      "mcp": "MCP servers",
+      "mcpNone": "None",
+      "mcpHint": "MCP servers run programs on the computer, so add them there: agentdeck config shared mcp add",
+      "skills": "Skills",
+      "skillsNone": "None",
+      "server": "{{name}} · {{detail}}"
     }
   },
   "wake": {

@@ -6,6 +6,7 @@ export {
   type TAdapter,
   type TAdapterHandlers,
 } from "./acp-adapter.js";
+export { acpMcpServers } from "./mcp.utils.js";
 export type {
   ContentBlock as TAcpContentBlock,
   PermissionOption as TAcpPermissionOption,

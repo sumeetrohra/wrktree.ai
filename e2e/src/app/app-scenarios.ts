@@ -9,6 +9,7 @@ import {
   desktopWebSignsIn,
   handoffFromApp,
   limitFromApp,
+  sharedConfigFromApp,
   linkFromApp,
   newTaskFromApp,
   offlineFromApp,
@@ -144,6 +145,15 @@ export const appScenarios: TAppScenario[] = [
     covers: ["Phase 4b: hand-off from the limit banner, same worktree, brief without a model call"],
     harness: { relay: true },
     run: handoffFromApp,
+  },
+  {
+    n: 28,
+    title: "The app: instructions every profile shares",
+    summary:
+      "Settings lists the shared MCP servers and edits the shared instructions; the next turn reads them",
+    covers: ["Phase 4c: shared config in Settings (instructions editable, MCP servers shown)"],
+    harness: { relay: true },
+    run: sharedConfigFromApp,
   },
 ];
 

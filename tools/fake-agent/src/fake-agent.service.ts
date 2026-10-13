@@ -1,10 +1,10 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as acp from "@agentclientprotocol/sdk";
 
-import { CRASH_ON_START_FILE, LOGIN_FILE } from "./paths.constants.js";
+import { CRASH_ON_START_FILE, INSTRUCTIONS_FILE, LOGIN_FILE } from "./paths.constants.js";
 import { parsePrompt, type TParsedPrompt } from "./prompt.utils.js";
 import { loadScript, type TStep } from "./script.schema.js";
 import { loadSession, saveSession, type TStoredSession } from "./session-store.utils.js";
@@ -93,7 +93,7 @@ export class FakeAgent implements acp.Agent {
   newSession(params: acp.NewSessionRequest): Promise<acp.NewSessionResponse> {
     this.requireLogin();
     const sessionId = `fake-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    const s: TStoredSession = { cwd: params.cwd, history: [] };
+    const s: TStoredSession = { cwd: params.cwd, history: [], mcp: params.mcpServers.map((m) => m.name) };
     this.sessions.set(sessionId, s);
     saveSession(this.home, sessionId, s);
     return Promise.resolve({ sessionId });
@@ -103,7 +103,7 @@ export class FakeAgent implements acp.Agent {
     this.requireLogin();
     const stored = loadSession(this.home, params.sessionId);
     if (!stored) throw acp.RequestError.resourceNotFound(params.sessionId);
-    const s = { ...stored, cwd: params.cwd };
+    const s = { ...stored, cwd: params.cwd, mcp: params.mcpServers.map((m) => m.name) };
     this.sessions.set(params.sessionId, s);
     // Per ACP, a loaded session replays its conversation to the client.
     for (const h of s.history) {
@@ -233,6 +233,14 @@ export class FakeAgent implements acp.Agent {
         kind: "usage_limit",
         resetAt,
       });
+    } else if ("mcpReport" in step) {
+      const names = turn.session.mcp;
+      await this.say(turn, `MCP servers: ${names.length > 0 ? names.join(", ") : "none"}. `);
+    } else if ("instructionsReport" in step) {
+      // Like a real agent reading its instructions file from its config folder.
+      const file = join(this.home, INSTRUCTIONS_FILE);
+      const first = existsSync(file) ? (readFileSync(file, "utf8").split("\n")[0] ?? "") : "";
+      await this.say(turn, first ? `Instructions: ${first}. ` : "No instructions. ");
     } else if ("envReport" in step) {
       const isSet = Object.hasOwn(process.env, step.envReport);
       await this.say(turn, `${step.envReport} is ${isSet ? "set" : "unset"}. `);

@@ -1,13 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { AgentdeckError, type TProfile } from "@agentdeck/protocol";
+import { AgentdeckError, type TMcpServer, type TProfile, type TSharedConfig } from "@agentdeck/protocol";
 import { newId, now } from "@agentdeck/shared";
 
 import type { TRuntime } from "#src/infra/runtime/index.js";
 import type { TAgentSpec, TLoginStatus } from "#src/shared/agent-spec.types.js";
 
 import type { IAgentSpecs } from "./profiles.types.js";
+import { SharedConfig } from "./shared-config.service.js";
 
 type TRow = {
   id: string;
@@ -31,11 +32,13 @@ const toProfile = (r: TRow): TProfile => ({
  * CODEX_HOME, …) with the shared MCP config, skills and instructions linked in.
  */
 export class ProfilesService {
+  private readonly shared: SharedConfig;
+
   constructor(
     private readonly rt: TRuntime,
     private readonly agents: IAgentSpecs,
   ) {
-    mkdirSync(rt.paths.shared, { recursive: true });
+    this.shared = new SharedConfig(rt.paths.shared);
   }
 
   private row(id: string): TRow {
@@ -69,7 +72,7 @@ export class ProfilesService {
     const id = newId("prof");
     const dir = join(this.rt.paths.profiles, id);
     mkdirSync(dir, { recursive: true });
-    this.linkShared(dir);
+    this.shared.linkInto(dir, this.spec(agent));
     const row: TRow = { id, agent, name, config_dir: dir, color: color ?? null, created_at: now() };
     this.rt.db
       .prepare(
@@ -108,19 +111,48 @@ export class ProfilesService {
     return { command: [...spec.loginCommand], env: spec.profileEnv(r.config_dir) };
   }
 
-  /** Links every entry of `shared/` into a profile folder, leaving profile-specific files alone. */
-  private linkShared(dir: string): void {
-    for (const name of readdirSync(this.rt.paths.shared)) {
-      const src = join(this.rt.paths.shared, name);
-      const dst = join(dir, name);
-      if (existsSync(dst)) continue;
-      const isDir = statSync(src).isDirectory();
-      if (process.platform === "win32") {
-        if (isDir) symlinkSync(src, dst, "junction");
-        else copyFileSync(src, dst);
-      } else {
-        symlinkSync(src, dst);
+  /** The config every profile shares (Phase 4c). */
+  sharedConfig(): TSharedConfig {
+    return this.shared.get();
+  }
+
+  /** Saves the shared config and re-links it into every profile. */
+  setSharedConfig(v: {
+    instructions?: string | undefined;
+    mcpServers?: TMcpServer[] | undefined;
+  }): TSharedConfig {
+    this.shared.set(v);
+    this.syncShared();
+    return this.shared.get();
+  }
+
+  /** Re-links the shared config into every profile folder (daemon start, and after a change). */
+  syncShared(): void {
+    for (const r of this.rt.db.prepare<[], TRow>("SELECT * FROM profiles").all()) {
+      try {
+        mkdirSync(r.config_dir, { recursive: true });
+        this.shared.linkInto(r.config_dir, this.spec(r.agent));
+      } catch (e) {
+        this.rt.log.warn(
+          { profileId: r.id, err: e instanceof Error ? e.message : String(e) },
+          "shared config not linked",
+        );
       }
     }
+  }
+
+  /** The MCP servers this profile's sessions get. */
+  mcpServers(id: string): TMcpServer[] {
+    return this.shared.mcpServersFor(this.row(id).config_dir);
+  }
+
+  overrides(id: string): string[] {
+    const r = this.row(id);
+    return this.shared.overrides(r.config_dir, this.spec(r.agent));
+  }
+
+  removeOverride(id: string, name: string): void {
+    const r = this.row(id);
+    this.shared.removeOverride(r.config_dir, this.spec(r.agent), name);
   }
 }

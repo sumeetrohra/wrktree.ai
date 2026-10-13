@@ -731,3 +731,39 @@ export async function handoffFromApp(h: Harness, app: AppDriver): Promise<void> 
     assert.match(page.url(), new RegExp(`/chat/${next.id}$`));
   });
 }
+
+/** Phase 4c in the app: Settings edits the instructions every profile shares; the next turn reads them. */
+export async function sharedConfigFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo, a profile and a shared MCP server");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  const profileId = await h.addProfile("Work");
+  const added = await h.cli(["config", "shared", "mcp", "add", "github", "--", "gh-mcp"]);
+  assert.equal(added.code, 0, added.out);
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+
+  h.step("App: Settings → Shared with every profile → write the instructions, save");
+  await app.goto("/settings");
+  await shown(page, "Shared with every profile").waitFor({ timeout: 30_000 });
+  await h.check("the MCP server added on the computer is listed", async () => {
+    await shown(page, "github · gh-mcp").waitFor({ timeout: 30_000 });
+  });
+  await page.getByLabel("Instructions", { exact: true }).fill("Prefer small commits.");
+  await shown(page, "Save instructions").click();
+  await shown(page, "Saved").waitFor({ timeout: 30_000 });
+
+  h.step("Desktop: a chat on Work reads them");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "rules", title: "Rules" });
+  await h.waitReady(wt.id, since);
+  since = h.mark();
+  const chat = await h.send("chat.create", { worktreeId: wt.id, agent: "fake", profileId });
+  await h.waitStatus(chat.id, "idle", since);
+  since = h.mark();
+  await h.send("chat.send", { chatId: chat.id, text: "#script:instructions-report" });
+  await h.check("the agent read what the app saved", async () => {
+    await h.waitText(chat.id, "Instructions: Prefer small commits.", since);
+  });
+}

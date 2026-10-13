@@ -34,6 +34,34 @@ export const profileSchema = z.object({
 });
 export type TProfile = z.infer<typeof profileSchema>;
 
+/** Phase 4c: an MCP server every profile's agent gets (`shared/mcp.json`), stdio or remote. */
+export const mcpServerSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("stdio"),
+    name: z.string().min(1).max(100),
+    command: z.string().min(1),
+    args: z.array(z.string()).default([]),
+    env: z.record(z.string(), z.string()).default({}),
+  }),
+  z.object({
+    type: z.enum(["http", "sse"]),
+    name: z.string().min(1).max(100),
+    url: z.url(),
+    headers: z.record(z.string(), z.string()).default({}),
+  }),
+]);
+export type TMcpServer = z.infer<typeof mcpServerSchema>;
+
+/** Phase 4c: config shared by every profile on a computer. */
+export const sharedConfigSchema = z.object({
+  /** `shared/instructions.md`, linked as each agent's instructions file (CLAUDE.md, AGENTS.md, …). */
+  instructions: z.string(),
+  mcpServers: z.array(mcpServerSchema),
+  /** Folders in `shared/skills/`. */
+  skills: z.array(z.string()),
+});
+export type TSharedConfig = z.infer<typeof sharedConfigSchema>;
+
 export const worktreeStatusSchema = z.enum(["creating", "setting_up", "ready", "setup_failed", "archived"]);
 export type TWorktreeStatus = z.infer<typeof worktreeStatusSchema>;
 

@@ -20,6 +20,8 @@ import {
   procSchema,
   profileSchema,
   usageSnapshotSchema,
+  sharedConfigSchema,
+  mcpServerSchema,
   pullRequestSchema,
   repoSchema,
   worktreeSchema,
@@ -370,6 +372,30 @@ export const commands = {
       line: z.number().int().positive().optional(),
       editor: z.enum(["vscode", "cursor", "zed"]),
     }),
+    result: Empty,
+  },
+
+  /**
+   * Additive (Phase 4c): the config every profile shares (instructions, MCP servers, skills).
+   * Instructions can be edited from any device; MCP servers run commands on this computer, so
+   * changing them is local only (SEC24).
+   */
+  "config.shared.get": { args: Empty, result: sharedConfigSchema },
+  "config.shared.set": {
+    args: z.object({
+      instructions: z.string().max(200_000).optional(),
+      mcpServers: z.array(mcpServerSchema).max(50).optional(),
+    }),
+    result: sharedConfigSchema,
+  },
+  /** Additive (Phase 4c): files in a profile's folder that override the shared ones. */
+  "profile.overrides": {
+    args: z.object({ profileId: profileIdSchema }),
+    result: z.object({ files: z.array(z.string()) }),
+  },
+  /** Additive (Phase 4c), local only: drop a profile's override so the shared file applies again. */
+  "profile.removeOverride": {
+    args: z.object({ profileId: profileIdSchema, name: z.string().min(1).max(200) }),
     result: Empty,
   },
 } as const;

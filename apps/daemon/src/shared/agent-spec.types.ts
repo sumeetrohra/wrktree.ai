@@ -9,6 +9,11 @@ export type TAgentSpec = {
   /** Run in a desktop terminal with `profileEnv` applied. */
   loginCommand: readonly string[];
   loginStatus: (dir: string) => TLoginStatus;
+  /**
+   * Where this agent reads the shared config in its folder (Phase 4c): the instructions file
+   * (CLAUDE.md, AGENTS.md, …) and, if it has one, its skills folder.
+   */
+  sharedFiles: { instructions: string; skills?: string };
   /** Recognises a usage-limit failure in an adapter error. */
   detectLimit: (err: unknown) => TLimitCheck;
   /** Recognises a usage limit the agent reported as its reply instead of an error (Phase 4a). */
