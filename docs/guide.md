@@ -41,6 +41,12 @@ A worktree has tabs: **Chats, Changes, Files, Logs, Terminal, Preview, Ship**.
 - **Ship:** commit, push, and create, then squash and merge, a pull request through your own
   `gh`. "Draft with the agent" writes the title and description.
 
+## Dictation
+
+On a phone, tap the microphone in the composer and speak: the words appear in the text box (after
+anything you typed) for you to edit and send. Speech is recognized on the phone; it's only
+offered where the phone can do that.
+
 ## Usage and limits
 
 **Settings** shows each profile's state: available, or at its limit and when it resets, plus

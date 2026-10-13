@@ -206,7 +206,7 @@ Pending (the owner's): the `NPM_TOKEN` secret, then merging the first "Version p
   favicon in `apps/mobile/assets/`, rendered from one SVG by `pnpm --filter @agentdeck/e2e
   store:assets`.
 - **Permissions, with the reason shown to the user:** camera and photos (attach an image to a
-  message), notifications. Microphone and location are blocked on Android.
+  message), notifications. Location is blocked on Android (the microphone was too, until dictation in Phase 5c).
 - **EAS:** `eas.json` builds `production` against the hosted relay and app URLs, and has `submit`
   profiles: iOS (App Store Connect API key via `EXPO_ASC_*`, or interactive), Android (a Play
   service account key at `apps/mobile/store/google-service-account.json`, git-ignored; internal

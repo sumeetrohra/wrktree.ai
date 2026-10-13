@@ -1,15 +1,18 @@
 import type { TBlobRef } from "@agentdeck/protocol";
-import { Camera, ClipboardPaste, ImagePlus, SendHorizontal } from "lucide-react-native";
+import { Camera, ClipboardPaste, ImagePlus, Mic, MicOff, SendHorizontal } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 
 import { clipboardImage, pickImage, takePhoto, type TPickedImage } from "@/lib/media";
+import { dictationAvailable, startDictation } from "@/lib/speech";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Icon } from "@/shared/components/ui/icon";
 import { Text } from "@/shared/components/ui/text";
 import { Textarea } from "@/shared/components/ui/textarea";
+
+import { DictationSession } from "../utils/dictation.utils";
 
 export type TComposerProps = {
   /** True while the agent is working: messages queue for the next turn. */
@@ -20,10 +23,40 @@ export type TComposerProps = {
 
 /** Multiline input with image attachments; sends, or queues while a turn is running (spec: Composer). */
 export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<TBlobRef[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [canDictate] = useState(dictationAvailable);
+  const [dictation, setDictation] = useState<DictationSession | null>(null);
+  const [dictationError, setDictationError] = useState<string | null>(null);
+  const toggleDictation = (): void => {
+    if (dictation) {
+      dictation.stop?.();
+      return;
+    }
+    const session = new DictationSession(text);
+    setDictation(session);
+    setDictationError(null);
+    startDictation(i18n.language, {
+      onText: (said, final) => {
+        setText(session.result(said, final));
+      },
+      onEnd: () => {
+        setDictation(null);
+      },
+      onError: (message) => {
+        setDictationError(message);
+      },
+    })
+      .then((stop) => {
+        session.stop = stop;
+      })
+      .catch(() => {
+        setDictation(null);
+        setDictationError(t("composer.dictationDenied"));
+      });
+  };
   const attach = async (source: () => Promise<TPickedImage | null>): Promise<void> => {
     const img = await source();
     if (!img) return;
@@ -49,6 +82,7 @@ export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.J
           <Text>{t("composer.attached", { count: attachments.length })}</Text>
         </Badge>
       ) : null}
+      {dictationError ? <Text className="text-destructive text-sm">{dictationError}</Text> : null}
       <View className="flex-row items-end gap-2">
         <Button
           variant="ghost"
@@ -85,6 +119,16 @@ export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.J
         >
           <Icon as={ClipboardPaste} />
         </Button>
+        {canDictate ? (
+          <Button
+            variant={dictation ? "secondary" : "ghost"}
+            size="icon"
+            accessibilityLabel={dictation ? t("composer.dictateStop") : t("composer.dictate")}
+            onPress={toggleDictation}
+          >
+            <Icon as={dictation ? MicOff : Mic} />
+          </Button>
+        ) : null}
         <Textarea
           className="min-h-10 flex-1"
           placeholder={agentBusy ? t("composer.queuePlaceholder") : t("composer.placeholder")}

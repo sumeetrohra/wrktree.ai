@@ -28,6 +28,9 @@ relay. If you self-host the relay, you are its operator.
   you turn them on for a repo.
 - Your code stays on your computers. Agents run there with your own logins; we don't receive
   your agent credentials or API keys.
+- **Dictation** (phones): speech is turned into text on your phone, never sent anywhere as
+  audio; only the text you then send goes to your computer. The microphone is used only while
+  dictation is on.
 - No ads, no tracking, no selling or sharing of data.
 
 ## Keeping and deleting

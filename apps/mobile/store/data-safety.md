@@ -13,6 +13,7 @@ For App Store Connect (App Privacy) and Google Play (Data safety). Keep in step 
 | Push token | Yes | Content-free "a session needs you" notifications | Yes | No |
 | Chat messages, code, files | Stored in your own Firebase project's Firestore/Storage (cloud history) | So chats stay readable when the computer is off | Yes | No |
 | Crash reports | Only in builds with a Sentry DSN | App stability; no message text, no user, no request data (SEC8) | No | No |
+| Audio (microphone) | No: dictation is recognized on the device and only the resulting text is sent, as a chat message | Dictating a message | | No |
 | Location, contacts, health, financial, browsing | No | | | |
 | Advertising ID, tracking | No | No ads, no tracking | | |
 

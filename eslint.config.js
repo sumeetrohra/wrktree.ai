@@ -40,6 +40,7 @@ const LIBRARIES = [
   { id: "L26", names: ["react-native-webview"], zone: "webview" },
   { id: "L27", names: ["node-pty"], zone: "daemon-infra-pty" },
   { id: "L28", names: ["@xterm/xterm", "@xterm/addon-fit"], zone: "terminal" },
+  { id: "L29", names: ["expo-speech-recognition"], zone: "speech" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -426,6 +427,7 @@ const ZONES = [
     ["webview", "webview"],
     ["notifications", "notifications"],
     ["media", "media"],
+    ["speech", "speech"],
     ["device", "device"],
     ["api", "expo-crypto"],
   ].map(([folder, tag]) => ({

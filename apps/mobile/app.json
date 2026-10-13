@@ -11,7 +11,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Agentdeck uses the camera when you take a photo to attach to a message for the agent.",
-        "NSPhotoLibraryUsageDescription": "Agentdeck attaches the images you pick to your messages to the agent."
+        "NSPhotoLibraryUsageDescription": "Agentdeck attaches the images you pick to your messages to the agent.",
+        "NSMicrophoneUsageDescription": "Agentdeck listens only while dictation is on, to turn what you say into a message. Speech is recognized on this device.",
+        "NSSpeechRecognitionUsageDescription": "Agentdeck recognizes your speech on this device to type your message. No audio leaves the phone."
       }
     },
     "android": {
@@ -20,9 +22,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "permissions": ["android.permission.CAMERA", "android.permission.POST_NOTIFICATIONS"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
+      ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ]
@@ -56,6 +61,13 @@
           "imageWidth": 160,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Agentdeck listens only while dictation is on, to turn what you say into a message. Speech is recognized on this device.",
+          "speechRecognitionPermission": "Agentdeck recognizes your speech on this device to type your message. No audio leaves the phone."
         }
       ]
     ],

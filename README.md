@@ -45,7 +45,7 @@ Phase 4 is built: per-profile usage and limits, handing a chat to another profil
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
 | 4 | Multi-account power features and public launch | ✅ built (store submission, npm token and the site's domain are the owner's) |
-| 5 | After launch: terminal, parallel compare, voice, video, E2E preview, single binary | 5a (terminal), 5b (parallel compare) ✅ built; see [`docs/phase-5.md`](docs/phase-5.md) |
+| 5 | After launch: terminal, parallel compare, voice, video, E2E preview, single binary | 5a (terminal), 5b (parallel compare), 5c (dictation) ✅ built; see [`docs/phase-5.md`](docs/phase-5.md) |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.

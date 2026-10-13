@@ -132,7 +132,10 @@
     "send": "Send",
     "queue": "Queue",
     "camera": "Take a photo",
-    "pasteImage": "Paste an image"
+    "pasteImage": "Paste an image",
+    "dictate": "Dictate",
+    "dictateStop": "Stop dictating",
+    "dictationDenied": "Dictation needs the microphone and speech recognition permissions."
   },
   "devices": {
     "title": "Devices",

@@ -7,7 +7,7 @@ in order of value to users. Decision: no team plan, SSO or audit log for now.
 |---|---|---|
 | **5a** | Terminal tab | **built** (phones need a native build to try it) |
 | **5b** | Parallel compare: one task, several agents, side by side | **built** |
-| **5c** | Voice dictation in the composer | planned |
+| **5c** | Voice dictation in the composer | **built** (needs a native build to try) |
 | **5d** | Video attachments (key frames to the agent) | planned |
 | **5e** | End-to-end encrypted preview | planned |
 | **5f** | Single-binary daemon and installers | planned |
@@ -53,3 +53,18 @@ Pending: trying the WebView terminal on real phones (native build).
 - **Tests:** the record (unit); E2E 32 from phone-sim (two profiles, both answer in their own
   worktree, keep one, the other archived; wrong agent and existing branches refused with nothing
   left behind); app E2E 33 (start from New task, cards, a changed file, keep one).
+
+## 5c: voice dictation
+
+- **App:** a microphone button in the composer. What is said goes into the text box (after what
+  was typed), utterance by utterance, so it can be edited before sending; nothing is sent
+  automatically.
+- **Privacy:** `lib/speech` wraps `expo-speech-recognition` (L29) and only offers dictation where
+  speech is recognized on the device (`requiresOnDeviceRecognition`): no audio leaves the phone.
+  The web build has no microphone button, because browsers send audio to their vendor's service.
+  The app now asks for the microphone and speech recognition (iOS strings in `app.json`;
+  `RECORD_AUDIO` is no longer blocked on Android); privacy policy and data-safety answers say so.
+- **Tests:** the recognizer mocked (on-device only, partial and final text, errors, permission
+  refused) and how utterances join the typed text.
+
+Pending: trying it on real phones (native build).
