@@ -366,10 +366,61 @@ export const commands = {
    * relay URL plus a one-time key (load `url?k=key` once); this computer gets `localhost`.
    */
   "preview.start": {
-    args: WorktreeArgs,
-    result: z.object({ url: z.string(), key: z.string().nullable(), expiresAt: z.number().nullable() }),
+    args: z.object({
+      worktreeId: worktreeIdSchema,
+      /**
+       * Additive (Phase 5e): `sealed` keeps the preview end to end encrypted: no relay URL; the app
+       * serves the page itself and fetches through `preview.fetch` / `preview.ws*` with `token`.
+       */
+      mode: z.enum(["tunnel", "sealed"]).optional(),
+    }),
+    result: z.object({
+      url: z.string(),
+      key: z.string().nullable(),
+      expiresAt: z.number().nullable(),
+      /** Additive (Phase 5e): for `sealed`, the token this device's requests carry. */
+      token: z.string().optional(),
+    }),
   },
   "preview.stop": { args: WorktreeArgs, result: Empty },
+  /**
+   * Additive (Phase 5e): one request to the worktree's dev server, sealed end to end like chats;
+   * the whole response comes back (up to 25 MB; large ones travel as blob frames).
+   */
+  "preview.fetch": {
+    args: z.object({
+      token: z.string().min(1),
+      method: z.string().min(1).max(16),
+      path: z.string().startsWith("/").max(8192),
+      headers: z.record(z.string(), z.string()),
+      body: z.string().optional(),
+    }),
+    result: z.object({
+      status: z.number().int(),
+      headers: z.record(z.string(), z.string()),
+      /** Base64. */
+      body: z.string(),
+    }),
+  },
+  /**
+   * Additive (Phase 5e): a WebSocket to the dev server (hot reload); its messages arrive as events
+   * on `preview:<wsId>`. The client picks `wsId` (random) and subscribes before opening, since
+   * these events are live only.
+   */
+  "preview.wsOpen": {
+    args: z.object({
+      wsId: z.string().regex(/^pws_[0-9A-Za-z]{16,40}$/),
+      token: z.string().min(1),
+      path: z.string().startsWith("/").max(8192),
+      headers: z.record(z.string(), z.string()),
+    }),
+    result: z.object({ wsId: z.string() }),
+  },
+  "preview.wsSend": {
+    args: z.object({ wsId: z.string(), data: z.string(), binary: z.boolean() }),
+    result: Empty,
+  },
+  "preview.wsClose": { args: z.object({ wsId: z.string() }), result: Empty },
 
   /** Additive, local only: open the worktree (at a file and line) in a desktop editor. */
   "editor.open": {

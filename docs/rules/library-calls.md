@@ -23,6 +23,7 @@ library a one-file change.
 | L27 | `node-pty` (the terminal; optional, loaded on first use) | `apps/daemon/src/infra/pty/` | `lint:no-restricted-imports` |
 | L28 | `@xterm/xterm`, `@xterm/addon-fit` (the terminal view; phones load the same version in a WebView) | `apps/mobile/src/lib/terminal/` | `lint:no-restricted-imports` |
 | L29 | `expo-speech-recognition` (dictation; on-device recognition only) | `apps/mobile/src/lib/speech/` | `lint:no-restricted-imports` |
+| L30 | `react-native-tcp-socket` (the sealed preview's local server, loopback only) | `apps/mobile/src/lib/localserver/` | `lint:no-restricted-imports` |
 | L11 | `@noble/curves`, `@noble/ciphers`, `@noble/hashes`, `libsodium-wrappers-sumo` | `packages/crypto/src/` (everything else calls `@agentdeck/crypto`) | `lint:no-restricted-imports` |
 | L12 | `hono`, `@hono/node-server` | `apps/relay/src/app/`, `apps/relay/src/infra/node/` | `lint:no-restricted-imports` |
 | L13 | `jose` | `apps/relay/src/infra/idtoken/` | `lint:no-restricted-imports` |

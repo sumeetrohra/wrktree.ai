@@ -41,6 +41,7 @@ import { cloudStoreFor } from "./cloud-store.utils.js";
 import { advanceCompare } from "./compare.utils.js";
 import { createHandlers } from "./handlers/index.js";
 import { Remote } from "./remote.service.js";
+import { SealedPreview } from "./sealed-preview.service.js";
 
 const DEFAULT_PORT_RANGE: readonly [number, number] = [41000, 41999];
 const DEFAULT_BACKOFF_MS: readonly number[] = [1000, 4000, 15000];
@@ -260,6 +261,7 @@ export class Daemon {
       github: new GithubService(opts.gh),
       procs,
       preview,
+      sealedPreview: new SealedPreview(this.rt.bus, { portOf: (t) => preview.portOf(t) }, log),
       usage,
       terminals,
       compare: new CompareService(this.rt),
@@ -333,6 +335,7 @@ export class Daemon {
   async stop(): Promise<void> {
     this.keepAwake?.set(false);
     this.cloud.stop();
+    this.modules.sealedPreview.close();
     await this.modules.preview.stopAll();
     await this.modules.procs.stopAll();
     await this.modules.terminals.closeAll();

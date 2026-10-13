@@ -69,7 +69,8 @@
           "microphonePermission": "Agentdeck listens only while dictation is on, to turn what you say into a message. Speech is recognized on this device.",
           "speechRecognitionPermission": "Agentdeck recognizes your speech on this device to type your message. No audio leaves the phone."
         }
-      ]
+      ],
+      "./localhost-cleartext.plugin.js"
     ],
     "experiments": {
       "reactCompiler": true,

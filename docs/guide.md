@@ -36,7 +36,8 @@ A worktree has tabs: **Chats, Changes, Files, Logs, Terminal, Preview, Ship**.
   Tab, Ctrl-C, arrows). It runs anything you type there, with no approvals, so from your other
   devices it's off until you run `agentdeck config terminal remote on` on that computer. It
   closes after 30 minutes without typing.
-- **Preview:** the app the worktree is building, opened through the relay
+- **Preview:** the app the worktree is building (end-to-end encrypted on phones; through the
+  relay's TLS tunnel in a browser)
   (`preview: {"script": "dev"}` in the repo config turns it on).
 - **Ship:** commit, push, and create, then squash and merge, a pull request through your own
   `gh`. "Draft with the agent" writes the title and description.

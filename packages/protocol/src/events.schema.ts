@@ -16,12 +16,12 @@ import {
 } from "./models.schema.js";
 
 /**
- * `global`, `repo:<id>`, `chat:<id>`, `proc:<id>` or (additive) `term:<id>`. Subscriptions may use
- * `repo:*` / `chat:*`.
+ * `global`, `repo:<id>`, `chat:<id>`, `proc:<id>`, or (additive) `term:<id>` and `preview:<wsId>`.
+ * Subscriptions may use `repo:*` / `chat:*`.
  */
 export const topicSchema = z
   .string()
-  .regex(/^(global|(repo|chat|proc|term):[A-Za-z0-9_*]+)$/, "invalid topic");
+  .regex(/^(global|(repo|chat|proc|term|preview):[A-Za-z0-9_*]+)$/, "invalid topic");
 export type TTopic = z.infer<typeof topicSchema>;
 
 export const daemonEventSchema = z.discriminatedUnion("type", [
@@ -75,6 +75,17 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
   }),
   /** Additive (Phase 5): a compare started, an entry's chat started, or a winner was picked (`repo:<id>`). */
   z.object({ type: z.literal("compare.updated"), compare: compareSchema }),
+  /**
+   * Additive (Phase 5e): a sealed preview WebSocket's message from the dev server, or its close
+   * (topic `preview:<wsId>`; delivered live, never stored).
+   */
+  z.object({
+    type: z.literal("preview.ws"),
+    wsId: z.string(),
+    data: z.string().optional(),
+    binary: z.boolean().optional(),
+    closed: z.boolean().optional(),
+  }),
   /** Additive (Phase 5): terminal output, coalesced (topic `term:<id>`). */
   z.object({ type: z.literal("term.output"), termId: termIdSchema, data: z.string() }),
   /** Additive: a terminal opened, resized or exited (topics `term:<id>` and `repo:<id>`). */

@@ -9,7 +9,7 @@ in order of value to users. Decision: no team plan, SSO or audit log for now.
 | **5b** | Parallel compare: one task, several agents, side by side | **built** |
 | **5c** | Voice dictation in the composer | **built** (needs a native build to try) |
 | **5d** | Video attachments (key frames to the agent) | **built** |
-| **5e** | End-to-end encrypted preview | planned |
+| **5e** | End-to-end encrypted preview | **built** (phones need a native build to try it) |
 | **5f** | Single-binary daemon and installers | planned |
 
 ## 5a: terminal
@@ -90,3 +90,26 @@ Pending: trying it on real phones (native build).
   becomes three frames; a broken file is explained); app E2E 35 (the composer's video button,
   uploaded through the relay, frames reach the agent). The E2E suites use
   `e2e/fixtures/fake-ffmpeg.cjs`.
+
+## 5e: end-to-end encrypted preview
+
+- **Phones:** *Start preview* asks for a `sealed` preview: no relay URL, but a random token for this
+  device. The app starts a server on `127.0.0.1` (a free port; `lib/localserver`, L30) and the
+  WebView loads from it. Each request becomes `preview.fetch` and each WebSocket (hot reload)
+  `preview.wsOpen/wsSend/wsClose`, all sealed end to end like chats; the dev server's socket
+  messages come back as `preview.ws` events on `preview:<wsId>`. The relay only carries
+  ciphertext. The app picks the socket id and subscribes before opening it, since those events
+  are live only (`EventBus.emit`: never written to disk).
+- **Computer:** the same proxy as the relay tunnel (`PreviewProxy`: only an open preview's port, on
+  loopback), with the same 25 MB and 60 s limits. A sealed token works only for the client that
+  started the preview and dies with it (SEC26).
+- **The web build** keeps the relay tunnel (TLS only, SEC23): a browser can't listen on a port.
+- **Android** blocks plain HTTP; `localhost-cleartext.plugin.js` allows it for `127.0.0.1` only
+  (checked with `expo prebuild`). iOS allows loopback addresses already.
+- **Tests:** the local HTTP/WebSocket codec and the bridge against fakes (unit); the WebSocket
+  handshake against RFC 6455's sample (crypto); `EventBus.emit` (unit); E2E 36 from phone-sim (page
+  and hot-reload socket through sealed commands, the page never on the wire in the clear, the
+  token useless to another client and after stopping). Maestro flows for a native build:
+  `e2e/maestro/sealed-preview.yaml` and `terminal.yaml`.
+
+Pending: running those Maestro flows on simulators (native builds).

@@ -7,3 +7,4 @@ export * from "./handshake.utils.js";
 export * from "./handshake.schema.js";
 export * from "./channel.service.js";
 export * from "./relay-auth.utils.js";
+export * from "./websocket.utils.js";

@@ -1,0 +1,16 @@
+# Phase 5a: the Terminal tab on a phone. Run `agentdeck config terminal remote on` on the computer.
+appId: dev.agentdeck.app
+---
+- launchApp
+- tapOn: "shop"
+- tapOn: "Fix the login redirect"
+- tapOn: "Terminal"
+- tapOn: "New terminal"
+- tapOn:
+    id: "Terminal"
+- inputText: "echo sum-$((20+22))\n"
+- extendedWaitUntil:
+    visible: "sum-42"
+    timeout: 30000
+- tapOn: "Ctrl-C"
+- tapOn: "Close"

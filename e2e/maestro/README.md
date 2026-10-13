@@ -10,4 +10,6 @@ pnpm agentdeck login --dev me                    # the computer signs in as the 
 maestro test e2e/maestro/chat.yaml
 maestro test e2e/maestro/image-attach.yaml
 maestro test e2e/maestro/push-deep-link.yaml
+maestro test e2e/maestro/terminal.yaml        # Phase 5a
+maestro test e2e/maestro/sealed-preview.yaml  # Phase 5e: the page loads from the app's own server
 ```

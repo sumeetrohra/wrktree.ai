@@ -125,6 +125,9 @@ export function formatEvent(f: TEvtFrame): string {
     case "term.status":
       body = `terminal ${short(e.terminal.id)} ${e.terminal.status === "running" ? c.green("running") : e.terminal.status}`;
       break;
+    case "preview.ws":
+      body = `preview socket ${short(e.wsId)} ${e.closed ? "closed" : clip(e.data ?? "")}`;
+      break;
     case "compare.updated":
       body = `compare ${c.bold(e.compare.title)} ${e.compare.entries.map((x) => (x.chatId ? c.green("●") : x.error ? c.red("✗") : c.gray("○"))).join("")}${e.compare.winner ? c.green(" picked") : ""}`;
       break;

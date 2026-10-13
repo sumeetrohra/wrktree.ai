@@ -15,6 +15,7 @@ import type { UsageService } from "#src/modules/usage/index.js";
 import type { WorktreesService } from "#src/modules/worktrees/index.js";
 
 import type { Remote } from "./remote.service.js";
+import type { SealedPreview } from "./sealed-preview.service.js";
 
 /** Everything handlers may use: the wired modules plus a few daemon-level facts. */
 export type TModules = {
@@ -32,6 +33,8 @@ export type TModules = {
   procs: ProcsService;
   /** Preview tunnels to worktrees' dev servers (Phase 3c). */
   preview: PreviewService;
+  /** Preview requests sealed end to end (Phase 5e). */
+  sealedPreview: SealedPreview;
   /** Per-profile usage and limits (Phase 4a). */
   usage: UsageService;
   /** One task given to several agents (Phase 5). */

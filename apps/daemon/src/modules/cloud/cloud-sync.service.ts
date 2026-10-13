@@ -106,6 +106,7 @@ export class CloudSync {
       case "term.output": // Terminal sessions never leave the computer except to the device using them.
       case "term.status":
       case "compare.updated":
+      case "preview.ws":
         return;
     }
   }

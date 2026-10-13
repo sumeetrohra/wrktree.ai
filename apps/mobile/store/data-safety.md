@@ -22,8 +22,9 @@ For App Store Connect (App Privacy) and Google Play (Data safety). Keep in step 
   encrypted (X25519 + XChaCha20-Poly1305); everything else uses TLS.
 - **Deletion:** removing a device or signing out deletes its keys from the device; deleting the
   account removes its devices from the relay and its Firestore data (see `docs/privacy.md`).
-- **Previews** (Phase 3c) go through the relay over TLS only, not end to end: the relay operator
-  can see preview traffic. It's off unless a repo turns it on.
+- **Previews** in the phone app are end-to-end encrypted (Phase 5e). The web app's previews go
+  through the relay over TLS only, so the relay operator can see them there. Off unless a repo
+  turns them on.
 
 ## Apple specifics
 

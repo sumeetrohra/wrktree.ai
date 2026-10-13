@@ -23,9 +23,10 @@ relay. If you self-host the relay, you are its operator.
 
 - The relay never sees your messages: they are end-to-end encrypted between your devices. It
   routes and briefly buffers ciphertext (deleted once delivered, or after 7 days).
-- **Exception, Preview:** when you open a preview of an app running on your computer, that
-  traffic goes through the relay over TLS only, so the relay can see it. Previews are off unless
-  you turn them on for a repo.
+- **Exception, Preview in a browser:** when you open a preview of an app running on your
+  computer from the web app, that traffic goes through the relay over TLS only, so the relay can
+  see it. On the phone app, previews are end-to-end encrypted like everything else. Previews are
+  off unless you turn them on for a repo.
 - Your code stays on your computers. Agents run there with your own logins; we don't receive
   your agent credentials or API keys.
 - **Dictation** (phones): speech is turned into text on your phone, never sent anywhere as

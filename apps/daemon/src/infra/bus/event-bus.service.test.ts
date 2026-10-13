@@ -56,6 +56,24 @@ describe("EventBus", () => {
   });
 });
 
+describe("EventBus.emit", () => {
+  it("delivers live, numbered per topic, and stores nothing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "bus-"));
+    const bus = new EventBus(join(dir, "events"), openDb(join(dir, "db")));
+    const seen: [string, number][] = [];
+    bus.on((e) => seen.push([e.topic, e.cursor]));
+    const wsId = newId("pws");
+    bus.emit(`preview:${wsId}`, { type: "preview.ws", wsId, data: "reload", binary: false });
+    bus.emit(`preview:${wsId}`, { type: "preview.ws", wsId, closed: true });
+    expect(seen).toEqual([
+      [`preview:${wsId}`, 1],
+      [`preview:${wsId}`, 2],
+    ]);
+    expect(bus.replay(`preview:${wsId}`, 0)).toEqual([]);
+    expect(bus.topics("preview:*")).toEqual([]);
+  });
+});
+
 describe("topicMatches", () => {
   it("matches exact topics and prefix wildcards", () => {
     expect(topicMatches("chat:*", "chat:abc")).toBe(true);

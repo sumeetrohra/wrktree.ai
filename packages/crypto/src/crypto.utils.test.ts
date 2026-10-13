@@ -7,6 +7,7 @@ import { SecureChannel } from "./channel.service.js";
 import { acceptHandshake, finishHandshake, startHandshake } from "./handshake.utils.js";
 import { deviceIdFor, exportIdentity, generateIdentity, importIdentity } from "./keys.utils.js";
 import { clientSessionKeys, serverSessionKeys } from "./kx.utils.js";
+import { webSocketAccept } from "./websocket.utils.js";
 beforeAll(async () => {
   await sodium.ready;
 });
@@ -162,5 +163,11 @@ describe("bytesToUtf8 without TextDecoder", () => {
     } finally {
       globalThis.TextDecoder = saved;
     }
+  });
+});
+
+describe("webSocketAccept", () => {
+  it("answers RFC 6455's sample key", () => {
+    expect(webSocketAccept("dGhlIHNhbXBsZSBub25jZQ==")).toBe("s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
   });
 });

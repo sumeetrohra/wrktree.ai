@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { AgentdeckError, type TDaemonEvent } from "@agentdeck/protocol";
 
 import type { EventBus } from "#src/infra/bus/index.js";
@@ -19,6 +21,8 @@ type TPreviewStatus = Extract<TDaemonEvent, { type: "preview.status" }>["status"
  */
 export class PreviewService {
   private readonly previews = new Map<string, TPreview>();
+  /** Sealed tokens (Phase 5e) → the client that asked for them. */
+  private readonly sealed = new Map<string, string>();
 
   constructor(
     private readonly bus: EventBus,
@@ -34,7 +38,8 @@ export class PreviewService {
   async start(
     worktreeId: string,
     clientId: string,
-  ): Promise<{ url: string; key: string | null; expiresAt: number | null }> {
+    mode: "tunnel" | "sealed" = "tunnel",
+  ): Promise<{ url: string; key: string | null; expiresAt: number | null; token?: string }> {
     const wt = this.deps.worktree(worktreeId);
     const config = this.deps.config(wt);
     if (!config) {
@@ -73,6 +78,13 @@ export class PreviewService {
       );
     }
     this.publish(worktreeId, "ready");
+    if (mode === "sealed") {
+      // Phase 5e: no tunnel; the asking device fetches through sealed commands with this token.
+      const token = randomBytes(16).toString("hex");
+      current.tokens.add(token);
+      this.sealed.set(token, clientId);
+      return { url: `http://localhost:${String(port)}/`, key: null, expiresAt: null, token };
+    }
     if (!clientId.startsWith(RELAY_CLIENT)) {
       return { url: `http://localhost:${String(port)}/`, key: null, expiresAt: null };
     }
@@ -97,6 +109,11 @@ export class PreviewService {
     return null;
   }
 
+  /** The client a sealed token belongs to, while its preview is open (else null). */
+  sealedOwner(token: string): string | null {
+    return this.portOf(token) === null ? null : (this.sealed.get(token) ?? null);
+  }
+
   /** Closes the worktree's tunnels and stops its preview script (also on archive and delete). */
   async stop(worktreeId: string): Promise<void> {
     const p = this.previews.get(worktreeId);
@@ -104,7 +121,8 @@ export class PreviewService {
     this.previews.delete(worktreeId);
     // The script first: closing the tunnels waits on the relay, and a stopping daemon may not.
     if (this.running(p.procId)) await this.deps.procs.stop(p.procId);
-    await Promise.all([...p.tokens].map((t) => this.deps.tunnel.close(t)));
+    const tunnels = [...p.tokens].filter((t) => !this.sealed.delete(t));
+    await Promise.all(tunnels.map((t) => this.deps.tunnel.close(t)));
     this.publish(worktreeId, "stopped");
   }
 

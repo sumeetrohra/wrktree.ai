@@ -18,7 +18,8 @@ export type TIdPrefix =
   | "link"
   | "proc"
   | "term"
-  | "cmp";
+  | "cmp"
+  | "pws";
 
 /** A ULID with a type prefix, so ids sort by creation time and read well in logs. */
 export function newId<P extends TIdPrefix>(prefix: P): `${P}_${string}` {

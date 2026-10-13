@@ -22,6 +22,8 @@ const topicOf = (file: string): string => file.replace(/\.jsonl$/, "").replace("
 export class EventBus {
   private readonly cursors = new Map<string, number>();
   private readonly listeners = new Set<TListener>();
+  /** Cursors of `emit` topics, which have no file. */
+  private readonly live = new Map<string, number>();
   private readonly setCursor;
 
   constructor(
@@ -49,6 +51,17 @@ export class EventBus {
     this.setCursor.run(topic, cursor);
     for (const l of this.listeners) l(logged);
     return logged;
+  }
+
+  /**
+   * Delivers an event to listeners without storing it (Phase 5e: sealed preview traffic, which is
+   * large and only useful live). Its topic must never also be used with `publish`.
+   */
+  emit(topic: string, event: TDaemonEvent): void {
+    const cursor = (this.live.get(topic) ?? 0) + 1;
+    this.live.set(topic, cursor);
+    const logged: TLoggedEvent = { topic, cursor, at: now(), event };
+    for (const l of this.listeners) l(logged);
   }
 
   cursor(topic: string): number {

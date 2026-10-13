@@ -2,4 +2,4 @@ export type { IFrameChannel } from "./connection.service.js";
 export { LocalTransport } from "./local-transport.service.js";
 export { RelayTransport, type IRelayPeers, type IRelaySend } from "./relay-transport.service.js";
 export { TOKEN_PROTOCOL_PREFIX } from "./transport.constants.js";
-export { waitForPort, type IPreviewPorts } from "./preview-proxy.service.js";
+export { PreviewProxy, waitForPort, type IPreviewPorts } from "./preview-proxy.service.js";

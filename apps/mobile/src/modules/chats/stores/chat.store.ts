@@ -118,6 +118,7 @@ function reduce(v: TChatView, e: TEvtFrame["event"]): TChatView {
     case "term.output":
     case "term.status":
     case "compare.updated":
+    case "preview.ws":
       return v;
   }
 }

@@ -41,6 +41,7 @@ const LIBRARIES = [
   { id: "L27", names: ["node-pty"], zone: "daemon-infra-pty" },
   { id: "L28", names: ["@xterm/xterm", "@xterm/addon-fit"], zone: "terminal" },
   { id: "L29", names: ["expo-speech-recognition"], zone: "speech" },
+  { id: "L30", names: ["react-native-tcp-socket"], zone: "localserver" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -428,6 +429,7 @@ const ZONES = [
     ["notifications", "notifications"],
     ["media", "media"],
     ["speech", "speech"],
+    ["localserver", "localserver"],
     ["device", "device"],
     ["api", "expo-crypto"],
   ].map(([folder, tag]) => ({

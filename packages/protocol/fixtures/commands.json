@@ -1057,5 +1057,47 @@
         }
       ]
     }
+  },
+  "preview.fetch": {
+    "args": {
+      "token": "9f2c7a1e5b3d4c6f8a0b1c2d3e4f5a6b",
+      "method": "GET",
+      "path": "/",
+      "headers": {
+        "accept": "text/html"
+      }
+    },
+    "result": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html"
+      },
+      "body": "PGgxPmhpPC9oMT4="
+    }
+  },
+  "preview.wsOpen": {
+    "args": {
+      "token": "9f2c7a1e5b3d4c6f8a0b1c2d3e4f5a6b",
+      "path": "/hmr",
+      "headers": {},
+      "wsId": "pws_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "wsId": "pws_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    }
+  },
+  "preview.wsSend": {
+    "args": {
+      "wsId": "pws_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "data": "ping",
+      "binary": false
+    },
+    "result": {}
+  },
+  "preview.wsClose": {
+    "args": {
+      "wsId": "pws_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
   }
 }

@@ -1,0 +1,17 @@
+# Phase 5e: the Preview tab on a phone, sealed end to end. Needs a worktree "Landing" in the "web"
+# repo of e2e/src/scenarios/relay-preview.scenario.ts (a dev server that hot-reloads index.html).
+appId: dev.agentdeck.app
+---
+- launchApp
+- tapOn: "web"
+- tapOn: "Landing"
+- tapOn: "Preview"
+- tapOn: "Start preview"
+- extendedWaitUntil:
+    visible: "version one"
+    timeout: 90000
+# Edit index.html on the computer (or ask the agent to): the page reloads by itself.
+- extendedWaitUntil:
+    visible: "version-two"
+    timeout: 120000
+- tapOn: "Stop"
