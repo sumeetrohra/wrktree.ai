@@ -22,6 +22,9 @@ describe("spawnPty", () => {
       p.onExit(resolve);
     });
     p.resize(100, 30);
+    // Type only at the prompt: PowerShell mangles what arrives while it is still starting.
+    const prompt = process.platform === "win32" ? /PS .*>/ : /[$#%>] ?$/m;
+    for (let i = 0; i < 400 && !prompt.test(out); i++) await new Promise((r) => setTimeout(r, 50));
     // The sum proves the shell ran it (the echoed command line alone doesn't contain "pty-42").
     p.write(process.platform === "win32" ? 'Write-Output ("pty-" + (40+2))\r' : "echo pty-$((40+2))\r");
     for (let i = 0; i < 400 && !out.includes("pty-42"); i++) await new Promise((r) => setTimeout(r, 50));

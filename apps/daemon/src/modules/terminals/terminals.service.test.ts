@@ -13,6 +13,7 @@ import { pathsFor } from "#src/shared/paths.utils.js";
 
 import { TerminalsService } from "./terminals.service.js";
 
+const PROMPT = process.platform === "win32" ? /PS .*>/ : /[$#%>] ?$/m;
 const SUM = process.platform === "win32" ? 'Write-Output ("sum-" + (20+22))\r' : "echo sum-$((20+22))\r";
 
 function setup(idleMs?: number) {
@@ -64,6 +65,8 @@ describe("TerminalsService", { timeout: 30_000 }, () => {
     const { wt, terms, events, blobs, output, until } = setup();
     const t = await terms.open(wt.id, 80, 24);
     expect(t).toMatchObject({ worktreeId: wt.id, status: "running", cols: 80, rows: 24 });
+    // Type only at the prompt: PowerShell mangles what arrives while it is still starting.
+    await until(() => PROMPT.test(output(t.id)));
     terms.input(t.id, SUM);
     await until(() => output(t.id).includes("sum-42"));
     expect(events.some((e) => e.topic === `repo:${wt.repoId}` && e.event.type === "term.status")).toBe(true);

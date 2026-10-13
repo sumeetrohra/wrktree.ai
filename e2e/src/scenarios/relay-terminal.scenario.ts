@@ -46,6 +46,11 @@ export const relayTerminal: TScenario = {
     h.step("Phone: open a terminal and run commands in the worktree");
     const term = await phone.call("term.open", { worktreeId: wt.id, cols: 80, rows: 24 });
     await phone.follow(`term:${term.id}`);
+    // Type at the prompt, like a person: PowerShell mangles what arrives while it is starting.
+    await phone.waitFor(
+      isEvent("term.output", (e) => e.termId === term.id && (WIN ? /PS .*>/ : /[$#%>] ?$/m).test(e.data)),
+      "the shell's prompt",
+    );
     await phone.call("term.input", { termId: term.id, data: SUM });
     await phone.waitFor(
       isEvent("term.output", (e) => e.termId === term.id && e.data.includes("sum-42")),
