@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 
 import { parseJson } from "@agentdeck/shared";
 import { build } from "esbuild";
@@ -80,7 +80,10 @@ export async function packTarget(
           name: "npm-external",
           setup(pb) {
             pb.onResolve({ filter: /^[^./#]/ }, (args) =>
-              args.path.startsWith("@agentdeck/") ? undefined : { path: args.path, external: true },
+              // The entry and absolute paths (C:\… on Windows) are files, not packages.
+              args.kind === "entry-point" || isAbsolute(args.path) || args.path.startsWith("@agentdeck/")
+                ? undefined
+                : { path: args.path, external: true },
             );
           },
         },
