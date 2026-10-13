@@ -71,7 +71,8 @@ export async function newTaskFromApp(
   await page.getByText("Done.").waitFor({ timeout: 30_000 });
   await h.check("the sheet is gone and the chat is idle", async () => {
     await page.getByText("Allow once").waitFor({ state: "detached" });
-    assert.ok(await shown(page, "idle").isVisible());
+    // The idle status follows the turn's last text (and its usage record) by a moment.
+    await shown(page, "idle").waitFor({ timeout: 10_000 });
   });
 }
 
