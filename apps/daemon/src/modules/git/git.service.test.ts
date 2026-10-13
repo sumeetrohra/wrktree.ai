@@ -21,6 +21,8 @@ async function setup(withOrigin = false) {
     ["user.email", "t@agentdeck.dev"],
     ["user.name", "T"],
     ["commit.gpgsign", "false"],
+    // Windows runners default to CRLF checkouts; the assertions compare exact bytes.
+    ["core.autocrlf", "false"],
   ] as const) {
     await sh(repo, "config", k, v);
   }
@@ -51,7 +53,8 @@ async function setup(withOrigin = false) {
   return { repo, origin, wt, git: new GitService({ put: () => ({ blobId: "x", mime: "x", size: 0 }) }) };
 }
 
-describe("GitService writes", () => {
+// Each case runs a dozen git commands; on Windows runners that takes several seconds.
+describe("GitService writes", { timeout: 30_000 }, () => {
   it("reports status: branch, uncommitted files, commits ahead of base, no remote", async () => {
     const t = await setup();
     writeFileSync(join(t.wt.path, "a.txt"), "a\n");

@@ -48,7 +48,8 @@ async function setup() {
   return { wt, origin, gh: new GithubService({ bin: fakeGhEntry, env: {} }) };
 }
 
-describe("GithubService (against fake-gh)", () => {
+// Each case runs a dozen git commands (and fake-gh more); on Windows runners that takes seconds.
+describe("GithubService (against fake-gh)", { timeout: 30_000 }, () => {
   it("has no PR, creates one with the body from stdin, then merges it", async () => {
     const t = await setup();
     expect(await t.gh.status(t.wt)).toBeNull();
