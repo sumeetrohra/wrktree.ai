@@ -41,6 +41,11 @@ A worktree has tabs: **Chats, Changes, Files, Logs, Terminal, Preview, Ship**.
 - **Ship:** commit, push, and create, then squash and merge, a pull request through your own
   `gh`. "Draft with the agent" writes the title and description.
 
+## Videos
+
+Attach a screen recording from the composer (up to 50 MB): the agent sees it as eight frames
+spread over the clip. This needs `ffmpeg` on the computer (`agentdeck doctor` checks).
+
 ## Dictation
 
 On a phone, tap the microphone in the composer and speak: the words appear in the text box (after

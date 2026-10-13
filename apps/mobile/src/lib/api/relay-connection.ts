@@ -312,12 +312,17 @@ export class RelayConnection implements IDaemonConnection, IRelayPeer {
 
   async upload(base64: string, mime: string): Promise<TBlobRef> {
     if (this.status !== "online") throw new ConnError("DISCONNECTED", "Not connected to the computer");
-    const { uploadId, size } = this.inner.sendBlob(base64);
+    const { uploadId, size } = await this.inner.sendBlob(base64, UPLOAD_PARTS_PER_SECOND);
     return this.inner.call("blob.put", { mime, size, uploadId });
   }
 }
 
 const CATCH_UP_TIMEOUT_MS = 10_000;
+/**
+ * Upload pace through the relay: a 256 KB part is a ~470 KB frame once sealed, and the relay allows
+ * a phone 2 MB a second, so three parts a second leave room for everything else.
+ */
+const UPLOAD_PARTS_PER_SECOND = 3;
 
 /** Resolves once every topic's cursor reached what `sync.hello` reported (or after a timeout). */
 export function caughtUp(

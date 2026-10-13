@@ -127,15 +127,19 @@
     "placeholder": "Message the agent…",
     "queuePlaceholder": "Queue a message for when this turn ends…",
     "attach": "Attach an image",
-    "attached_one": "{{count}} image attached",
-    "attached_other": "{{count}} images attached",
+    "attached_one": "{{count}} attachment",
+    "attached_other": "{{count}} attachments",
     "send": "Send",
     "queue": "Queue",
     "camera": "Take a photo",
     "pasteImage": "Paste an image",
     "dictate": "Dictate",
     "dictateStop": "Stop dictating",
-    "dictationDenied": "Dictation needs the microphone and speech recognition permissions."
+    "dictationDenied": "Dictation needs the microphone and speech recognition permissions.",
+    "attachVideo": "Attach a video",
+    "videoTooLarge": "Videos can be up to {{mb}} MB.",
+    "attachFailed": "Couldn't attach that file.",
+    "uploading": "Uploading…"
   },
   "devices": {
     "title": "Devices",

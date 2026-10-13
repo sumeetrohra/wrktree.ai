@@ -51,6 +51,10 @@ const daemonEnvSchema = z.object({
   AGENTDECK_KEEP_AWAKE: flag,
   /** Overrides `remoteTerminal` in config.json (tests). */
   AGENTDECK_REMOTE_TERMINAL: flag,
+  /** Phase 5a: the shell terminals start (default: `$SHELL`, or PowerShell on Windows). */
+  AGENTDECK_SHELL: z.string().min(1).optional(),
+  /** Phase 5d: the ffmpeg program for video attachments (a `.js`/`.cjs` file runs with Node: tests). */
+  AGENTDECK_FFMPEG: z.string().min(1).optional(),
   APPDATA: z.string().optional(),
   LOCALAPPDATA: z.string().optional(),
   XDG_DATA_HOME: z.string().optional(),

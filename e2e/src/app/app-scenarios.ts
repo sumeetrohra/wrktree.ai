@@ -11,6 +11,7 @@ import {
   limitFromApp,
   sharedConfigFromApp,
   compareFromApp,
+  videoFromApp,
   terminalFromApp,
   linkFromApp,
   newTaskFromApp,
@@ -172,6 +173,14 @@ export const appScenarios: TAppScenario[] = [
     covers: ["Phase 5: parallel compare in the app (start, side by side, keep one)"],
     harness: { relay: true },
     run: compareFromApp,
+  },
+  {
+    n: 35,
+    title: "The app: a video for the agent",
+    summary: "The composer attaches a video; it uploads through the relay and the agent sees key frames",
+    covers: ["Phase 5d: video attachments from the app (paced upload through the relay, ffmpeg frames)"],
+    harness: { relay: true },
+    run: videoFromApp,
   },
 ];
 

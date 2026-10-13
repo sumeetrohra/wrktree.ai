@@ -15,6 +15,8 @@ const MIME: Readonly<Record<string, string>> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".gif": "image/gif",
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
   ".txt": "text/plain",
 };
 

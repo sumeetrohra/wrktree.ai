@@ -29,4 +29,8 @@ export type TDaemonOptions = {
   worktreeRoot: string | null;
   /** Keep the computer awake while an agent is working (Phase 4d). */
   keepAwake: boolean;
+  /** The terminal's shell, or null for the user's own (`$SHELL`; PowerShell on Windows). */
+  terminalShell: string | null;
+  /** How to run ffmpeg for video attachments (Phase 5d), e.g. `["ffmpeg"]`. */
+  ffmpeg: readonly string[];
 };

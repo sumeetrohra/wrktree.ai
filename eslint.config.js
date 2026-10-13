@@ -33,7 +33,7 @@ const LIBRARIES = [
   { id: "L16", names: ["react-native-mmkv"], zone: "mmkv" },
   { id: "L17", names: ["expo-secure-store"], zone: "secure-store" },
   { id: "L18", names: ["expo-notifications"], zone: "notifications" },
-  { id: "L20", names: ["expo-image-picker", "expo-clipboard"], zone: "media" },
+  { id: "L20", names: ["expo-image-picker", "expo-clipboard", "expo-file-system"], zone: "media" },
   { id: "L21", names: ["expo-haptics", "expo-device"], zone: "device" },
   { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
   { id: "L25", names: ["shiki"], zone: "highlight" },
@@ -513,6 +513,8 @@ export default tseslint.config(
       "artifacts/**",
       "**/.turbo/**",
       "tools/lint-fixtures/fixtures/**",
+      // Test data: a plain Node script standing in for ffmpeg, run as a program.
+      "e2e/fixtures/**",
       "apps/mobile/src/shared/components/ui/**",
       "apps/mobile/.expo/**",
       "**/.wrangler/**",

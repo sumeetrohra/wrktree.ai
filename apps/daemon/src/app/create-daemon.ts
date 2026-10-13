@@ -9,6 +9,7 @@ import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
 import { EventBus } from "#src/infra/bus/index.js";
 import { openDb } from "#src/infra/db/index.js";
 import { loadIdentity } from "#src/infra/keystore/index.js";
+import { videoFrames } from "#src/infra/media/index.js";
 import { KeepAwake, keepAwakeCommand } from "#src/infra/process/index.js";
 import { Router } from "#src/infra/rpc/index.js";
 import type { TRuntime } from "#src/infra/runtime/index.js";
@@ -61,6 +62,12 @@ function configOf(home: string): TDaemonConfig | null {
   return tryParseJson(daemonConfigSchema, readFileSync(file, "utf8")) ?? null;
 }
 
+/** ffmpeg from PATH, or the program `AGENTDECK_FFMPEG` names (a script runs with this Node). */
+function ffmpegCommand(raw: string | undefined): readonly string[] {
+  if (raw === undefined) return ["ffmpeg"];
+  return /\.c?js$/.test(raw) ? [process.execPath, raw] : [raw];
+}
+
 /** The npm package ships the web app next to its bundle (`dist/web`); a source checkout has none. */
 function bundledWebRoot(): string | null {
   const dir = fileURLToPath(new URL("./web/", import.meta.url));
@@ -96,6 +103,8 @@ export function optionsFromEnv(home: string): TDaemonOptions {
         ? configOf(home)?.keepAwake !== false
         : env.AGENTDECK_KEEP_AWAKE === "1",
     webRoot: env.AGENTDECK_WEB_ROOT ?? bundledWebRoot(),
+    ffmpeg: ffmpegCommand(env.AGENTDECK_FFMPEG),
+    terminalShell: env.AGENTDECK_SHELL ?? null,
     gh: {
       bin: env.GH_BIN ?? "gh",
       env: Object.fromEntries(
@@ -146,6 +155,7 @@ export class Daemon {
       profiles,
       worktrees,
       blobs,
+      videoFrames: (bytes, mime) => videoFrames(opts.ffmpeg, bytes, mime),
       files: {
         filesFor: (worktreeId) => {
           const jail = jailFor(worktreeId);
@@ -161,7 +171,9 @@ export class Daemon {
       { worktree: (id) => worktrees.get(id), config: (wt) => repos.config(repos.get(wt.repoId)) },
       blobs,
     );
-    const terminals = new TerminalsService(this.rt, { worktree: (id) => worktrees.get(id) }, blobs);
+    const terminals = new TerminalsService(this.rt, { worktree: (id) => worktrees.get(id) }, blobs, {
+      shell: opts.terminalShell,
+    });
     const devices = new DevicesService(this.rt);
     const remote = new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log);
     const preview = new PreviewService(this.rt.bus, {

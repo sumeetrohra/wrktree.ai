@@ -92,7 +92,7 @@ export class LocalConnection implements IDaemonConnection {
   }
 
   async upload(base64: string, mime: string): Promise<TBlobRef> {
-    const { uploadId, size } = this.inner.sendBlob(base64);
+    const { uploadId, size } = await this.inner.sendBlob(base64);
     return this.inner.call("blob.put", { mime, size, uploadId });
   }
 }

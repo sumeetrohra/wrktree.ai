@@ -6,6 +6,20 @@ import { describe, expect, it } from "vitest";
 
 import { defaultShell, ptyAvailable, spawnPty } from "./pty.service.js";
 
+/**
+ * Windows runs this in cmd.exe: PowerShell's line editor, scripted through ConPTY on a CI runner,
+ * never acts on Enter (PowerShell itself is checked by hand; docs/phase-5.md).
+ */
+const WIN = process.platform === "win32";
+const PROMPT = WIN ? /[A-Z]:\\[^>\r\n]*>/ : /[$#%>] ?$/m;
+/** A sum, so seeing the answer proves the shell ran it (its echo doesn't contain the answer). */
+const SUM = WIN ? "set /a 6*7+1000\r" : "echo pty-$((40+2))\r";
+const ANSWER = WIN ? "1042" : "pty-42";
+
+const wait = async (check: () => boolean): Promise<void> => {
+  for (let i = 0; i < 400 && !check(); i++) await new Promise((r) => setTimeout(r, 50));
+};
+
 describe("spawnPty", () => {
   it("runs a shell on a pseudo-terminal and reports its exit", async () => {
     expect(await ptyAvailable()).toBe(true);
@@ -13,7 +27,7 @@ describe("spawnPty", () => {
     const env = Object.fromEntries(
       Object.entries(process.env).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]])),
     );
-    const p = await spawnPty(defaultShell(env), { cwd, env, cols: 80, rows: 24 });
+    const p = await spawnPty(WIN ? "cmd.exe" : defaultShell(env), { cwd, env, cols: 80, rows: 24 });
     let out = "";
     p.onData((d) => {
       out += d;
@@ -22,24 +36,17 @@ describe("spawnPty", () => {
       p.onExit(resolve);
     });
     p.resize(100, 30);
-    // Type only at the prompt: PowerShell mangles what arrives while it is still starting.
-    const prompt = process.platform === "win32" ? /PS .*>/ : /[$#%>] ?$/m;
-    for (let i = 0; i < 400 && !prompt.test(out); i++) await new Promise((r) => setTimeout(r, 50));
-    // The sum proves the shell ran it (the echoed command line alone doesn't contain "pty-42").
-    // On Windows, type key by key like a person: PowerShell's line editor garbles a whole line
-    // written at once through the console.
-    if (process.platform === "win32") {
-      for (const key of 'Write-Output ("pty-" + (40+2))\r') {
-        p.write(key);
-        await new Promise((r) => setTimeout(r, 30));
-      }
-    } else {
-      p.write("echo pty-$((40+2))\r");
-    }
-    for (let i = 0; i < 400 && !out.includes("pty-42"); i++) await new Promise((r) => setTimeout(r, 50));
-    expect(out).toContain("pty-42");
+    await wait(() => PROMPT.test(out));
+    p.write(SUM);
+    await wait(() => out.includes(ANSWER));
+    expect(out).toContain(ANSWER);
     p.write("exit\r");
     expect(await exited).toBe(0);
-    // PowerShell takes seconds to start on a Windows runner.
   }, 30_000);
+
+  it("picks the user's shell, or PowerShell on Windows", () => {
+    const shell = defaultShell({ SHELL: "/no/such/shell" });
+    if (WIN) expect(shell).toBe("powershell.exe");
+    else expect(shell).toMatch(/\/bin\/(ba)?sh$/);
+  });
 });

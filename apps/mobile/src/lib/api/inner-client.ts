@@ -97,12 +97,18 @@ export class InnerClient {
     }).then((data) => parseCommandResult(name, data));
   }
 
-  /** Sends bytes as blob frames under a fresh upload id; returns the id for `blob.put`. */
-  sendBlob(base64: string): { uploadId: string; size: number } {
+  /**
+   * Sends bytes as blob frames under a fresh upload id; returns the id for `blob.put`. With
+   * `partsPerSecond`, frames are spaced out to stay inside the relay's per-device budget (a big
+   * video would otherwise get the connection closed for its rate).
+   */
+  async sendBlob(base64: string, partsPerSecond?: number): Promise<{ uploadId: string; size: number }> {
     const uploadId = newId("up");
     const partChars = (BLOB_PART_SIZE / 3) * 4;
     const parts = Math.max(1, Math.ceil(base64.length / partChars));
     for (let i = 0; i < parts; i++) {
+      if (partsPerSecond !== undefined && i > 0)
+        await new Promise((r) => setTimeout(r, 1000 / partsPerSecond));
       const bytes = base64.slice(i * partChars, (i + 1) * partChars);
       this.write({ t: "blob", blobId: uploadId, part: i, last: i === parts - 1, bytes });
     }

@@ -1,10 +1,18 @@
 import type { TBlobRef } from "@agentdeck/protocol";
-import { Camera, ClipboardPaste, ImagePlus, Mic, MicOff, SendHorizontal } from "lucide-react-native";
+import { Camera, ClipboardPaste, Film, ImagePlus, Mic, MicOff, SendHorizontal } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, View } from "react-native";
 
-import { clipboardImage, pickImage, takePhoto, type TPickedImage } from "@/lib/media";
+import {
+  clipboardImage,
+  MAX_VIDEO_BYTES,
+  pickImage,
+  pickVideo,
+  takePhoto,
+  VideoTooLargeError,
+  type TPickedImage,
+} from "@/lib/media";
 import { dictationAvailable, startDictation } from "@/lib/speech";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -57,13 +65,27 @@ export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.J
         setDictationError(t("composer.dictationDenied"));
       });
   };
+  const [attachError, setAttachError] = useState<string | null>(null);
   const attach = async (source: () => Promise<TPickedImage | null>): Promise<void> => {
-    const img = await source();
-    if (!img) return;
+    setAttachError(null);
+    let picked: TPickedImage | null;
+    try {
+      picked = await source();
+    } catch (e) {
+      setAttachError(
+        e instanceof VideoTooLargeError
+          ? t("composer.videoTooLarge", { mb: Math.round(MAX_VIDEO_BYTES / 1024 / 1024) })
+          : t("composer.attachFailed"),
+      );
+      return;
+    }
+    if (!picked) return;
     setUploading(true);
     try {
-      const ref = await upload(img.base64, img.mime);
+      const ref = await upload(picked.base64, picked.mime);
       setAttachments((a) => [...a, ref]);
+    } catch {
+      setAttachError(t("composer.attachFailed"));
     } finally {
       setUploading(false);
     }
@@ -83,6 +105,8 @@ export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.J
         </Badge>
       ) : null}
       {dictationError ? <Text className="text-destructive text-sm">{dictationError}</Text> : null}
+      {attachError ? <Text className="text-destructive text-sm">{attachError}</Text> : null}
+      {uploading ? <Text className="text-muted-foreground text-sm">{t("composer.uploading")}</Text> : null}
       <View className="flex-row items-end gap-2">
         <Button
           variant="ghost"
@@ -94,6 +118,17 @@ export function Composer({ agentBusy, upload, onSend }: TComposerProps): React.J
           }}
         >
           <Icon as={ImagePlus} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          accessibilityLabel={t("composer.attachVideo")}
+          disabled={uploading}
+          onPress={() => {
+            void attach(pickVideo);
+          }}
+        >
+          <Icon as={Film} />
         </Button>
         {Platform.OS === "web" ? null : (
           <Button

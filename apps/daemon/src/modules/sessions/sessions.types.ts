@@ -46,6 +46,8 @@ export type TSessionDeps = {
   blobs: IBlobReader;
   files: IWorktreeFiles;
   usage: IUsageSink;
+  /** Phase 5d: key frames of an attached video, as JPEGs (throws when it can't, e.g. no ffmpeg). */
+  videoFrames?: (bytes: Buffer, mime: string) => Promise<Buffer[]>;
 };
 
 export type TPermissionDecision = "allow_once" | "allow_always" | "deny";

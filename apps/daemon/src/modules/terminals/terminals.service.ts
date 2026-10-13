@@ -40,7 +40,7 @@ export class TerminalsService {
     private readonly rt: TRuntime,
     private readonly source: ITerminalSource,
     private readonly blobs: { put(bytes: Buffer, mime: string): TBlobRef },
-    private readonly idleMs = DEFAULT_IDLE_MS,
+    private readonly opts: { idleMs?: number | undefined; shell?: string | null | undefined } = {},
   ) {}
 
   list(worktreeId: string): TTerminal[] {
@@ -58,7 +58,7 @@ export class TerminalsService {
       throw new AgentdeckError("CONFLICT", `At most ${String(MAX_OPEN)} terminals per worktree`);
     }
     const env = childEnv({ TERM: "xterm-256color", AGENTDECK_WORKTREE: wt.path });
-    const pty = await spawnPty(defaultShell(env), { cwd: wt.path, env, cols, rows });
+    const pty = await spawnPty(this.opts.shell ?? defaultShell(env), { cwd: wt.path, env, cols, rows });
     this.prune(worktreeId);
     const live: TLive = {
       term: {
@@ -155,7 +155,7 @@ export class TerminalsService {
     live.idleTimer = setTimeout(() => {
       this.rt.log.info({ termId: live.term.id }, "terminal idle, closing");
       void this.close(live.term.id);
-    }, this.idleMs);
+    }, this.opts.idleMs ?? DEFAULT_IDLE_MS);
     live.idleTimer.unref();
   }
 

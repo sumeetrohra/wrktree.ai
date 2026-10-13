@@ -118,6 +118,13 @@ export class Harness {
       AGENTDECK_WORKTREE_ROOT: join(this.root, "wt"),
       /** No sleep lock from tests. */
       AGENTDECK_KEEP_AWAKE: "0",
+      /**
+       * cmd.exe on Windows: PowerShell's line editor, scripted through ConPTY on a CI runner, never
+       * acts on Enter (PowerShell itself is checked by hand; docs/phase-5.md).
+       */
+      ...(process.platform === "win32" ? { AGENTDECK_SHELL: "cmd.exe" } : {}),
+      /** Stands in for ffmpeg: three frames from any "video" (Phase 5d). */
+      AGENTDECK_FFMPEG: join(FIXTURES, "fake-ffmpeg.cjs"),
       FORCE_COLOR: "1",
     };
     delete this.env["NO_COLOR"];

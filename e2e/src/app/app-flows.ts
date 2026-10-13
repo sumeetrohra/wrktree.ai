@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { Harness } from "../harness.ts";
+import { FIXTURES, type Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
 import { eventually } from "../scenarios/relay-helpers.ts";
 import { PREVIEW_DEV_SERVER, PREVIEW_PAGE } from "../scenarios/relay-preview.scenario.ts";
@@ -894,5 +894,40 @@ export async function compareFromApp(h: Harness, app: AppDriver): Promise<void> 
   await h.check("the repo lists the compare", async () => {
     await app.goto(`/h/${hostId}/repo/${repo.id}`);
     await shown(page, "Dark mode · 2 agents · kept one").waitFor({ timeout: 30_000 });
+  });
+}
+
+/** Phase 5d in the app: a video from the composer reaches the agent as key frames. */
+export async function videoFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo, a profile and a chat");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  const profileId = await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "bug", title: "Bug" });
+  await h.waitReady(wt.id, since);
+  since = h.mark();
+  const chat = await h.send("chat.create", { worktreeId: wt.id, agent: "fake", profileId, title: "Bug" });
+  await h.waitStatus(chat.id, "idle", since);
+
+  h.step("App: the composer's video button → pick a screen recording → send");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/chat/${chat.id}`);
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByLabel("Attach a video").locator("visible=true").first().click();
+  await (await chooser).setFiles(join(FIXTURES, "clip.mp4"));
+  await shown(page, "1 attachment").waitFor({ timeout: 60_000 });
+  since = h.mark();
+  await page
+    .getByLabel("Message", { exact: true })
+    .locator("visible=true")
+    .first()
+    .fill("What goes wrong here? #script:attachments-report");
+  await page.getByLabel("Send").locator("visible=true").first().click();
+  await h.check("the agent got the video as frames, through the relay", async () => {
+    await h.waitText(chat.id, "Received 3 image(s): image/jpeg", since, 60_000);
   });
 }

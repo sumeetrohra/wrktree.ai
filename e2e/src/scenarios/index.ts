@@ -22,6 +22,7 @@ import { relayShip } from "./relay-ship.scenario.ts";
 import { relayTerminal } from "./relay-terminal.scenario.ts";
 import { relayUsage } from "./relay-usage.scenario.ts";
 import { streamingBlobs } from "./streaming-blobs.scenario.ts";
+import { videoAttachment } from "./video-attachment.scenario.ts";
 import { worktreeLifecycle } from "./worktree-lifecycle.scenario.ts";
 
 export const scenarios: TScenario[] = [
@@ -33,6 +34,7 @@ export const scenarios: TScenario[] = [
   worktreeLifecycle,
   streamingBlobs,
   housekeeping,
+  videoAttachment,
 ];
 
 /** Phase 2: the same daemon, reached from a phone through a local relay. */

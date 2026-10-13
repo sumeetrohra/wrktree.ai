@@ -497,7 +497,7 @@ export class SessionManager {
     if (next) void this.runTurn(live, next);
   }
 
-  private prompt(live: TLive, msg: TQueued): TAcpContentBlock[] {
+  private async prompt(live: TLive, msg: TQueued): Promise<TAcpContentBlock[]> {
     const prompt: TAcpContentBlock[] = [];
     if (live.seed !== null) {
       prompt.push({
@@ -507,13 +507,39 @@ export class SessionManager {
       live.seed = null;
     }
     if (msg.quoted) prompt.push({ type: "text", text: `${msg.quoted}\n\n` });
-    prompt.push({ type: "text", text: msg.text });
+    // Attachments first, then the message about them.
     for (const a of msg.attachments) {
       const { bytes, ref } = this.deps.blobs.get(a.blobId);
       if (ref.mime.startsWith("image/"))
         prompt.push({ type: "image", mimeType: ref.mime, data: bytes.toString("base64") });
+      if (ref.mime.startsWith("video/"))
+        prompt.push(...(await this.videoBlocks(live.chatId, bytes, ref.mime)));
     }
+    prompt.push({ type: "text", text: msg.text });
     return prompt;
+  }
+
+  /** A video reaches the agent as key frames (Phase 5d), or as a note saying why it couldn't. */
+  private async videoBlocks(chatId: string, bytes: Buffer, mime: string): Promise<TAcpContentBlock[]> {
+    try {
+      if (!this.deps.videoFrames) throw new Error("ffmpeg isn't set up on this computer");
+      const frames = await this.deps.videoFrames(bytes, mime);
+      return [
+        {
+          type: "text",
+          text: `[An attached video, as ${String(frames.length)} frames spread evenly over it, in order:]`,
+        },
+        ...frames.map((f): TAcpContentBlock => ({
+          type: "image",
+          mimeType: "image/jpeg",
+          data: f.toString("base64"),
+        })),
+      ];
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e);
+      this.system(chatId, `Couldn't read the attached video: ${why}. See agentdeck doctor.`, "warn");
+      return [{ type: "text", text: "[A video was attached, but it couldn't be read on this computer.]" }];
+    }
   }
 
   private async runTurn(live: TLive, msg: TQueued): Promise<void> {
@@ -523,7 +549,7 @@ export class SessionManager {
     this.setStatus(chatId, "running");
     live.mapper.startTurn(msg.turnId);
     try {
-      const res = await live.conn.prompt({ sessionId, prompt: this.prompt(live, msg) });
+      const res = await live.conn.prompt({ sessionId, prompt: await this.prompt(live, msg) });
       if (live.dead) return;
       const reply = live.mapper.turnText();
       live.mapper.endTurn();

@@ -145,6 +145,18 @@ export async function runChecks(p: IDoctorProbe, portRangeStart = 41000): Promis
       : { name: "Worktree ports", status: "ok", detail: `${String(portRangeStart)} is free` },
   );
 
+  const ffmpeg = await probe(p, ["ffmpeg", "-version"]);
+  checks.push(
+    ffmpeg.ok
+      ? { name: "ffmpeg", status: "ok", detail: ffmpeg.line.split(" ").slice(0, 3).join(" ") }
+      : {
+          name: "ffmpeg",
+          status: "warn",
+          detail: "not installed (optional): videos you attach can't be read",
+          fix: "Install ffmpeg (https://ffmpeg.org/download.html)",
+        },
+  );
+
   checks.push(
     (await p.terminal())
       ? { name: "Terminal", status: "ok", detail: "node-pty loads" }

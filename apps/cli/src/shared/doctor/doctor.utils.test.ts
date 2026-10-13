@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { redact, runChecks, type IDoctorProbe } from "./doctor.utils.js";
 
 function fakeProbe(over: Partial<IDoctorProbe> & { installed?: string[] } = {}): IDoctorProbe {
-  const installed = over.installed ?? ["git", "gh", "npx", "gemini"];
+  const installed = over.installed ?? ["git", "gh", "npx", "gemini", "ffmpeg"];
   return {
     platform: "linux",
     nodeVersion: "v22.12.0",
@@ -53,6 +53,7 @@ describe("runChecks", () => {
       Relay: "fail",
       "Worktree ports": "warn",
       Terminal: "warn",
+      ffmpeg: "warn",
     });
     for (const c of checks.filter((x) => x.status !== "ok")) expect(c.fix).toBeTruthy();
   });

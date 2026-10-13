@@ -5,8 +5,11 @@ import type { TScenario } from "../scenario.ts";
 import { isEvent, signedInPhone } from "./relay-helpers.ts";
 
 const WIN = process.platform === "win32";
-/** A command whose output differs from its own echo, so seeing it proves the shell ran it. */
-const SUM = WIN ? 'Write-Output ("sum-" + (20+22))\r' : "echo sum-$((20+22))\r";
+/** A sum, so seeing the answer proves the shell ran it (its echo doesn't contain the answer). */
+const SUM = WIN ? "set /a 6*7+1000\r" : "echo sum-$((20+22))\r";
+const ANSWER = WIN ? "1042" : "sum-42";
+/** The prompt (the harness runs cmd.exe on Windows). */
+const PROMPT = WIN ? /[A-Z]:\\[^>\r\n]*>/ : /[$#%>] ?$/m;
 
 export const relayTerminal: TScenario = {
   n: 30,
@@ -45,24 +48,18 @@ export const relayTerminal: TScenario = {
 
     h.step("Phone: open a terminal and run commands in the worktree");
     const term = await phone.call("term.open", { worktreeId: wt.id, cols: 80, rows: 24 });
-    /** Key by key on Windows, like a person: PowerShell garbles a whole line written at once. */
-    const type = async (text: string): Promise<void> => {
-      for (const key of WIN ? Array.from(text) : [text]) {
-        await phone.call("term.input", { termId: term.id, data: key });
-      }
-    };
     await phone.follow(`term:${term.id}`);
-    // Type at the prompt, like a person: PowerShell mangles what arrives while it is starting.
+    // Type at the prompt, as a person does.
     await phone.waitFor(
-      isEvent("term.output", (e) => e.termId === term.id && (WIN ? /PS .*>/ : /[$#%>] ?$/m).test(e.data)),
+      isEvent("term.output", (e) => e.termId === term.id && PROMPT.test(e.data)),
       "the shell's prompt",
     );
-    await type(SUM);
+    await phone.call("term.input", { termId: term.id, data: SUM });
     await phone.waitFor(
-      isEvent("term.output", (e) => e.termId === term.id && e.data.includes("sum-42")),
+      isEvent("term.output", (e) => e.termId === term.id && e.data.includes(ANSWER)),
       "the command's output",
     );
-    await type("git status\r");
+    await phone.call("term.input", { termId: term.id, data: "git status\r" });
     await phone.waitFor(
       isEvent("term.output", (e) => e.termId === term.id && e.data.includes("On branch term")),
       "git status in the worktree",
@@ -72,7 +69,7 @@ export const relayTerminal: TScenario = {
       const { blob } = await phone.call("term.output", { termId: term.id });
       const { base64 } = await phone.call("blob.get", { blobId: blob.blobId });
       const text = Buffer.from(base64, "base64").toString();
-      assert.match(text, /sum-42/);
+      assert.ok(text.includes(ANSWER));
       assert.match(text, /On branch term/);
     });
 
