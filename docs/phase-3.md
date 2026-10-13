@@ -7,7 +7,7 @@ first, chats outlive the computer they ran on.
 |---|---|---|
 | **3a** | Cloud chat history: every device signs in to Firebase, computers included; hosts write worktrees, chats, items and files to Firestore and Storage; the app reads them when the host is offline | **built** (tested against the Firebase emulators; a real project is pending) |
 | **3b** | Changes, Files, Logs tabs; commit, push, PR (agent-drafted body), merge; scripts; open in editor | **built** (web-tested; a real `gh` and a phone scrolling 5,000 lines are pending) |
-| **3c** | Preview through a relay TLS tunnel | planned |
+| **3c** | Preview through a relay TLS tunnel | **built** (web-tested on dev relays; a deployed wildcard domain and native WebViews are pending) |
 
 ## 3a: cloud chat history
 
@@ -119,6 +119,55 @@ worktree. Repo config gains `scripts`:
 Tests use `tools/fake-gh`, a Node stand-in for `gh` that keeps pull requests in the repo's git
 dir and really merges into the local bare `origin`.
 
+## 3c: preview the app
+
+### How it works
+
+```
+apps/relay/    modules/hub/preview.service.ts (tokens, key → cookie, streaming), app/routes/preview.routes.ts
+apps/daemon/   modules/preview (script, port, tunnels), infra/transport/preview-proxy.service.ts
+apps/mobile/   lib/webview (react-native-webview; an iframe on the web), modules/preview, the Preview tab
+e2e/           scenario 21 (phone-sim), app scenario 22 (web build)
+```
+
+1. A repo opts in with a `preview` entry naming one of its scripts, plus env hints for running
+   behind the tunnel:
+
+   ```json
+   { "scripts": { "dev": "vite --port $PORT" }, "preview": { "script": "dev", "env": { "VITE_HMR_CLIENT_PORT": "443" } } }
+   ```
+
+2. `preview.start` runs that script (it shows in Logs, with `AGENTDECK_PREVIEW=1`), waits up to
+   90 s for the worktree's port to listen, then answers by who asked: this computer gets
+   `http://localhost:<port>/`; a remote device gets `https://<token>.<PREVIEW_DOMAIN>/` and a
+   one-time key, from `POST /v1/preview` naming that device. `preview.status` events (starting,
+   ready, crashed, stopped) go to `repo:<id>`.
+3. The device loads `url?k=<key>` once; the relay swaps the key for an HttpOnly cookie and
+   redirects. Without the cookie (a forwarded link, another device) it answers 403.
+4. Each request crosses the computer's relay socket as `preview` frames (`req` → `head`, `chunk`…),
+   not sealed: the relay reads them (SEC23). WebSocket upgrades (hot reload) become `wsOpen`,
+   `wsData`, `wsClose`; the subprotocol is passed through (Vite needs `vite-hmr`).
+5. The daemon answers from `localhost:<the worktree's port>` only, for tokens of open previews.
+   Responses stream in 256 KB chunks, paced under the relay's preview budget.
+6. `preview.stop`, archiving or deleting the worktree, and stopping the daemon close the tunnels
+   and stop the script.
+
+Limits: 25 MB per response, 10 MB per request body, 60 s idle, tokens live 8 h. The relay's
+own cookie and hop-by-hop headers stay at the relay, and so do the dev server's `Set-Cookie`s
+(apps that need their own cookies won't keep them through the tunnel yet).
+
+**Where previews are served:** `PREVIEW_DOMAIN` on a deployed relay (a wildcard DNS name and
+certificate, see [`relay-deploy.md`](relay-deploy.md)); dev relays also serve
+`*.preview.localhost`, which browsers resolve to this machine. The web app shows previews in an
+iframe, so it must be on the same site as the preview domain for the SameSite=Lax cookie to
+travel (the app E2E serves it at `preview.localhost`).
+
+### In the app
+
+The worktree's **Preview** tab: Start preview → the page in a WebView (an iframe on the web
+build) with the status, Reload, a Phone / Tablet / Full width toggle, and Stop. The key is used for
+the first load only; Reload uses the cookie.
+
 ## E2E
 
 Both run under the Firebase Emulator Suite (Auth, Firestore, Storage; needs Java 21):
@@ -138,14 +187,16 @@ pnpm emulators "CLOUD_E2E=1 pnpm e2e:record"   # the videos, cloud scenarios inc
 CI runs them in the `cloud history (Firebase emulators)` job; the `record` job records them into
 `e2e.mp4` and `app-e2e.mp4`.
 
-3b's scenarios run in the relay suite (`pnpm test:e2e`, every OS in CI), phone-sim against a real
+3b's and 3c's scenarios run in the relay suite (`pnpm test:e2e`, every OS in CI), phone-sim against a real
 daemon, relay, fake agent and `tools/fake-gh`:
 
 | # | Scenario | Checks |
 |---|---|---|
 | 18 | Ship it from the phone | status, commit and push to a bare origin; the agent drafts the PR (`Title:` + body); create, status, merge through `gh` (origin's `main` has the change); quoted lines reach the agent and stay on the chat item; a path outside the worktree can't be quoted; a signed-out `gh` reads as `NOT_AUTHENTICATED` |
-| 20 (app) | The app: review the work, ask about a line, run it, ship it | Work → branch → Changes → diff; select a line → ask → the chat sends it quoted and the agent gets it; Files search opens the match; a 5,000-line file opens at line 4,000 with only a window rendered; Logs start/stop `dev` with live output; Ship: commit, push, agent-drafted title, create PR, squash and merge (origin's `main` has the change) |
 | 19 | Scripts and logs from the phone | only named scripts; `dev` streams its output live and serves on the worktree's port; the log reads back as one blob; stop closes the port; a failing script reports its exit code; an arbitrary command and a remote `editor.open` are refused |
+| 20 (app) | The app: review the work, ask about a line, run it, ship it | Work → branch → Changes → diff; select a line → ask → the chat sends it quoted and the agent gets it; Files search opens the match; a 5,000-line file opens at line 4,000 with only a window rendered; Logs start/stop `dev` with live output; Ship: commit, push, agent-drafted title, create PR, squash and merge (origin's `main` has the change) |
+| 21 | Preview the app from the phone | a relay URL on a preview host with a one-time key; a forwarded link gets 403; the key loads the page once and is then spent; the script got the repo's env hints; the page's hot-reload WebSocket (with its subprotocol) connects; the agent edits the page and the socket hears `reload`; this computer gets plain `localhost`; stop: the link opens nothing and the dev server is gone |
+| 22 (app) | The app: preview the running app, with hot reload | Preview tab → Start: the dev server's page in a frame from the relay; the agent edits it and the frame reloads by itself; phone, tablet and full widths; Reload uses the cookie, not the key; Stop |
 
 
 ## Try it by hand
@@ -158,3 +209,7 @@ daemon, relay, fake agent and `tools/fake-gh`:
 4. Stop the daemon: the chat is still on the phone, read-only, images included.
 
 Pending: steps 1–4 against a real Firebase project.
+
+Preview by hand: deploy the relay with `PREVIEW_DOMAIN` and a wildcard route, add a `preview`
+entry to a Vite or Next.js repo, then Preview → Start on the phone; edit a file and watch it
+reload. Pending: a real Vite and Next.js app through a deployed relay, and native WebViews.

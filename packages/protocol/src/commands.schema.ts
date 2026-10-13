@@ -331,6 +331,16 @@ export const commands = {
     result: z.object({ blob: blobRefSchema, cursor: z.number().int().nonnegative() }),
   },
 
+  /**
+   * Additive (Phase 3c): run the repo's preview script and open a tunnel to it. Remote devices get a
+   * relay URL plus a one-time key (load `url?k=key` once); this computer gets `localhost`.
+   */
+  "preview.start": {
+    args: WorktreeArgs,
+    result: z.object({ url: z.string(), key: z.string().nullable(), expiresAt: z.number().nullable() }),
+  },
+  "preview.stop": { args: WorktreeArgs, result: Empty },
+
   /** Additive, local only: open the worktree (at a file and line) in a desktop editor. */
   "editor.open": {
     args: z.object({

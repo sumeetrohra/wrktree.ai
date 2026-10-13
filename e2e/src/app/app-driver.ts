@@ -22,8 +22,13 @@ export class AppDriver {
     private readonly closeServer: () => Promise<void>,
   ) {}
 
-  static async start(opts: { videoDir?: string } = {}): Promise<AppDriver> {
-    const app = await serveApp(APP_DIST);
+  /**
+   * `appHost` serves the app under another loopback name, e.g. `preview.localhost`, so a dev
+   * relay's `<token>.preview.localhost` previews are same-site with it (their cookie works in a frame).
+   */
+  static async start(opts: { videoDir?: string; appHost?: string } = {}): Promise<AppDriver> {
+    const served = await serveApp(APP_DIST);
+    const app = opts.appHost ? { ...served, url: served.url.replace("127.0.0.1", opts.appHost) } : served;
     const browser = await chromium.launch();
     if (opts.videoDir) mkdirSync(opts.videoDir, { recursive: true });
     const context = await browser.newContext({

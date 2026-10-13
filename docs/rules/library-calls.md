@@ -19,6 +19,7 @@ library a one-file change.
 | L23 | `fetch` for signing in (the relay's config and dev issuer) | `apps/mobile/src/lib/auth/` | `lint:no-restricted-globals` |
 | L24 | Firebase and Google REST endpoints (`googleapis.com`) | `packages/firebase-rest/` (and the relay's ID-token verifier) | `lint:no-restricted-syntax` |
 | L25 | `shiki` (syntax highlighting) | `apps/mobile/src/lib/highlight/` | `lint:no-restricted-imports` |
+| L26 | `react-native-webview` (Preview on phones) | `apps/mobile/src/lib/webview/` | `lint:no-restricted-imports` |
 | L11 | `@noble/curves`, `@noble/ciphers`, `@noble/hashes`, `libsodium-wrappers-sumo` | `packages/crypto/src/` (everything else calls `@agentdeck/crypto`) | `lint:no-restricted-imports` |
 | L12 | `hono`, `@hono/node-server` | `apps/relay/src/app/`, `apps/relay/src/infra/node/` | `lint:no-restricted-imports` |
 | L13 | `jose` | `apps/relay/src/infra/idtoken/` | `lint:no-restricted-imports` |

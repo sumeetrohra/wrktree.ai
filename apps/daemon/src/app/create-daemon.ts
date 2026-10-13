@@ -9,7 +9,7 @@ import { openDb } from "#src/infra/db/index.js";
 import { loadIdentity } from "#src/infra/keystore/index.js";
 import { Router } from "#src/infra/rpc/index.js";
 import type { TRuntime } from "#src/infra/runtime/index.js";
-import { LocalTransport } from "#src/infra/transport/index.js";
+import { LocalTransport, waitForPort } from "#src/infra/transport/index.js";
 import { AgentRegistry } from "#src/modules/agents/index.js";
 import { BlobStore } from "#src/modules/blobs/index.js";
 import { CloudSync } from "#src/modules/cloud/index.js";
@@ -17,6 +17,7 @@ import { DevicesService } from "#src/modules/devices/index.js";
 import { FileJail } from "#src/modules/files/index.js";
 import { GitService } from "#src/modules/git/index.js";
 import { GithubService } from "#src/modules/github/index.js";
+import { PreviewService } from "#src/modules/preview/index.js";
 import { ProcsService } from "#src/modules/procs/index.js";
 import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
@@ -134,11 +135,23 @@ export class Daemon {
       { worktree: (id) => worktrees.get(id), config: (wt) => repos.config(repos.get(wt.repoId)) },
       blobs,
     );
+    const devices = new DevicesService(this.rt);
+    const remote = new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log);
+    const preview = new PreviewService(this.rt.bus, {
+      worktree: (id) => worktrees.get(id),
+      config: (wt) => repos.config(repos.get(wt.repoId)).preview,
+      procs,
+      tunnel: {
+        open: (worktreeId, deviceId) => remote.openPreview(worktreeId, deviceId),
+        close: (token) => remote.closePreview(token),
+      },
+      waitForPort,
+    });
     worktrees.hooks = {
-      // Archiving or deleting a worktree stops its chats and its running scripts.
+      // Archiving or deleting a worktree stops its chats, its preview and its running scripts.
       stopChats: (id) => {
         sessions.stopWorktree(id);
-        void procs.stopAll(id);
+        void preview.stop(id).finally(() => procs.stopAll(id));
       },
       startChats: (id) => {
         sessions.startWorktree(id);
@@ -147,8 +160,6 @@ export class Daemon {
         sessions.deleteWorktreeChats(id);
       },
     };
-    const devices = new DevicesService(this.rt);
-    const remote = new Remote(opts.relayUrl, opts.hostName, opts.appUrl, paths.relayToken, devices, log);
     this.cloud = new CloudSync(
       this.rt,
       {
@@ -208,6 +219,7 @@ export class Daemon {
       git: new GitService(blobs),
       github: new GithubService(opts.gh),
       procs,
+      preview,
       jailFor,
     };
     this.router = new Router(db, createHandlers(this.modules), log);
@@ -236,7 +248,10 @@ export class Daemon {
       this.rt.opts.keystore,
       this.rt.log,
     );
-    this.modules.remote.start(identity, vault, this.rt.bus, this.router);
+    const { preview } = this.modules;
+    this.modules.remote.start(identity, vault, this.rt.bus, this.router, {
+      portOf: (token) => preview.portOf(token),
+    });
     this.cloud.start();
     this.modules.sessions.boot();
     this.rt.log.info({ port: this.port }, "daemon listening");
@@ -245,6 +260,7 @@ export class Daemon {
 
   async stop(): Promise<void> {
     this.cloud.stop();
+    await this.modules.preview.stopAll();
     await this.modules.procs.stopAll();
     this.modules.remote.stop();
     this.modules.sessions.shutdown();

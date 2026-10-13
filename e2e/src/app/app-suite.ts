@@ -31,7 +31,7 @@ export function appSuite(title: string, scenarios: TAppScenario[]): void {
     for (const s of scenarios) {
       it(`${String(s.n)}. ${s.title}`, async () => {
         h = await Harness.start(undefined, s.harness);
-        app = await AppDriver.start();
+        app = await AppDriver.start(s.appHost ? { appHost: s.appHost } : {});
         await s.run(h, app);
       });
     }

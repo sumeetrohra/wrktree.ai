@@ -27,7 +27,9 @@ class_name = "DirectoryDO"
 name = "HUB"
 class_name = "HubDO"
 
-# Staging. FIREBASE_PROJECT_ID is a plain var; EXPO_ACCESS_TOKEN is set with
+# Staging. FIREBASE_PROJECT_ID is a plain var; Preview (Phase 3c) needs PREVIEW_DOMAIN and a
+# wildcard route, e.g. routes = [{ pattern = "*.preview.agentdeck.dev/*", zone_name = "agentdeck.dev" }]
+# (see docs/relay-deploy.md). EXPO_ACCESS_TOKEN is set with
 # `wrangler secret put --env staging`, never committed.
 [env.staging]
 vars = { RELAY_DEV = "0", RELAY_PUBLIC_URL = "https://relay-staging.agentdeck.dev", FIREBASE_PROJECT_ID = "agentdeck-staging" }

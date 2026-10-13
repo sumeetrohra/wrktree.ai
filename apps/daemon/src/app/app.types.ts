@@ -4,6 +4,7 @@ import type { DevicesService } from "#src/modules/devices/index.js";
 import type { FileJail } from "#src/modules/files/index.js";
 import type { GitService } from "#src/modules/git/index.js";
 import type { GithubService } from "#src/modules/github/index.js";
+import type { PreviewService } from "#src/modules/preview/index.js";
 import type { ProcsService } from "#src/modules/procs/index.js";
 import type { ProfilesService } from "#src/modules/profiles/index.js";
 import type { ReposService } from "#src/modules/repos/index.js";
@@ -26,6 +27,8 @@ export type TModules = {
   github: GithubService;
   /** Repo scripts running in worktrees. */
   procs: ProcsService;
+  /** Preview tunnels to worktrees' dev servers (Phase 3c). */
+  preview: PreviewService;
   devices: DevicesService;
   /** A one-time link to the desktop web UI, or null when none is configured. */
   webLink: () => string | null;

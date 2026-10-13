@@ -15,7 +15,8 @@ export const relayFrameSchema = z.object({
   to: deviceIdSchema,
   from: deviceIdSchema,
   seq: z.number().int().nonnegative(),
-  kind: z.enum(["msg", "ack", "ping", "hs", "pair"]),
+  /** Additive (Phase 3c): `preview` carries the TLS-only preview tunnel (`previewFrameSchema`). */
+  kind: z.enum(["msg", "ack", "ping", "hs", "pair", "preview"]),
   body: z.string(),
   /** Additive: session id the body was sealed under (`msg` only). */
   sid: z.string().optional(),

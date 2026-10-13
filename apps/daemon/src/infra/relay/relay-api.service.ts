@@ -3,10 +3,12 @@ import {
   devIdTokenResultSchema,
   meResultSchema,
   okResultSchema,
+  previewOpenResultSchema,
   registerResultSchema,
   relayConfigSchema,
   relayDevicesResultSchema,
   relayRoutes,
+  type TPreviewOpenResult,
   type TRelayConfig,
   type TRelayDevice,
 } from "@agentdeck/protocol";
@@ -85,6 +87,21 @@ export class RelayApi {
     await this.call({ method: "DELETE", path: relayRoutes.devices.path }, okResultSchema, {
       token,
       path: `${relayRoutes.devices.path}/${encodeURIComponent(deviceId)}`,
+    });
+  }
+
+  /** Opens a preview tunnel to one of this host's worktrees, for one device of the account. */
+  openPreview(token: string, worktreeId: string, allowedDeviceId: string): Promise<TPreviewOpenResult> {
+    return this.call(relayRoutes.preview, previewOpenResultSchema, {
+      token,
+      body: { worktreeId, allowedDeviceId },
+    });
+  }
+
+  async closePreview(token: string, previewToken: string): Promise<void> {
+    await this.call(relayRoutes.previewClose, okResultSchema, {
+      token,
+      path: `${relayRoutes.previewClose.path}/${encodeURIComponent(previewToken)}`,
     });
   }
 }

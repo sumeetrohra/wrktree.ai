@@ -41,6 +41,12 @@ npx wrangler deploy --env staging            # FIREBASE_PROJECT_ID is a var in w
 `wrangler.toml` declares the `DirectoryDO` and `HubDO` Durable Object classes on SQLite storage.
 Put the Worker on a custom domain and set `RELAY_PUBLIC_URL` to it.
 
+**Preview (Phase 3c)** needs a wildcard: point `*.preview.example.com` at the Worker (a DNS
+wildcard plus a Worker route `*.preview.example.com/*`, or a wildcard custom domain) and set
+`PREVIEW_DOMAIN = "preview.example.com"` in the env's `vars`. Every request to a preview host is
+handed to the account's `HubDO`, WebSocket upgrades included. For the web app's frame to keep the
+preview's cookie, serve the app on the same site (e.g. `app.example.com`).
+
 Local development of the Worker build: `pnpm --filter @agentdeck/relay dev:worker` (dev env, port
 8787). The relay contract tests run against it with `RELAY_WORKER_TESTS=1 pnpm --filter
 @agentdeck/relay test`.
@@ -53,6 +59,7 @@ docker run -d -p 8787:8787 -v agentdeck-relay:/data \
   -e RELAY_PUBLIC_URL=https://relay.example.com -e FIREBASE_PROJECT_ID=my-project agentdeck-relay
 ```
 
-Terminate TLS in front of it (Caddy, nginx, a load balancer). Data lives in `/data`: one SQLite
+Terminate TLS in front of it (Caddy, nginx, a load balancer). For Preview, also route a wildcard
+(`*.preview.example.com`) to it with a wildcard certificate, and pass `-e PREVIEW_DOMAIN=preview.example.com`. Data lives in `/data`: one SQLite
 file for the directory and one per account hub. Then point daemons at it with
 `agentdeck relay set https://relay.example.com` and link each with `agentdeck login`.

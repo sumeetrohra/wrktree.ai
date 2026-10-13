@@ -11,6 +11,7 @@ import { relayLogin } from "./relay-login.scenario.ts";
 import { relayMultiHost } from "./relay-multi-host.scenario.ts";
 import { relayOffline } from "./relay-offline.scenario.ts";
 import { relayPlaintext } from "./relay-plaintext.scenario.ts";
+import { relayPreview } from "./relay-preview.scenario.ts";
 import { relayProcs } from "./relay-procs.scenario.ts";
 import { relayRevoke } from "./relay-revoke.scenario.ts";
 import { relayShip } from "./relay-ship.scenario.ts";
@@ -37,6 +38,7 @@ export const relayScenarios: TScenario[] = [
   relayMultiHost,
   relayShip,
   relayProcs,
+  relayPreview,
 ];
 
 /** Phase 3a: chat history in Firebase (needs the emulators). */

@@ -578,7 +578,12 @@ export class Harness {
 
   makeRepo(
     name: string,
-    config: { setup?: string[]; teardown?: string[]; scripts?: Record<string, string> } = {},
+    config: {
+      setup?: string[];
+      teardown?: string[];
+      scripts?: Record<string, string>;
+      preview?: { script: string; env?: Record<string, string> };
+    } = {},
     opts: { origin?: boolean; files?: Record<string, string> } = {},
   ): string {
     const dir = join(this.src, name);

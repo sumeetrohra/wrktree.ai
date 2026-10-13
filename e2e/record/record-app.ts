@@ -92,7 +92,7 @@ async function recordScenario(index: number): Promise<{ mp4: string; ok: boolean
   let webm: string | null;
   try {
     h = await Harness.start(sink, s.harness);
-    app = await AppDriver.start({ videoDir: dir });
+    app = await AppDriver.start({ videoDir: dir, ...(s.appHost ? { appHost: s.appHost } : {}) });
     t0 = Date.now();
     await app.page.waitForTimeout(3000); // room for the title card
     await s.run(h, app);

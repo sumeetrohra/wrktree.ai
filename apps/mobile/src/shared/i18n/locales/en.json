@@ -238,7 +238,8 @@
       "changes": "Changes",
       "files": "Files",
       "logs": "Logs",
-      "ship": "Ship"
+      "ship": "Ship",
+      "preview": "Preview"
     },
     "openInEditor": "Open in editor",
     "editors": {
@@ -246,5 +247,24 @@
       "cursor": "Cursor",
       "zed": "Zed"
     }
+  },
+  "preview": {
+    "intro": "Run the app in this worktree and open it here. The repo's preview script starts on the worktree's port; its output is under Logs.",
+    "start": "Start preview",
+    "stop": "Stop",
+    "reload": "Reload",
+    "frame": "Preview of the worktree's app",
+    "status": {
+      "starting": "Starting…",
+      "ready": "Live",
+      "crashed": "The preview script stopped",
+      "stopped": "Stopped"
+    },
+    "widths": {
+      "phone": "Phone",
+      "tablet": "Tablet",
+      "full": "Full"
+    },
+    "via": "Through the relay; only this device can open it."
   }
 }

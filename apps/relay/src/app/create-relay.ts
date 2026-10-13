@@ -5,10 +5,13 @@ import { cors } from "hono/cors";
 import type { TRelayDeps } from "./app.types.js";
 import { devRoutes } from "./routes/dev.routes.js";
 import { deviceRoutes } from "./routes/devices.routes.js";
+import { previewRoutes } from "./routes/preview.routes.js";
 
 /** The relay's HTTP API, identical on both hosts. WebSocket upgrades are handled by the host. */
 export function createRelayApp(deps: TRelayDeps): Hono {
   const app = new Hono();
+  // First: a preview host is a different site, served from the account's tunnel (Phase 3c).
+  previewRoutes(app, deps);
   // The web app calls the relay cross-origin. Auth is a bearer header, never a cookie, so any
   // origin may call; a page without a token gets nothing.
   app.use("/v1/*", cors({ origin: "*", allowHeaders: ["authorization", "content-type"], maxAge: 600 }));

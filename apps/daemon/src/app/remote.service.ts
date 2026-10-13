@@ -5,7 +5,13 @@ import {
   type TFirebaseConfig,
   type TFirebaseSession,
 } from "@agentdeck/firebase-rest";
-import { AgentdeckError, type TAccountStatus, type TDevice, type TRelayConfig } from "@agentdeck/protocol";
+import {
+  AgentdeckError,
+  type TAccountStatus,
+  type TDevice,
+  type TPreviewOpenResult,
+  type TRelayConfig,
+} from "@agentdeck/protocol";
 import type { ILogger } from "@agentdeck/shared";
 import { z } from "zod";
 
@@ -13,7 +19,7 @@ import type { EventBus } from "#src/infra/bus/index.js";
 import { SealedFile, type TVault } from "#src/infra/keystore/index.js";
 import { RelayApi, RelayHttpError, RelayLink } from "#src/infra/relay/index.js";
 import type { Router } from "#src/infra/rpc/index.js";
-import { RelayTransport, type IRelayPeers } from "#src/infra/transport/index.js";
+import { RelayTransport, type IPreviewPorts, type IRelayPeers } from "#src/infra/transport/index.js";
 import type { DevicesService } from "#src/modules/devices/index.js";
 
 export type TRelayStatus = {
@@ -53,7 +59,7 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : "error
 export class Remote {
   private api: RelayApi | null = null;
   private stored: SealedFile<typeof linkedSchema> | null = null;
-  private ctx: { identity: TIdentity; bus: EventBus; router: Router } | null = null;
+  private ctx: { identity: TIdentity; bus: EventBus; router: Router; previews: IPreviewPorts } | null = null;
   private deviceId: string | null = null;
   private linked: TLinked | null = null;
   private pendingEmail: string | null = null;
@@ -74,9 +80,9 @@ export class Remote {
     private readonly log: ILogger,
   ) {}
 
-  start(identity: TIdentity, vault: TVault, bus: EventBus, router: Router): void {
+  start(identity: TIdentity, vault: TVault, bus: EventBus, router: Router, previews: IPreviewPorts): void {
     this.deviceId = deviceIdFor(identity.signPub);
-    this.ctx = { identity, bus, router };
+    this.ctx = { identity, bus, router, previews };
     if (this.relayUrl === null) return;
     this.api = new RelayApi(this.relayUrl, identity, this.hostName);
     this.stored = new SealedFile(this.tokenFile, vault, linkedSchema);
@@ -111,6 +117,7 @@ export class Remote {
       ctx.router,
       this.peers,
       this.log,
+      ctx.previews,
     );
     this.transport = transport;
     this.link = new RelayLink({
@@ -134,6 +141,7 @@ export class Remote {
       onState: (connected) => {
         this.log.info({ connected }, "relay link");
         if (connected) void this.refresh(false);
+        else transport.linkDown();
       },
       log: this.log,
     });
@@ -327,6 +335,31 @@ export class Remote {
     }
     this.transport?.dropPeer(deviceId);
     return this.devices.known(deviceId) ? this.devices.forget(deviceId) : this.removedStub(deviceId);
+  }
+
+  /** A preview tunnel (Phase 3c) to a worktree of this host, which only `deviceId` can open. */
+  async openPreview(worktreeId: string, deviceId: string): Promise<TPreviewOpenResult> {
+    const api = this.needApi();
+    if (!this.linked) throw new AgentdeckError("BAD_STATE", "This host isn't signed in to an account");
+    try {
+      return await api.openPreview(this.linked.deviceToken, worktreeId, deviceId);
+    } catch (e) {
+      if (e instanceof RelayHttpError && e.status === 404) {
+        throw new AgentdeckError("BAD_STATE", "Previews are off on this relay (no PREVIEW_DOMAIN)");
+      }
+      throw e;
+    }
+  }
+
+  /** Best effort: an unreachable relay forgets the tunnel when it expires. */
+  async closePreview(token: string): Promise<void> {
+    const { api, linked } = this;
+    if (!api || !linked) return;
+    try {
+      await api.closePreview(linked.deviceToken, token);
+    } catch (e) {
+      this.log.warn({ err: message(e) }, "relay did not confirm closing a preview");
+    }
   }
 
   private removedStub(id: string): TDevice {

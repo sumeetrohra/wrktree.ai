@@ -9,6 +9,7 @@ import { editorHandlers } from "./editor.handlers.js";
 import { filesHandlers } from "./files.handlers.js";
 import { gitHandlers } from "./git.handlers.js";
 import { prHandlers } from "./pr.handlers.js";
+import { previewHandlers } from "./preview.handlers.js";
 import { procHandlers } from "./proc.handlers.js";
 import { profileHandlers } from "./profile.handlers.js";
 import { repoHandlers } from "./repo.handlers.js";
@@ -31,6 +32,7 @@ export function createHandlers(m: TModules): THandlers {
     ...gitHandlers(m),
     ...prHandlers(m),
     ...procHandlers(m),
+    ...previewHandlers(m),
     ...editorHandlers(m),
   };
 }

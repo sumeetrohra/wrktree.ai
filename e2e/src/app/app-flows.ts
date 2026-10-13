@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import type { Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
 import { eventually } from "../scenarios/relay-helpers.ts";
+import { PREVIEW_DEV_SERVER, PREVIEW_PAGE } from "../scenarios/relay-preview.scenario.ts";
 
 import type { AppDriver } from "./app-driver.ts";
 
@@ -512,4 +513,90 @@ export async function shipFromApp(h: Harness, app: AppDriver): Promise<void> {
     const notes = execFileSync("git", ["show", "main:NOTES.md"], { cwd: h.origin("shop"), encoding: "utf8" });
     assert.match(notes, /Written by the fake agent/);
   });
+}
+
+/**
+ * Phase 3c in the app: the Preview tab shows the worktree's dev server through the relay; an agent
+ * edit hot-reloads it; the width toggle and reload work; stop ends it.
+ */
+export async function previewFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo whose config names a preview script (a dev server with hot reload)");
+  const repoPath = h.makeRepo(
+    "web",
+    { scripts: { dev: "node serve.cjs" }, preview: { script: "dev" } },
+    { files: { "serve.cjs": PREVIEW_DEV_SERVER, "index.html": PREVIEW_PAGE } },
+  );
+  const repo = await h.send("repo.add", { path: repoPath });
+  const profileId = await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "landing", title: "Landing" });
+  await h.waitReady(wt.id, since);
+
+  h.step("App: the worktree's Preview tab → Start preview");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/wt/${wt.id}/preview`);
+  await shown(page, "Start preview").click();
+  const frame = page.frameLocator('iframe[title="Preview of the worktree\'s app"]');
+  await frame.getByText("version one").waitFor({ timeout: 60_000 });
+  await h.check("the dev server's page, inside the app, through the relay", async () => {
+    const src = await page.locator("iframe").first().getAttribute("src");
+    assert.match(src ?? "", /^http:\/\/[0-9a-z]{58}\.preview\.localhost:\d+\//);
+    await shown(page, "Live").waitFor({ timeout: 30_000 });
+  });
+
+  h.step("Desktop: the agent edits the page (approved on the desktop)");
+  since = h.mark();
+  const chat = await h.send("chat.create", { worktreeId: wt.id, agent: "fake", profileId, title: "Copy" });
+  await h.waitStatus(chat.id, "idle", since);
+  since = h.mark();
+  await h.send("chat.send", {
+    chatId: chat.id,
+    text: "#script:edit-twice file=index.html content=<h1>version-two</h1>",
+  });
+  const req = await h.waitFor(
+    (e) => e.type === "permission.requested" && e.chatId === chat.id,
+    "permission",
+    {
+      since,
+    },
+  );
+  assert.ok(req.type === "permission.requested");
+  await h.send("permission.respond", {
+    chatId: chat.id,
+    requestId: req.request.requestId,
+    decision: "allow_once",
+  });
+  await h.check("the preview reloads by itself with the new page", async () => {
+    await frame.getByText("version-two").waitFor({ timeout: 30_000 });
+  });
+
+  h.step("App: phone, tablet and full widths (on a wider window), then Reload");
+  await page.setViewportSize({ width: 1100, height: 844 });
+  const width = async (): Promise<number> => (await page.locator("iframe").first().boundingBox())?.width ?? 0;
+  await shown(page, "Phone").click();
+  await h.check("phone width", async () => {
+    await eventually("390px", width, (w) => Math.round(w) === 390);
+  });
+  await shown(page, "Tablet").click();
+  await h.check("tablet width", async () => {
+    await eventually("820px", width, (w) => Math.round(w) === 820);
+  });
+  await shown(page, "Full").click();
+  await h.check("full width", async () => {
+    await eventually("the window", width, (w) => w > 1000);
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await shown(page, "Reload").click();
+  await h.check("reloads with its cookie (the one-time key is spent)", async () => {
+    await frame.getByText("version-two").waitFor({ timeout: 30_000 });
+    const src = await page.locator("iframe").first().getAttribute("src");
+    assert.ok(!(src ?? "").includes("k="));
+  });
+
+  h.step("App: Stop");
+  await shown(page, "Stop").click();
+  await shown(page, "Start preview").waitFor({ timeout: 30_000 });
 }

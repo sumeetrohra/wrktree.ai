@@ -10,6 +10,8 @@ import {
 } from "@agentdeck/crypto";
 import {
   innerSchema,
+  previewFrameSchema,
+  RELAY_SELF,
   relayControlSchema,
   relayFrameSchema,
   type TChatStatus,
@@ -23,6 +25,7 @@ import type { EventBus } from "../bus/index.js";
 import type { Router } from "../rpc/index.js";
 
 import { Connection } from "./connection.service.js";
+import { PreviewProxy, type IPreviewPorts } from "./preview-proxy.service.js";
 
 /** Who may open a session: consumers on the account (port, implemented by the app's `Remote`). */
 export interface IRelayPeers {
@@ -68,6 +71,8 @@ export class RelayTransport {
   private handshakes: Promise<void> = Promise.resolve();
   /** Last status per chat, to wake the phone at the end of a turn (running → idle). */
   private readonly lastStatus = new Map<string, TChatStatus>();
+  /** Preview tunnel traffic (Phase 3c): plain frames from the relay itself, not sealed. */
+  private readonly preview: PreviewProxy | null;
 
   constructor(
     private readonly me: TIdentity,
@@ -77,7 +82,18 @@ export class RelayTransport {
     private readonly router: Router,
     private readonly devices: IRelayPeers,
     private readonly log: ILogger,
-  ) {}
+    previewPorts: IPreviewPorts | null = null,
+  ) {
+    this.preview =
+      previewPorts &&
+      new PreviewProxy(
+        (f) => {
+          this.link.send(this.frame(RELAY_SELF, "preview", JSON.stringify(f)));
+        },
+        previewPorts,
+        log,
+      );
+  }
 
   private frame(
     to: string,
@@ -109,6 +125,11 @@ export class RelayTransport {
       case "msg":
         this.onSealed(frame);
         return;
+      case "preview": {
+        const f = frame.from === RELAY_SELF ? tryParseJson(previewFrameSchema, frame.body) : undefined;
+        if (f) this.preview?.onFrame(f);
+        return;
+      }
       case "pair": // QR pairing was removed in Phase 2c
       case "ack":
       case "ping":
@@ -209,7 +230,13 @@ export class RelayTransport {
     this.peers.delete(deviceId);
   }
 
+  /** The relay socket dropped: the relay ended every preview request through it. */
+  linkDown(): void {
+    this.preview?.close();
+  }
+
   close(): void {
+    this.preview?.close();
     for (const id of [...this.peers.keys()]) this.dropPeer(id);
   }
 }

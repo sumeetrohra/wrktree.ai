@@ -9,6 +9,8 @@ import { openSql } from "#src/infra/sql/index.js";
 import { DirectoryService } from "#src/modules/directory/index.js";
 import { HubService } from "#src/modules/hub/index.js";
 import { systemClock, type IClock } from "#src/shared/clock.types.js";
+import { randomToken } from "#src/shared/hash.utils.js";
+import { accountOfToken, previewTokenOf } from "#src/shared/preview-host.utils.js";
 import type { TRelayEnv } from "#src/shared/relay-env.schema.js";
 import { CLOSE } from "#src/shared/relay.constants.js";
 
@@ -69,6 +71,12 @@ export async function startNodeRelay(o: TNodeRelayOptions): Promise<TNodeRelay> 
     setPushToken: (accountId, deviceId, token) =>
       Promise.resolve(hubFor(accountId).hub.setPushToken(deviceId, token)),
     connected: (accountId) => Promise.resolve(hubFor(accountId).hub.connected()),
+    openPreview: (accountId, daemonId, v) => hubFor(accountId).hub.previews.open(accountId, daemonId, v),
+    closePreview: (accountId, daemonId, token) => {
+      hubFor(accountId).hub.previews.close(daemonId, token);
+      return Promise.resolve();
+    },
+    previewRequest: (accountId, token, req) => hubFor(accountId).hub.previews.request(req, token),
   };
 
   const deps = buildDeps(o.env, directory, hubs, clock, log);
@@ -78,6 +86,27 @@ export async function startNodeRelay(o: TNodeRelayOptions): Promise<TNodeRelay> 
     port: o.port,
     host: o.host ?? "127.0.0.1",
     authenticate: (token, device) => authenticateSocket(deps, token, device),
+    preview: {
+      tokenOf: (host) => previewTokenOf(host, deps.preview.domains),
+      accept: async (token, cookie, path, headers) => {
+        const { hub } = hubFor(accountOfToken(token));
+        const row = await hub.previews.authorized(token, cookie ?? null);
+        if (!row) return null;
+        return (wire) => {
+          const id = randomToken(12);
+          if (!hub.previews.openSocket(id, row, path, headers, wire)) {
+            wire.close(1011);
+            return;
+          }
+          wire.onMessage((data) => {
+            hub.previews.socketMessage(id, data);
+          });
+          wire.onClose(() => {
+            hub.previews.socketClosed(id);
+          });
+        };
+      },
+    },
     onSocket: ({ deviceId, accountId }, socket) => {
       const { hub, sockets } = hubFor(accountId);
       const previous = sockets.attach(deviceId, socket);

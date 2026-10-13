@@ -37,6 +37,7 @@ const LIBRARIES = [
   { id: "L21", names: ["expo-haptics", "expo-device"], zone: "device" },
   { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
   { id: "L25", names: ["shiki"], zone: "highlight" },
+  { id: "L26", names: ["react-native-webview"], zone: "webview" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -414,6 +415,7 @@ const ZONES = [
     ["storage", "mmkv"],
     ["secure-store", "secure-store"],
     ["highlight", "highlight"],
+    ["webview", "webview"],
     ["notifications", "notifications"],
     ["media", "media"],
     ["device", "device"],

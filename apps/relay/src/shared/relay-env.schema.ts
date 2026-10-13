@@ -17,5 +17,13 @@ export const relayEnvSchema = z.object({
   /** Signs dev ID tokens. Read only when RELAY_DEV=1. */
   RELAY_DEV_SECRET: z.string().min(32).optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  /**
+   * Phase 3c: the wildcard domain previews are served under (`*.<PREVIEW_DOMAIN>` must reach this
+   * relay over HTTPS). Unset: previews are off, except `*.preview.localhost` on dev relays.
+   */
+  PREVIEW_DOMAIN: z
+    .string()
+    .regex(/^[a-z0-9.-]+$/i)
+    .optional(),
 });
 export type TRelayEnv = z.infer<typeof relayEnvSchema>;

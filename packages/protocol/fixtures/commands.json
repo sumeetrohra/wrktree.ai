@@ -719,5 +719,21 @@
       "editor": "vscode"
     },
     "result": {}
+  },
+  "preview.start": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "url": "https://a01j9z8y7x6w5v4t3s2r1q0p9n8x0f3c9a1b2c3d4e5f60718293a4b5c6d.preview.agentdeck.dev/",
+      "key": "k3y",
+      "expiresAt": 1760028800000
+    }
+  },
+  "preview.stop": {
+    "args": {
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {}
   }
 }

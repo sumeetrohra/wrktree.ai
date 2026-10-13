@@ -16,6 +16,7 @@ import { silentLogger } from "@agentdeck/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { startNodeRelay, type TNodeRelay } from "./app/node-host.js";
+import { hostRequest, hostSocket, type THostResponse } from "./infra/node/index.js";
 import { relayEnvSchema } from "./shared/relay-env.schema.js";
 import { CLOSE, PUSH_MESSAGE } from "./shared/relay.constants.js";
 
@@ -221,6 +222,18 @@ class Sock {
   }
 }
 
+/** The `name=value` of a Set-Cookie header. */
+const cookieOf = (r: THostResponse): string => {
+  const sc = r.headers["set-cookie"];
+  return (Array.isArray(sc) ? (sc[0] ?? "") : (sc ?? "")).split(";")[0] ?? "";
+};
+
+/** The preview frames a daemon socket received, parsed. */
+const previewFrames = (s: Sock): Record<string, unknown>[] =>
+  s.frames
+    .filter((f) => f["kind"] === "preview" && f["from"] === "relay")
+    .map((f) => JSON.parse(String(f["body"])) as Record<string, unknown>);
+
 describe.each(HOSTS)("relay contract: $name", (host) => {
   let relay: { url: string; stop(): Promise<void> };
   let c: Client;
@@ -393,5 +406,140 @@ describe.each(HOSTS)("relay contract: $name", (host) => {
       p.send({ from: phone.deviceId, to: daemon.deviceId, seq: i + 1, kind: "ping" });
     await p.until((s) => s.closeCode !== null);
     expect(p.closeCode).toBe(CLOSE.RATE_LIMIT);
+  });
+  describe("preview tunnel", () => {
+    /** A computer opens a preview for the phone and is online to answer it. */
+    async function opened(uid: string) {
+      const acct = await pairedAccount(uid);
+      const res = await c.call("POST", "/v1/preview", {
+        token: acct.daemon.token,
+        body: { worktreeId: "wt_1", allowedDeviceId: acct.phone.deviceId },
+      });
+      expect(res.status).toBe(200);
+      const url = new URL(res.json["url"] as string);
+      const d = await c.socket(acct.daemon.token);
+      const reply = (frame: Record<string, unknown>): void => {
+        d.send({
+          kind: "preview",
+          to: "relay",
+          from: acct.daemon.deviceId,
+          seq: 0,
+          body: JSON.stringify(frame),
+        });
+      };
+      return { ...acct, res, url, host: url.host, key: res.json["key"] as string, d, reply };
+    }
+
+    it("opens only for a computer, for a device on its account", async () => {
+      const { daemon, phone, res, url, idToken } = await opened("prev-open");
+      expect(url.hostname).toBe(`${String(res.json["token"])}.preview.localhost`);
+      expect(url.port).toBe(new URL(c.url).port);
+      expect(res.json["expiresAt"]).toBeGreaterThan(Date.now());
+      const asPhone = await c.call("POST", "/v1/preview", {
+        token: phone.token,
+        body: { worktreeId: "wt_1", allowedDeviceId: phone.deviceId },
+      });
+      expect(asPhone.status).toBe(403);
+      const stranger = await c.register(generateIdentity(), "phone", await c.signIn("prev-stranger"));
+      const foreign = await c.call("POST", "/v1/preview", {
+        token: daemon.token,
+        body: { worktreeId: "wt_1", allowedDeviceId: stranger.deviceId },
+      });
+      expect(foreign.status).toBe(403);
+      expect((await c.call("POST", "/v1/preview", { token: idToken, body: {} })).status).toBe(401);
+    });
+
+    it("trades the one-time key for a cookie, and refuses requests without it", async () => {
+      const t = await opened("prev-key");
+      expect((await hostRequest(c.url, t.host, "/")).status).toBe(403);
+      expect((await hostRequest(c.url, t.host, "/?k=wrong")).status).toBe(403);
+      const first = await hostRequest(c.url, t.host, `/app?x=1&k=${t.key}`);
+      expect(first.status).toBe(302);
+      expect(first.headers["location"]).toBe("/app?x=1");
+      const setCookie = String(first.headers["set-cookie"]);
+      expect(setCookie).toMatch(/HttpOnly/);
+      expect(setCookie).toMatch(/SameSite=Lax/);
+      expect((await hostRequest(c.url, t.host, `/?k=${t.key}`)).status).toBe(403); // used up
+      // Another preview's cookie opens nothing here.
+      const other = await opened("prev-key-2");
+      const otherCookie = cookieOf(await hostRequest(c.url, other.host, `/?k=${other.key}`));
+      expect((await hostRequest(c.url, t.host, "/", { cookie: otherCookie })).status).toBe(403);
+      t.d.close();
+      other.d.close();
+    });
+
+    it("forwards requests to the computer and streams its response back", async () => {
+      const t = await opened("prev-fwd");
+      const cookie = cookieOf(await hostRequest(c.url, t.host, `/?k=${t.key}`));
+      const pending = hostRequest(c.url, t.host, "/index.html?v=2", { cookie, accept: "text/html" });
+      await t.d.until((s) => previewFrames(s).some((f) => f["t"] === "req"));
+      const req = previewFrames(t.d).find((f) => f["t"] === "req") ?? {};
+      expect(req).toMatchObject({
+        method: "GET",
+        path: "/index.html?v=2",
+        token: t.url.hostname.split(".")[0],
+      });
+      const headers = req["headers"] as Record<string, string>;
+      expect(headers["accept"]).toBe("text/html");
+      expect(headers["cookie"]).toBeUndefined(); // the relay's cookie stays at the relay
+      expect(headers["host"]).toBeUndefined();
+      const id = String(req["id"]);
+      t.reply({ t: "head", id, status: 200, headers: { "content-type": "text/plain", "set-cookie": "x=1" } });
+      t.reply({ t: "chunk", id, data: btoa("hello "), last: false });
+      t.reply({ t: "chunk", id, data: btoa("world"), last: true });
+      const res = await pending;
+      expect(res.status).toBe(200);
+      expect(res.body).toBe("hello world");
+      expect(res.headers["content-type"]).toBe("text/plain");
+      expect(res.headers["set-cookie"]).toBeUndefined();
+      t.d.close();
+    });
+
+    it("answers 502 when the computer is offline, and the computer's own errors as is", async () => {
+      const t = await opened("prev-off");
+      const cookie = cookieOf(await hostRequest(c.url, t.host, `/?k=${t.key}`));
+      const pending = hostRequest(c.url, t.host, "/", { cookie });
+      await t.d.until((s) => previewFrames(s).some((f) => f["t"] === "req"));
+      const id = String(previewFrames(t.d).find((f) => f["t"] === "req")?.["id"]);
+      t.reply({ t: "error", id, status: 502, message: "dev server is not running" });
+      const res = await pending;
+      expect(res.status).toBe(502);
+      expect(res.body).toBe("dev server is not running");
+      t.d.close();
+      await t.d.until((s) => s.closeCode !== null);
+      await new Promise((r) => setTimeout(r, 200));
+      expect((await hostRequest(c.url, t.host, "/", { cookie })).status).toBe(502);
+    });
+
+    it("bridges WebSockets both ways", async () => {
+      const t = await opened("prev-ws");
+      const cookie = cookieOf(await hostRequest(c.url, t.host, `/?k=${t.key}`));
+      await expect(hostSocket(c.url, t.host, "/hmr")).rejects.toThrow();
+      const ws = await hostSocket(c.url, t.host, "/hmr", { cookie }, ["vite-hmr"]);
+      await t.d.until((s) => previewFrames(s).some((f) => f["t"] === "wsOpen"));
+      const open = previewFrames(t.d).find((f) => f["t"] === "wsOpen") ?? {};
+      expect(open["path"]).toBe("/hmr");
+      expect(open["headers"]).toMatchObject({ "sec-websocket-protocol": "vite-hmr" });
+      expect(open["headers"]).not.toHaveProperty("cookie");
+      const id = String(open["id"]);
+      t.reply({ t: "wsData", id, data: "reload", binary: false });
+      await t.d.until(() => ws.received.includes("reload"));
+      ws.send("hello from the page");
+      await t.d.until((s) =>
+        previewFrames(s).some((f) => f["t"] === "wsData" && f["data"] === "hello from the page"),
+      );
+      ws.close();
+      await t.d.until((s) => previewFrames(s).some((f) => f["t"] === "wsClose" && f["id"] === id));
+      t.d.close();
+    });
+
+    it("closes a preview: its cookie opens nothing after", async () => {
+      const t = await opened("prev-close");
+      const cookie = cookieOf(await hostRequest(c.url, t.host, `/?k=${t.key}`));
+      const token = t.url.hostname.split(".")[0] ?? "";
+      expect((await c.call("DELETE", `/v1/preview/${token}`, { token: t.daemon.token })).status).toBe(200);
+      expect((await hostRequest(c.url, t.host, "/", { cookie })).status).toBe(403);
+      t.d.close();
+    });
   });
 });

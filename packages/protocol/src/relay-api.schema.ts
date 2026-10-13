@@ -22,6 +22,10 @@ export const relayRoutes = {
   config: { method: "GET", path: "/v1/config" },
   pushRegister: { method: "POST", path: "/v1/push/register" },
   ws: { method: "GET", path: "/v1/ws" },
+  /** Phase 3c: a computer opens a preview tunnel for one of its worktrees (device token). */
+  preview: { method: "POST", path: "/v1/preview" },
+  /** Phase 3c: and closes it (`/v1/preview/<token>`). */
+  previewClose: { method: "DELETE", path: "/v1/preview" },
   devIdToken: { method: "GET", path: "/v1/dev/id-token" },
   devPushes: { method: "GET", path: "/v1/dev/pushes" },
   health: { method: "GET", path: "/health" },
@@ -120,3 +124,56 @@ export type TRelayControl = z.infer<typeof relayControlSchema>;
 /** Subprotocol carrying a device token from browsers, which can't set WebSocket headers. */
 export const RELAY_TOKEN_PROTOCOL_PREFIX = "agentdeck.token.";
 export const RELAY_WS_PROTOCOL = "agentdeck.relay.v1";
+
+/**
+ * Phase 3c, preview tunnel: a computer asks for a URL that reaches its worktree's dev server.
+ * Only `allowedDeviceId` gets the one-time `key`, which the relay swaps for a cookie on first load.
+ */
+export const previewOpenBodySchema = z.object({
+  worktreeId: z.string().min(1).max(64),
+  allowedDeviceId: deviceIdSchema,
+});
+export const previewOpenResultSchema = z.object({
+  token: z.string(),
+  key: z.string(),
+  url: z.string(),
+  expiresAt: z.number(),
+});
+export type TPreviewOpenResult = z.infer<typeof previewOpenResultSchema>;
+
+const headersSchema = z.record(z.string(), z.string());
+
+/**
+ * Preview frames travel between the relay and a computer as relay frames of kind `preview`
+ * (`from: "relay"` one way, `to: "relay"` the other). They are not end-to-end encrypted: the
+ * relay terminates TLS for the browser and must read them (SEC23). Bodies and data are base64.
+ */
+export const previewFrameSchema = z.discriminatedUnion("t", [
+  z.object({
+    t: z.literal("req"),
+    id: z.string(),
+    token: z.string(),
+    method: z.string(),
+    path: z.string(),
+    headers: headersSchema,
+    body: z.string().optional(),
+  }),
+  z.object({ t: z.literal("head"), id: z.string(), status: z.number().int(), headers: headersSchema }),
+  z.object({ t: z.literal("chunk"), id: z.string(), data: z.string(), last: z.boolean() }),
+  z.object({ t: z.literal("error"), id: z.string(), status: z.number().int(), message: z.string() }),
+  /** The browser went away or the response grew past the limit: stop sending. */
+  z.object({ t: z.literal("cancel"), id: z.string() }),
+  z.object({
+    t: z.literal("wsOpen"),
+    id: z.string(),
+    token: z.string(),
+    path: z.string(),
+    headers: headersSchema,
+  }),
+  z.object({ t: z.literal("wsData"), id: z.string(), data: z.string(), binary: z.boolean() }),
+  z.object({ t: z.literal("wsClose"), id: z.string(), code: z.number().int().optional() }),
+]);
+export type TPreviewFrame = z.infer<typeof previewFrameSchema>;
+
+/** The `to`/`from` a preview frame uses for the relay itself. */
+export const RELAY_SELF = "relay";

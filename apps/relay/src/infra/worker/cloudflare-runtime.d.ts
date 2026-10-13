@@ -2,9 +2,13 @@
 // @cloudflare/workers-types would replace Node's globals for the whole package.
 
 interface ICfWebSocket {
-  send(message: string): void;
+  send(message: string | ArrayBuffer | Uint8Array): void;
   close(code?: number, reason?: string): void;
   readonly readyState: number;
+  /** Non-hibernating sockets (preview bridges): accept, then listen. */
+  accept(): void;
+  addEventListener(type: "message", fn: (e: { data: string | ArrayBuffer }) => void): void;
+  addEventListener(type: "close" | "error", fn: () => void): void;
 }
 
 interface ICfSqlCursor {

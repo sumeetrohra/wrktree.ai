@@ -10,6 +10,7 @@ import {
   linkFromApp,
   newTaskFromApp,
   offlineFromApp,
+  previewFromApp,
   revokeApp,
   shipFromApp,
   signInApp,
@@ -24,6 +25,8 @@ export type TAppScenario = {
   summary: string;
   covers: string[];
   harness: { relay?: boolean; firebase?: boolean; webRoot?: string };
+  /** Serve the app under this loopback name instead of 127.0.0.1 (see `AppDriver.start`). */
+  appHost?: string;
   run(h: Harness, app: AppDriver): Promise<void>;
 };
 
@@ -106,6 +109,19 @@ export const appScenarios: TAppScenario[] = [
     ],
     harness: { relay: true },
     run: shipFromApp,
+  },
+  {
+    n: 22,
+    title: "The app: preview the running app, with hot reload",
+    summary:
+      "Preview tab → the dev server's page in a frame through the relay; the agent edits it and it reloads by itself",
+    covers: [
+      "Phase 3c: the worktree's app opens on the phone through the relay, no ports exposed",
+      "Phase 3c: hot reload over the tunnel's WebSocket; phone, tablet and full widths",
+    ],
+    harness: { relay: true },
+    appHost: "preview.localhost",
+    run: previewFromApp,
   },
 ];
 

@@ -6,7 +6,7 @@ import { ScrollView, View } from "react-native";
 import { Button } from "@/shared/components/ui/button";
 import { Text } from "@/shared/components/ui/text";
 
-export type TWorktreeTab = "chats" | "changes" | "files" | "logs" | "ship";
+export type TWorktreeTab = "chats" | "changes" | "files" | "logs" | "preview" | "ship";
 export type TEditor = "vscode" | "cursor" | "zed";
 
 const PATHS = {
@@ -14,9 +14,10 @@ const PATHS = {
   changes: "/h/[hostId]/wt/[worktreeId]/changes",
   files: "/h/[hostId]/wt/[worktreeId]/files",
   logs: "/h/[hostId]/wt/[worktreeId]/logs",
+  preview: "/h/[hostId]/wt/[worktreeId]/preview",
   ship: "/h/[hostId]/wt/[worktreeId]/ship",
 } as const;
-const TABS: readonly TWorktreeTab[] = ["chats", "changes", "files", "logs", "ship"];
+const TABS: readonly TWorktreeTab[] = ["chats", "changes", "files", "logs", "preview", "ship"];
 
 export type TWorktreeTabsProps = {
   hostId: string;
@@ -26,7 +27,7 @@ export type TWorktreeTabsProps = {
   onOpenEditor?: ((editor: TEditor) => void) | undefined;
 };
 
-/** The worktree screen's top tabs (spec: Chats | Changes | Files | Logs), plus Ship. */
+/** The worktree screen's top tabs (spec: Chats | Changes | Files | Logs | Preview), plus Ship. */
 export function WorktreeTabs({
   hostId,
   worktreeId,

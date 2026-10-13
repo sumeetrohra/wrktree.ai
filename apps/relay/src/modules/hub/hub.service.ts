@@ -3,7 +3,7 @@ import { tryParseJson, type ILogger } from "@agentdeck/shared";
 
 import type { IClock } from "#src/shared/clock.types.js";
 import type { IPushSender } from "#src/shared/push.types.js";
-import { CLOSE, RELAY_LIMITS } from "#src/shared/relay.constants.js";
+import { CLOSE, PREVIEW, RELAY_LIMITS } from "#src/shared/relay.constants.js";
 import type { IHubSockets, TMember } from "#src/shared/sockets.types.js";
 import type { ISql } from "#src/shared/sql.types.js";
 
@@ -15,6 +15,7 @@ import {
   pairRowSchema,
   totalsRowSchema,
 } from "./hub.schema.js";
+import { PreviewService } from "./preview.service.js";
 
 type TWindow = { start: number; frames: number; bytes: number };
 
@@ -27,6 +28,8 @@ type TWindow = { start: number; frames: number; bytes: number };
 export class HubService {
   /** Rate windows live in memory; a hibernating Durable Object simply starts a fresh window. */
   private readonly windows = new Map<string, TWindow>();
+  /** The account's preview tunnels (Phase 3c). */
+  readonly previews: PreviewService;
 
   constructor(
     private readonly sql: ISql,
@@ -36,6 +39,7 @@ export class HubService {
     private readonly log: ILogger,
   ) {
     sql.exec(HUB_SCHEMA);
+    this.previews = new PreviewService(sql, sockets, clock, log);
   }
 
   private member(
@@ -91,6 +95,8 @@ export class HubService {
 
   onClose(deviceId: string): void {
     this.windows.delete(deviceId);
+    this.windows.delete(`${deviceId}:preview`);
+    this.previews.daemonGone(deviceId);
     this.broadcastPresence(deviceId, false);
   }
 
@@ -104,15 +110,20 @@ export class HubService {
     this.sockets.send(deviceId, JSON.stringify(frame));
   }
 
-  /** Per-device frame and byte budget; the daemon's is larger because it streams blobs. */
-  private overLimit(deviceId: string, kind: TMember["kind"], bytes: number): boolean {
+  /**
+   * Per-device frame and byte budget; the daemon's is larger because it streams blobs, and a
+   * computer's preview responses (page bundles) have a budget of their own.
+   */
+  private overLimit(deviceId: string, kind: TMember["kind"] | "preview", bytes: number): boolean {
+    const key = kind === "preview" ? `${deviceId}:preview` : deviceId;
     const t = this.clock.now();
-    const w = this.windows.get(deviceId);
+    const w = this.windows.get(key);
     const win = w && t - w.start < 1000 ? w : { start: t, frames: 0, bytes: 0 };
     win.frames++;
     win.bytes += bytes;
-    this.windows.set(deviceId, win);
-    const limit = kind === "daemon" ? RELAY_LIMITS.daemon : RELAY_LIMITS.phone;
+    this.windows.set(key, win);
+    const limit =
+      kind === "preview" ? PREVIEW.rate : kind === "daemon" ? RELAY_LIMITS.daemon : RELAY_LIMITS.phone;
     return win.frames > limit.framesPerSecond || win.bytes > limit.bytesPerSecond;
   }
 
@@ -127,16 +138,21 @@ export class HubService {
       this.sockets.close(deviceId, CLOSE.TOO_BIG, "frame too large");
       return;
     }
-    if (this.overLimit(deviceId, sender.kind, bytes)) {
+    const frame = tryParseJson(relayFrameSchema, raw);
+    const bucket = frame?.kind === "preview" && sender.kind === "daemon" ? "preview" : sender.kind;
+    if (this.overLimit(deviceId, bucket, bytes)) {
       this.log.warn({ deviceId }, "relay rate limit");
       this.sockets.close(deviceId, CLOSE.RATE_LIMIT, "rate limit");
       return;
     }
-    const frame = tryParseJson(relayFrameSchema, raw);
     if (frame?.from !== deviceId) return; // spoofed or malformed: drop silently
     if (frame.kind === "ping") return;
     if (frame.kind === "ack") {
       this.ack(deviceId, frame);
+      return;
+    }
+    if (frame.kind === "preview") {
+      if (sender.kind === "daemon") this.previews.onFrame(deviceId, frame);
       return;
     }
     const target = this.member(frame.to);

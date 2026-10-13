@@ -6,7 +6,9 @@ import { DoSockets, doSql } from "#src/infra/worker/index.js";
 import { DirectoryService, type IDirectory } from "#src/modules/directory/index.js";
 import { HubService } from "#src/modules/hub/index.js";
 import { systemClock } from "#src/shared/clock.types.js";
+import { randomToken } from "#src/shared/hash.utils.js";
 import type { TIdentityClaims } from "#src/shared/id-token.types.js";
+import { accountOfToken, previewTokenOf } from "#src/shared/preview-host.utils.js";
 import { relayEnvSchema, type TRelayEnv } from "#src/shared/relay-env.schema.js";
 import { CLOSE } from "#src/shared/relay.constants.js";
 import { socketToken } from "#src/shared/socket-token.utils.js";
@@ -26,10 +28,18 @@ interface IHubRpc {
   removeMember(deviceId: string, reason: "revoked" | "moved"): Promise<void>;
   setPushToken(deviceId: string, token: string): Promise<boolean>;
   connected(): Promise<string[]>;
+  openPreview(
+    accountId: string,
+    daemonId: string,
+    v: { worktreeId: string; allowedDeviceId: string },
+  ): Promise<{ token: string; key: string; expiresAt: number }>;
+  closePreview(daemonId: string, token: string): Promise<void>;
 }
 
 const log = createConsoleLogger();
 const DEVICE_HEADER = "x-agentdeck-device";
+/** Set by the Worker on requests to a preview host it forwards to the account's hub. */
+const PREVIEW_HEADER = "x-agentdeck-preview";
 
 function envOf(raw: Record<string, unknown>): TRelayEnv {
   return relayEnvSchema.parse(
@@ -97,9 +107,56 @@ export class HubDO extends DurableObject<TWorkerEnv> implements IHubRpc {
   connected(): Promise<string[]> {
     return Promise.resolve(this.hub.connected());
   }
+  openPreview(
+    accountId: string,
+    daemonId: string,
+    v: { worktreeId: string; allowedDeviceId: string },
+  ): Promise<{ token: string; key: string; expiresAt: number }> {
+    return this.hub.previews.open(accountId, daemonId, v);
+  }
+  closePreview(daemonId: string, token: string): Promise<void> {
+    this.hub.previews.close(daemonId, token);
+    return Promise.resolve();
+  }
 
-  /** Only reached from the Worker after it authenticated the device token. */
-  fetch(req: Request): Response {
+  /** A request or WebSocket to a preview host, forwarded by the Worker (Phase 3c). */
+  private async preview(req: Request, token: string): Promise<Response> {
+    if (req.headers.get("upgrade") !== "websocket") return this.hub.previews.request(req, token);
+    const row = await this.hub.previews.authorized(token, req.headers.get("cookie"));
+    if (!row) return new Response("forbidden", { status: 403 });
+    const pair = new WebSocketPair();
+    const server = pair[1];
+    server.accept();
+    const id = randomToken(12);
+    const url = new URL(req.url);
+    const ok = this.hub.previews.openSocket(id, row, url.pathname + url.search, req.headers, {
+      send: (data) => {
+        server.send(data);
+      },
+      close: (code) => {
+        server.close(code);
+      },
+    });
+    if (!ok) return new Response("The computer running this preview is offline.", { status: 502 });
+    server.addEventListener("message", (e) => {
+      this.hub.previews.socketMessage(id, e.data);
+    });
+    server.addEventListener("close", () => {
+      this.hub.previews.socketClosed(id);
+    });
+    const protocol = req.headers.get("sec-websocket-protocol")?.split(",")[0]?.trim();
+    const init: ICfUpgradeInit = {
+      status: 101,
+      webSocket: pair[0],
+      ...(protocol ? { headers: { "sec-websocket-protocol": protocol } } : {}),
+    };
+    return new Response(null, init);
+  }
+
+  /** Only reached from the Worker after it authenticated the device token (or a preview host). */
+  async fetch(req: Request): Promise<Response> {
+    const previewToken = req.headers.get(PREVIEW_HEADER);
+    if (previewToken !== null) return this.preview(req, previewToken);
     const deviceId = req.headers.get(DEVICE_HEADER);
     if (deviceId === null || req.headers.get("upgrade") !== "websocket")
       return new Response(null, { status: 400 });
@@ -144,8 +201,14 @@ export async function handleWorkerFetch(req: Request, rawEnv: TWorkerEnv): Promi
     removeMember: (accountId, deviceId, reason) => hubOf(rawEnv, accountId).removeMember(deviceId, reason),
     setPushToken: (accountId, deviceId, token) => hubOf(rawEnv, accountId).setPushToken(deviceId, token),
     connected: (accountId) => hubOf(rawEnv, accountId).connected(),
+    openPreview: (accountId, daemonId, v) => hubOf(rawEnv, accountId).openPreview(accountId, daemonId, v),
+    closePreview: (accountId, daemonId, token) => hubOf(rawEnv, accountId).closePreview(daemonId, token),
+    previewRequest: (accountId, token, r) => forwardPreview(rawEnv, accountId, token, r),
   };
   const deps = buildDeps(env, directory, hubs, systemClock, log);
+  // A preview host (Phase 3c): everything, WebSocket upgrades included, goes to the account's hub.
+  const previewToken = previewTokenOf(req.headers.get("host"), deps.preview.domains);
+  if (previewToken !== null) return forwardPreview(rawEnv, accountOfToken(previewToken), previewToken, req);
   const url = new URL(req.url);
   if (url.pathname === relayRoutes.ws.path) {
     if (url.searchParams.has("token") || req.headers.get("upgrade") !== "websocket") {
@@ -162,6 +225,12 @@ export async function handleWorkerFetch(req: Request, rawEnv: TWorkerEnv): Promi
     return hubOf(rawEnv, auth.accountId).fetch(new Request(req, { headers }));
   }
   return createRelayApp(deps).fetch(req);
+}
+
+function forwardPreview(env: TWorkerEnv, accountId: string, token: string, req: Request): Promise<Response> {
+  const headers = new Headers(req.headers);
+  headers.set(PREVIEW_HEADER, token);
+  return hubOf(env, accountId).fetch(new Request(req, { headers }));
 }
 
 export type { TWorkerEnv };

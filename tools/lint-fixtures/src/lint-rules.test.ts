@@ -307,6 +307,7 @@ const CASES: TCase[] = [
     ["L21", "expo-haptics"],
     ["L22", "expo-crypto"],
     ["L25", "shiki"],
+    ["L26", "react-native-webview"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its app wrapper`,
     rule: "no-restricted-imports",

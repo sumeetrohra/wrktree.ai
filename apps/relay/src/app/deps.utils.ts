@@ -6,6 +6,7 @@ import { DevPushSender, ExpoPushSender } from "#src/infra/push/index.js";
 import type { IDirectory } from "#src/modules/directory/index.js";
 import type { IClock } from "#src/shared/clock.types.js";
 import type { IIdTokenVerifier, TIdentityClaims } from "#src/shared/id-token.types.js";
+import { previewDomains, previewUrl } from "#src/shared/preview-host.utils.js";
 import type { IPushSender } from "#src/shared/push.types.js";
 import type { TRelayEnv } from "#src/shared/relay-env.schema.js";
 
@@ -60,7 +61,16 @@ export function buildDeps(
     env.FIREBASE_PROJECT_ID === undefined ? null : new FirebaseVerifier(env.FIREBASE_PROJECT_ID);
   if (env.RELAY_DEV !== "1") {
     if (!firebase) throw new Error("FIREBASE_PROJECT_ID is required unless RELAY_DEV=1");
-    return { directory, hubs, idTokens: firebase, devIdTokens: null, clock, log, config: configFor(env) };
+    return {
+      directory,
+      hubs,
+      idTokens: firebase,
+      devIdTokens: null,
+      clock,
+      log,
+      config: configFor(env),
+      preview: previewOf(env),
+    };
   }
   if (env.RELAY_DEV_SECRET === undefined) throw new Error("RELAY_DEV_SECRET is required when RELAY_DEV=1");
   const dev = new DevIdTokens(env.RELAY_DEV_SECRET);
@@ -79,7 +89,12 @@ export function buildDeps(
     clock,
     log,
     config: configFor(env),
+    preview: previewOf(env),
   };
+}
+
+function previewOf(env: TRelayEnv): TRelayDeps["preview"] {
+  return { domains: previewDomains(env), urlFor: (token, base) => previewUrl(token, env, base) };
 }
 
 export function buildPushSender(env: TRelayEnv, directory: Pick<IDirectory, "recordPush">): IPushSender {

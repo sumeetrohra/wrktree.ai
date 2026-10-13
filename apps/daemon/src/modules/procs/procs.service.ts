@@ -52,7 +52,8 @@ export class ProcsService {
     return [...this.procs.values()].filter((l) => l.proc.worktreeId === worktreeId);
   }
 
-  start(worktreeId: string, script: string): TProc {
+  /** `env` adds to the repo's env (the preview's hints); `PORT` and friends always win. */
+  start(worktreeId: string, script: string, env: Readonly<Record<string, string>> = {}): TProc {
     const wt = this.source.worktree(worktreeId);
     if (wt.status !== "ready") throw new AgentdeckError("BAD_STATE", `The worktree is ${wt.status}`);
     const config = this.source.config(wt);
@@ -92,6 +93,7 @@ export class ProcsService {
       cwd: wt.path,
       env: childEnv({
         ...config.env,
+        ...env,
         PORT: port,
         HOST: "127.0.0.1",
         AGENTDECK_PORT: port,
@@ -123,6 +125,18 @@ export class ProcsService {
     this.publishStatus(live);
     this.rt.log.info({ procId: proc.id, worktreeId, script }, "script started");
     return proc;
+  }
+
+  /** The running process of a script in a worktree, if any. */
+  running(worktreeId: string, script: string): TProc | null {
+    return (
+      this.of(worktreeId).find((l) => l.proc.script === script && l.proc.status === "running")?.proc ?? null
+    );
+  }
+
+  /** A process's current state. */
+  proc(procId: string): TProc {
+    return this.get(procId).proc;
   }
 
   private append(live: TLive, stream: "stdout" | "stderr", text: string): void {

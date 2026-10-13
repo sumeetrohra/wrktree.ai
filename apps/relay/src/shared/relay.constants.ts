@@ -20,3 +20,13 @@ export const CLOSE = {
 
 /** The push carries no content (spec: Push). */
 export const PUSH_MESSAGE = { title: "Agentdeck", body: "A session needs you" } as const;
+
+/** Preview tunnel (spec: Preview tunnelling). */
+export const PREVIEW = {
+  lifetimeMs: 8 * 60 * 60 * 1000,
+  idleMs: 60 * 1000,
+  maxResponseBytes: 25 * 1024 * 1024,
+  maxBodyBytes: 10 * 1024 * 1024,
+  /** A computer's preview frames, counted apart from its chat traffic. */
+  rate: { framesPerSecond: 1000, bytesPerSecond: 64 * 1024 * 1024 },
+} as const;
