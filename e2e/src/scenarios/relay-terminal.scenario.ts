@@ -8,6 +8,25 @@ const WIN = process.platform === "win32";
 /** A sum, so seeing the answer proves the shell ran it (its echo doesn't contain the answer). */
 const SUM = WIN ? "set /a 6*7+1000\r" : "echo sum-$((20+22))\r";
 const ANSWER = WIN ? "1042" : "sum-42";
+
+const ESC = String.fromCharCode(27);
+const BEL = String.fromCharCode(7);
+const ESCAPES = new RegExp(`${ESC}\\[[0-9;?]*[A-Za-z]|${ESC}\\][^${BEL}]*${BEL}`, "g");
+/**
+ * What a terminal shows, for matching: escape sequences and all whitespace removed. Windows'
+ * ConPTY redraws with cursor moves instead of spaces and splits lines across events.
+ */
+const plain = (text: string): string => text.replace(ESCAPES, "").replace(/\s+/g, "");
+
+/** Matches `needle` in everything the terminal printed so far (the events add up). */
+function printed(termId: string, needle: string) {
+  let seen = "";
+  return isEvent("term.output", (e) => {
+    if (e.termId !== termId) return false;
+    seen += e.data;
+    return plain(seen).includes(plain(needle));
+  });
+}
 /** The prompt (the harness runs cmd.exe on Windows). */
 const PROMPT = WIN ? /[A-Z]:\\[^>\r\n]*>/ : /[$#%>] ?$/m;
 
@@ -55,22 +74,16 @@ export const relayTerminal: TScenario = {
       "the shell's prompt",
     );
     await phone.call("term.input", { termId: term.id, data: SUM });
-    await phone.waitFor(
-      isEvent("term.output", (e) => e.termId === term.id && e.data.includes(ANSWER)),
-      "the command's output",
-    );
+    await phone.waitFor(printed(term.id, ANSWER), "the command's output");
     await phone.call("term.input", { termId: term.id, data: "git status\r" });
-    await phone.waitFor(
-      isEvent("term.output", (e) => e.termId === term.id && e.data.includes("On branch term")),
-      "git status in the worktree",
-    );
+    await phone.waitFor(printed(term.id, "On branch term"), "git status in the worktree");
     await h.check("resize, and the scrollback reads back as one blob", async () => {
       assert.equal((await phone.call("term.resize", { termId: term.id, cols: 100, rows: 30 })).cols, 100);
       const { blob } = await phone.call("term.output", { termId: term.id });
       const { base64 } = await phone.call("blob.get", { blobId: blob.blobId });
       const text = Buffer.from(base64, "base64").toString();
-      assert.ok(text.includes(ANSWER));
-      assert.match(text, /On branch term/);
+      assert.ok(plain(text).includes(ANSWER));
+      assert.ok(plain(text).includes("Onbranchterm"));
     });
 
     h.step("Phone: close it");
