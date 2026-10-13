@@ -1,0 +1,19 @@
+{
+  "name": "@agentdeck/site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "agentdeck.dev: the landing page and docs, built from docs/*.md into static HTML.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "deploy": "wrangler pages deploy out --project-name agentdeck-site"
+  },
+  "dependencies": {
+    "marked": "18.0.14"
+  },
+  "devDependencies": {
+    "wrangler": "4.141.0"
+  }
+}

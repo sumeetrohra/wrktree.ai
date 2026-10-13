@@ -12,7 +12,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 | **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | **built** |
 | **4e** | Open source files, npm packages, docker-compose | **built** (publishing needs the npm token) |
 | **4f** | Store-ready app, Sentry | **built** (submission is the owner's) |
-| **4g** | Landing page and docs site | planned |
+| **4g** | Landing page and docs site | **built** (the domain and Cloudflare token are the owner's) |
 
 ## 4a: usage and limits per profile
 
@@ -229,3 +229,21 @@ Pending (the owner's): the `NPM_TOKEN` secret, then merging the first "Version p
 Pending (the owner's): Apple and Google developer accounts, `eas init` (project id), `eas build
 --profile production`, filling in App Store Connect / Play Console from `store/`, and
 `eas submit`. A Sentry project's DSN as an EAS secret, if wanted.
+
+## 4g: landing page and docs site
+
+- **`apps/site`** is a small static generator (TypeScript plus `marked`, no framework): a
+  landing page, install per OS, quick start, and docs rendered from this repo's Markdown, so
+  there is one source: the [user guide](guide.md), [self-hosting the relay](relay-deploy.md),
+  the [security model](rules/security.md), [privacy](privacy.md) and [terms](terms.md).
+- **Links:** relative links between rendered docs become site links; links to anything else in
+  the repo point at GitHub. The build fails on any internal link that doesn't resolve to a
+  built page or file (unit-tested, and run in CI as its own step).
+- **Look:** one stylesheet, light and dark from the system setting, readable at phone width
+  with no sideways scrolling; the app icon is reused.
+- **Deploy:** `pnpm --filter @agentdeck/site run deploy` (Wrangler, Cloudflare Pages project
+  `agentdeck-site`). The `Site` workflow builds and deploys on pushes to `main` that touch the
+  site or docs, once the repository has `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+  secrets; until then it skips.
+
+Pending (the owner's): the Cloudflare secrets, and pointing the domain at the Pages project.

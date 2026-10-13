@@ -33,7 +33,7 @@ Every chat is kept in Firebase, so it stays readable when its computer is off. F
 can review an agent's changes, read the code, ask about specific lines, run the repo's scripts and
 ship the work as a pull request the agent drafted, and open the app it is building in a preview
 tunnelled through the relay, with hot reload.
-Phase 4 is under way: per-profile usage and limits, handing a chat to another profile, and config shared by every profile (instructions, MCP servers, skills), and `agentdeck status`/`doctor`/`uninstall` with keep-awake and Windows path fixes are built.
+Phase 4 is built: per-profile usage and limits, handing a chat to another profile, and config shared by every profile (instructions, MCP servers, skills), `agentdeck status`/`doctor`/`uninstall` with keep-awake and Windows path fixes, npm packaging, a store-ready app and the landing and docs site (`apps/site`) are built.
 29 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md), [`docs/phase-3.md`](docs/phase-3.md) and
 [`docs/phase-4.md`](docs/phase-4.md).
@@ -44,7 +44,7 @@ Phase 4 is under way: per-profile usage and limits, handing a chat to another pr
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
-| 4 | Multi-account power features and public launch | 4a–4f (usage and limits, hand-off, shared config, status/doctor, npm and OSS, store-ready app) ✅ built; 4g next |
+| 4 | Multi-account power features and public launch | ✅ built (store submission, npm token and the site's domain are the owner's) |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
@@ -177,5 +177,4 @@ lint, Prettier and the typecheck; CI adds knip, `pnpm audit` and CodeQL.
 
 ## License
 
-Currently [MIT](LICENSE). The spec's default for launch is Apache-2.0 for the daemon and
-protocol and AGPL for the relay, to be decided before open-sourcing in Phase 4.
+[MIT](LICENSE), for every package.

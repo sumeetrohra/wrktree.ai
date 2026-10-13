@@ -63,6 +63,8 @@ jobs:
         run: pnpm --filter @agentdeck/mobile export:web
       - name: App store config resolves (icons, permissions, plugins)
         run: pnpm --filter @agentdeck/mobile exec expo config --type public --json > /dev/null
+      - name: Site builds and every internal link resolves
+        run: pnpm --filter @agentdeck/site build
 
   relay:
     name: relay (Worker + self-host)
