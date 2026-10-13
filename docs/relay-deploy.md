@@ -51,6 +51,16 @@ Local development of the Worker build: `pnpm --filter @agentdeck/relay dev:worke
 8787). The relay contract tests run against it with `RELAY_WORKER_TESTS=1 pnpm --filter
 @agentdeck/relay test`.
 
+## Self-host (Docker Compose)
+
+```sh
+cp .env.example .env        # RELAY_PUBLIC_URL, FIREBASE_PROJECT_ID (+ API key, bucket), PREVIEW_DOMAIN
+docker compose up -d        # builds apps/relay/Dockerfile; data in the relay-data volume
+```
+
+It listens on `127.0.0.1:8787` for a TLS proxy in front (Caddy, nginx). Or from npm, without
+Docker: `npm install -g @agentdeck/relay`, then `agentdeck-relay` with the same variables.
+
 ## Self-host (Docker)
 
 ```sh

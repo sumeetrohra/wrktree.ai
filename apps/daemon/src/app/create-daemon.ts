@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { AgentdeckError } from "@agentdeck/protocol";
 import { newId, now, tryParseJson, type ILogger } from "@agentdeck/shared";
@@ -57,6 +58,12 @@ function configOf(home: string): TDaemonConfig | null {
   return tryParseJson(daemonConfigSchema, readFileSync(file, "utf8")) ?? null;
 }
 
+/** The npm package ships the web app next to its bundle (`dist/web`); a source checkout has none. */
+function bundledWebRoot(): string | null {
+  const dir = fileURLToPath(new URL("./web/", import.meta.url));
+  return existsSync(join(dir, "index.html")) ? dir : null;
+}
+
 export function optionsFromEnv(home: string): TDaemonOptions {
   const env = readDaemonEnv();
   return {
@@ -84,7 +91,7 @@ export function optionsFromEnv(home: string): TDaemonOptions {
       env.AGENTDECK_KEEP_AWAKE === undefined
         ? configOf(home)?.keepAwake !== false
         : env.AGENTDECK_KEEP_AWAKE === "1",
-    webRoot: env.AGENTDECK_WEB_ROOT ?? null,
+    webRoot: env.AGENTDECK_WEB_ROOT ?? bundledWebRoot(),
     gh: {
       bin: env.GH_BIN ?? "gh",
       env: Object.fromEntries(

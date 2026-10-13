@@ -1,0 +1,30 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      multiple: true
+      options: [CLI / daemon, phone app, web app, relay (hosted), relay (self-hosted)]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "`agentdeck --version`, your OS, and the app version if relevant."
+  - type: textarea
+    id: doctor
+    attributes:
+      label: agentdeck doctor
+      description: Paste the output of `agentdeck doctor` (it leaves out tokens and emails; check anyway).
+      render: text

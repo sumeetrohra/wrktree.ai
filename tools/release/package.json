@@ -1,0 +1,20 @@
+{
+  "name": "@agentdeck/release",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Builds the npm packages (agentdeck, @agentdeck/relay, @agentdeck/protocol), publishes them, and smoke-tests the tarballs.",
+  "type": "module",
+  "bin": {
+    "agentdeck-release": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agentdeck/shared": "workspace:*",
+    "esbuild": "0.28.2",
+    "zod": "4.6.5"
+  }
+}

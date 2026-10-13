@@ -1,0 +1,35 @@
+# Self-hosted relay (docs/relay-deploy.md). Put TLS in front of it (Caddy, nginx, a load balancer).
+#   cp .env.example .env   # set RELAY_PUBLIC_URL, FIREBASE_*, and PREVIEW_DOMAIN for Preview
+#   docker compose up -d
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: apps/relay/Dockerfile
+    image: agentdeck-relay
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      RELAY_PUBLIC_URL: ${RELAY_PUBLIC_URL:?set RELAY_PUBLIC_URL to the relay's public https URL}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID}
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY:-}
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET:-}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      PREVIEW_DOMAIN: ${PREVIEW_DOMAIN:-}
+    volumes:
+      - relay-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  relay-data:

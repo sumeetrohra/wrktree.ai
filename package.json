@@ -19,9 +19,12 @@
     "prepare": "husky",
     "knip": "knip",
     "emulators": "firebase emulators:exec --config firebase/firebase.json --project demo-agentdeck",
-    "test:e2e:app": "turbo run build && pnpm --filter @agentdeck/mobile export:web && APP_E2E=1 pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts"
+    "test:e2e:app": "turbo run build && pnpm --filter @agentdeck/mobile export:web && APP_E2E=1 pnpm --filter @agentdeck/e2e exec vitest run src/app.test.ts",
+    "release": "node tools/release/dist/index.js",
+    "changeset": "changeset"
   },
   "devDependencies": {
+    "@changesets/cli": "3.0.3",
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.5",

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [["@agentdeck/cli", "@agentdeck/daemon", "@agentdeck/relay", "@agentdeck/protocol"]],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  },
+  "ignore": [
+    "@agentdeck/mobile",
+    "@agentdeck/e2e",
+    "@agentdeck/fake-agent",
+    "@agentdeck/fake-gh",
+    "@agentdeck/lint-fixtures",
+    "@agentdeck/release"
+  ]
+}

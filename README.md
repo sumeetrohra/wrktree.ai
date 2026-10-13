@@ -44,11 +44,20 @@ Phase 4 is under way: per-profile usage and limits, handing a chat to another pr
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
-| 4 | Multi-account power features and public launch | 4a–4d (usage and limits, hand-off, shared config, status/doctor) ✅ built; 4e–4g next |
+| 4 | Multi-account power features and public launch | 4a–4e (usage and limits, hand-off, shared config, status/doctor, npm and OSS) ✅ built; 4f–4g next |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.
+
+## Install
+
+```sh
+npm install -g agentdeck    # once published; until then, run it from a checkout (below)
+agentdeck doctor
+```
+
+Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md). Security reports: [`SECURITY.md`](SECURITY.md).
 
 ## Run it
 

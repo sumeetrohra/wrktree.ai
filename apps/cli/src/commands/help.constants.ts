@@ -1,6 +1,7 @@
 export const HELP = `agentdeck — drive coding agents on this machine
 
   agentdeck daemon                              run the daemon in the foreground
+  agentdeck --version                           print the version
   agentdeck repo add <path>                     add a git repository
   agentdeck profile add <agent> --name <name>   create a profile and log it in
   agentdeck config shared [instructions <file> | mcp add|remove …]

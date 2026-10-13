@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runDaemon } from "@agentdeck/daemon";
+import { DAEMON_VERSION, runDaemon } from "@agentdeck/daemon";
 
 import { configCommand } from "#src/commands/config.command.js";
 import { devCommand } from "#src/commands/dev.command.js";
@@ -24,6 +24,10 @@ async function main(argv: readonly string[]): Promise<void> {
     case "help":
     case "--help":
       print(HELP);
+      return;
+    case "--version":
+    case "version":
+      print(DAEMON_VERSION);
       return;
     case "daemon":
       return runDaemon();

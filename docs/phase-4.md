@@ -10,7 +10,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 | **4b** | Hand-off to another profile or agent | **built** |
 | **4c** | Shared config (MCP, skills, instructions) | **built** |
 | **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | **built** |
-| **4e** | Open source files, npm packages, docker-compose | planned |
+| **4e** | Open source files, npm packages, docker-compose | **built** (publishing needs the npm token) |
 | **4f** | Store-ready app, Sentry | planned |
 | **4g** | Landing page and docs site | planned |
 
@@ -171,3 +171,31 @@ missing helper is logged once and ignored. Off with `"keepAwake": false` in the 
 Unit tests cover the uninstall plans, every doctor check against a fake machine, redaction, the
 keep-awake helpers and the worktree paths. E2E runs put worktrees under the test folder
 (`AGENTDECK_WORKTREE_ROOT`), so every OS exercises the short-root layout.
+
+## 4e: open source, npm, self-host
+
+- **Repo files:** MIT [`LICENSE`](../LICENSE), [`CONTRIBUTING.md`](../CONTRIBUTING.md),
+  [`SECURITY.md`](../SECURITY.md) (private reporting, supported versions),
+  [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md), issue forms and a pull request template.
+- **npm packages,** built by [`tools/release`](../tools/release) from the workspace:
+
+  | Package | What | How |
+  |---|---|---|
+  | `agentdeck` | the CLI and daemon (`bin: agentdeck`), with the app's web build for `agentdeck open` | one esbuild bundle of the `@agentdeck/*` code; npm dependencies (better-sqlite3, ripgrep, ws, …) stay dependencies |
+  | `@agentdeck/relay` | the self-host relay (`bin: agentdeck-relay`) | bundled the same way |
+  | `@agentdeck/protocol` | the schemas and types | published as built |
+
+  Every package: `license: MIT`, `repository`, `engines: node >=22.12`, provenance.
+  The workspace packages themselves stay private.
+- **Versions:** [Changesets](../.changeset/README.md). The CLI, daemon, relay and protocol share
+  one version. On `main`, the release workflow opens a "Version packages" pull request; merging it
+  publishes the new versions (`pnpm release publish`, skipping versions npm already has). It needs
+  an `NPM_TOKEN` repository secret.
+- **CI smoke test** on Linux, macOS and Windows: `pnpm release smoke` packs the three packages,
+  installs the tarballs into an empty project, runs `agentdeck --help`, starts the installed
+  daemon and asks `agentdeck status` (native modules load), parses the relay bundle and imports
+  the protocol.
+- **Self-host with Docker Compose:** [`docker-compose.yml`](../docker-compose.yml) builds the relay
+  image and keeps its data in a volume; see [`relay-deploy.md`](relay-deploy.md).
+
+Pending (the owner's): the `NPM_TOKEN` secret, then merging the first "Version packages" PR.
