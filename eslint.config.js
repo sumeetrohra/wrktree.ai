@@ -36,6 +36,7 @@ const LIBRARIES = [
   { id: "L20", names: ["expo-image-picker", "expo-clipboard"], zone: "media" },
   { id: "L21", names: ["expo-haptics", "expo-device"], zone: "device" },
   { id: "L22", names: ["expo-crypto"], zone: "expo-crypto" },
+  { id: "L25", names: ["shiki"], zone: "highlight" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -412,6 +413,7 @@ const ZONES = [
   ...[
     ["storage", "mmkv"],
     ["secure-store", "secure-store"],
+    ["highlight", "highlight"],
     ["notifications", "notifications"],
     ["media", "media"],
     ["device", "device"],

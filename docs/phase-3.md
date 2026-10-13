@@ -6,7 +6,7 @@ first, chats outlive the computer they ran on.
 | Milestone | What | Status |
 |---|---|---|
 | **3a** | Cloud chat history: every device signs in to Firebase, computers included; hosts write worktrees, chats, items and files to Firestore and Storage; the app reads them when the host is offline | **built** (tested against the Firebase emulators; a real project is pending) |
-| **3b** | Changes, Files, Logs tabs; commit, push, PR (agent-drafted body), merge; scripts; open in editor | **in progress**: daemon and protocol built and tested end to end; the app's tabs next |
+| **3b** | Changes, Files, Logs tabs; commit, push, PR (agent-drafted body), merge; scripts; open in editor | **built** (web-tested; a real `gh` and a phone scrolling 5,000 lines are pending) |
 | **3c** | Preview through a relay TLS tunnel | planned |
 
 ## 3a: cloud chat history
@@ -73,7 +73,29 @@ plaintext (SEC13); see SEC19 in [`rules/security.md`](rules/security.md).
 
 ## 3b: ship it from the phone
 
-The daemon side is built; the app's Changes, Files and Logs tabs and the Ship sheet come next.
+### In the app
+
+A worktree (tap its branch on the Work view) has tabs: **Chats | Changes | Files | Logs | Ship**.
+
+- **Changes:** files changed since the base branch, or only what isn't committed; each opens its
+  diff.
+- **Code and diffs** render as virtualized rows (`@shopify/flash-list`), colored with Shiki
+  (`lib/highlight`, the JavaScript regex engine, a fixed set of 12 languages, light and dark).
+  Files over 2,000 lines render plain; files open truncated at 2 MB.
+- **Ask about lines:** tap a line (long-press to extend) → "Ask the agent about this" opens the
+  worktree's newest chat with the lines attached; the message shows what it quoted.
+- **Files:** browse folders with a fuzzy name filter, or search contents (ripgrep on the host);
+  a result opens the file at its line.
+- **Logs:** the repo's scripts with Start/Stop; output follows live (`proc.output` snapshot, then
+  `sync.hello` on `proc:<id>` from its cursor), ANSI stripped.
+- **Ship:** status, commit all, push, "Draft with the agent", draft or ready PR, then squash and
+  merge; without a remote, merge into the base branch. `gh` errors (e.g. not signed in) show as is.
+- **Open in editor** (VS Code, Cursor, Zed) appears only in the desktop web UI for this computer.
+
+Ship is a tab rather than a header sheet, so every tab page stays a single module composition.
+Not done yet: a PR badge on the Work view (it would run `gh` per worktree on every refresh).
+
+### On the host
 
 | Command | What it does |
 |---|---|
@@ -122,6 +144,7 @@ daemon, relay, fake agent and `tools/fake-gh`:
 | # | Scenario | Checks |
 |---|---|---|
 | 18 | Ship it from the phone | status, commit and push to a bare origin; the agent drafts the PR (`Title:` + body); create, status, merge through `gh` (origin's `main` has the change); quoted lines reach the agent and stay on the chat item; a path outside the worktree can't be quoted; a signed-out `gh` reads as `NOT_AUTHENTICATED` |
+| 20 (app) | The app: review the work, ask about a line, run it, ship it | Work → branch → Changes → diff; select a line → ask → the chat sends it quoted and the agent gets it; Files search opens the match; a 5,000-line file opens at line 4,000 with only a window rendered; Logs start/stop `dev` with live output; Ship: commit, push, agent-drafted title, create PR, squash and merge (origin's `main` has the change) |
 | 19 | Scripts and logs from the phone | only named scripts; `dev` streams its output live and serves on the worktree's port; the log reads back as one blob; stop closes the port; a failing script reports its exit code; an arbitrary command and a remote `editor.open` are refused |
 
 

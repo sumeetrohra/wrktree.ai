@@ -1,5 +1,8 @@
-import type { TBlobRef, TChat } from "@agentdeck/protocol";
+import { codeContextSchema, type TBlobRef, type TChat, type TCodeContext } from "@agentdeck/protocol";
+import { tryParseJson } from "@agentdeck/shared";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { router } from "expo-router";
+import { z } from "zod";
 
 import { daemonCall, onDaemonEvent, queryClient } from "@/lib/api";
 
@@ -14,13 +17,34 @@ export function useChatsQuery(hostId: string, worktreeId: string): UseQueryResul
   });
 }
 
+/** `context`: worktree lines the message is about ("ask the agent about this"), quoted by the host. */
 export function sendMessage(
   hostId: string,
   chatId: string,
   text: string,
   attachments: TBlobRef[] = [],
+  context: TCodeContext[] = [],
 ): Promise<{ turnId: string; queued: boolean }> {
-  return daemonCall(hostId, "chat.send", { chatId, text, ...(attachments.length ? { attachments } : {}) });
+  return daemonCall(hostId, "chat.send", {
+    chatId,
+    text,
+    ...(attachments.length ? { attachments } : {}),
+    ...(context.length ? { context } : {}),
+  });
+}
+
+/** Opens the chat with these lines attached to the next message. */
+export function askAboutLines(hostId: string, chatId: string, context: TCodeContext): void {
+  router.push({
+    pathname: "/h/[hostId]/chat/[chatId]",
+    params: { hostId, chatId, context: JSON.stringify([context]) },
+  });
+}
+
+/** The `context` route param back as quoted lines (bad or missing → none). */
+export function contextParam(raw: unknown): TCodeContext[] {
+  if (typeof raw !== "string") return [];
+  return tryParseJson(z.array(codeContextSchema).max(20), raw) ?? [];
 }
 
 export async function createChat(

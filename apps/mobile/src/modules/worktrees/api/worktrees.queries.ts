@@ -76,3 +76,17 @@ export async function createReadyWorktree(
     stop();
   }
 }
+
+/** Opens the worktree (at a file and line) in a desktop editor; only this computer's own host. */
+export async function openInEditor(
+  hostId: string,
+  worktreeId: string,
+  editor: "vscode" | "cursor" | "zed",
+  at?: { path: string; line?: number | undefined },
+): Promise<void> {
+  await daemonCall(hostId, "editor.open", {
+    worktreeId,
+    editor,
+    ...(at ? { path: at.path, ...(at.line ? { line: at.line } : {}) } : {}),
+  });
+}

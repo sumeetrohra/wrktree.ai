@@ -109,12 +109,28 @@ export function WorkList({ hosts }: { hosts: readonly TWorkHost[] }): React.JSX.
                     if (filter !== "all" && chats.length === 0) return null;
                     return (
                       <View key={w.id} className="border-border gap-1 border-l pl-3">
-                        <Text className="text-sm">
-                          {t(w.deleted ? "work.branchDeleted" : "work.branch", {
-                            branch: w.branch,
-                            title: w.title,
-                          })}
-                        </Text>
+                        {h.live && !w.deleted ? (
+                          <Link
+                            href={{
+                              pathname: "/h/[hostId]/wt/[worktreeId]",
+                              params: { hostId: h.id, worktreeId: w.id },
+                            }}
+                            asChild
+                          >
+                            <Button variant="link" className="h-auto justify-start p-0">
+                              <Text className="text-sm">
+                                {t("work.branch", { branch: w.branch, title: w.title })}
+                              </Text>
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Text className="text-sm">
+                            {t(w.deleted ? "work.branchDeleted" : "work.branch", {
+                              branch: w.branch,
+                              title: w.title,
+                            })}
+                          </Text>
+                        )}
                         {chats.map((c) => (
                           <ChatRow key={c.id} hostId={h.id} chat={c} />
                         ))}

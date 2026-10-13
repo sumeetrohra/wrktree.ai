@@ -1,11 +1,19 @@
 import { chatIdSchema } from "@agentdeck/protocol";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, View } from "react-native";
 import { z } from "zod";
 
 import { uploadBlob, useHostsStore } from "@/lib/api";
-import { ChatList, ChatStatusBadge, sendMessage, useChatView, useCloudItemsQuery } from "@/modules/chats";
+import {
+  ChatList,
+  ChatStatusBadge,
+  contextParam,
+  QuotedLines,
+  sendMessage,
+  useChatView,
+  useCloudItemsQuery,
+} from "@/modules/chats";
 import { Composer } from "@/modules/composer";
 import { HostBadge } from "@/modules/hosts";
 import { PermissionSheet, useRespondPermissionMutation } from "@/modules/permissions";
@@ -20,7 +28,13 @@ const paramsSchema = z.object({ hostId: z.string(), chatId: chatIdSchema });
  */
 export function ChatPage(): React.JSX.Element {
   const { t } = useTranslation();
-  const { hostId, chatId } = paramsSchema.parse(useLocalSearchParams());
+  const params = useLocalSearchParams();
+  const { hostId, chatId } = paramsSchema.parse(params);
+  // Lines picked in a code or diff view ("ask the agent about this"), sent with the next message.
+  const context = contextParam(params["context"]);
+  const clearContext = (): void => {
+    router.setParams({ context: undefined });
+  };
   const view = useChatView(chatId);
   const respond = useRespondPermissionMutation(hostId);
   const online = useHostsStore((s) => s.hosts.find((h) => h.id === hostId)?.status === "online");
@@ -57,12 +71,14 @@ export function ChatPage(): React.JSX.Element {
           }}
         />
       ) : null}
+      {online && context.length > 0 ? <QuotedLines context={context} onClear={clearContext} /> : null}
       {online ? (
         <Composer
           agentBusy={busy}
           upload={(base64, mime) => uploadBlob(hostId, base64, mime)}
           onSend={(text, attachments) => {
-            void sendMessage(hostId, chatId, text, attachments);
+            void sendMessage(hostId, chatId, text, attachments, context);
+            if (context.length > 0) clearContext();
           }}
         />
       ) : null}

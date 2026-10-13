@@ -92,7 +92,9 @@
       "failed": "failed"
     },
     "history": "History from the cloud. The computer is offline, so this chat is read-only.",
-    "image": "Image"
+    "image": "Image",
+    "quoted": "Quoted {{where}}",
+    "quoting": "With {{where}}"
   },
   "permission": {
     "asks": "The agent asks to",
@@ -155,5 +157,94 @@
     "viaRelay": "Through the relay, end to end encrypted",
     "remove": "Remove",
     "unknown": "Computer"
+  },
+  "code": {
+    "line": "line {{line}}",
+    "lines": "lines {{from}}–{{to}}",
+    "clear": "Clear",
+    "ask": "Ask the agent about this",
+    "where": "{{path}} · {{range}}"
+  },
+  "changes": {
+    "status": {
+      "added": "added",
+      "modified": "modified",
+      "deleted": "deleted",
+      "untracked": "new",
+      "binary": "binary"
+    },
+    "against": {
+      "base": "Since {{base}}",
+      "head": "Uncommitted"
+    },
+    "none": "No changes.",
+    "noDiff": "No changes in this file.",
+    "added": "+{{count}}",
+    "removed": "−{{count}}"
+  },
+  "files": {
+    "searchPlaceholder": "Search file contents…",
+    "filterPlaceholder": "Filter names in this folder",
+    "clearSearch": "← Back to files",
+    "noMatches": "No matches.",
+    "truncated": "More matches than shown; narrow the search.",
+    "fileTruncated": "Showing the first 2 MB of this file.",
+    "at": "{{path}}:{{line}}",
+    "up": "../ ({{dir}})"
+  },
+  "logs": {
+    "status": {
+      "running": "running",
+      "exited": "exited",
+      "crashed": "failed",
+      "stopped": "stopped"
+    },
+    "exited": "{{status}} ({{code}})",
+    "start": "Start",
+    "stop": "Stop",
+    "noScripts": "This repo has no scripts. Add them to .agentdeck/config.json under \"scripts\".",
+    "pick": "Start a script, or pick one to see its output."
+  },
+  "ship": {
+    "loading": "Reading the branch…",
+    "dirty_one": "{{count}} uncommitted file",
+    "dirty_other": "{{count}} uncommitted files",
+    "ahead_one": "{{count}} commit to push",
+    "ahead_other": "{{count}} commits to push",
+    "messagePlaceholder": "Commit message",
+    "commit": "Commit all changes",
+    "push": "Push",
+    "draftWithAgent": "Draft with the agent",
+    "drafting": "The agent is writing…",
+    "titlePlaceholder": "PR title",
+    "bodyPlaceholder": "Description (Markdown)",
+    "asDraft": "Draft PR",
+    "readyForReview": "Ready for review",
+    "createPr": "Create pull request",
+    "prNumber": "Pull request #{{number}}",
+    "prState": {
+      "open": "open",
+      "merged": "merged",
+      "closed": "closed"
+    },
+    "draftBadge": "draft",
+    "mergePr": "Squash and merge",
+    "mergeToBase": "Merge into the base branch",
+    "failed": "That didn't work"
+  },
+  "worktree": {
+    "tabs": {
+      "chats": "Chats",
+      "changes": "Changes",
+      "files": "Files",
+      "logs": "Logs",
+      "ship": "Ship"
+    },
+    "openInEditor": "Open in editor",
+    "editors": {
+      "vscode": "VS Code",
+      "cursor": "Cursor",
+      "zed": "Zed"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { startChatListSync, startChatStoreSync } from "@/modules/chats";
+import { startProcsSync } from "@/modules/procs";
 import { startOverviewSync } from "@/modules/workspace";
 import { startWorktreesSync } from "@/modules/worktrees";
 import { RootLayout } from "@/providers";
@@ -9,6 +10,7 @@ startChatStoreSync();
 startChatListSync();
 startWorktreesSync();
 startOverviewSync();
+startProcsSync();
 
 /** The app shell: providers, the connections, and every module's event sync. */
 export function RootPage(): React.JSX.Element {

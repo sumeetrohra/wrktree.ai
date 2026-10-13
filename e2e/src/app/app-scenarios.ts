@@ -11,6 +11,7 @@ import {
   newTaskFromApp,
   offlineFromApp,
   revokeApp,
+  shipFromApp,
   signInApp,
   twoHostsInApp,
   wakeLinkFromApp,
@@ -92,6 +93,19 @@ export const appScenarios: TAppScenario[] = [
         await b.stop();
       }
     },
+  },
+  {
+    n: 20,
+    title: "The app: review the work, ask about a line, run it, ship it",
+    summary:
+      "Changes → diff → ask about a line; Files search and a 5,000-line file; Logs; commit, push, agent-drafted PR, merge",
+    covers: [
+      "Phase 3b: see what changed and read the code from the phone (colored, virtualized)",
+      "Phase 3b: comment on a line → the agent gets the quoted code",
+      "Phase 3b: run the repo's scripts and follow their logs; ship as a PR the agent drafted",
+    ],
+    harness: { relay: true },
+    run: shipFromApp,
   },
 ];
 

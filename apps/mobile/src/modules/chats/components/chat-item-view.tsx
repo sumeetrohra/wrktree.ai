@@ -22,6 +22,7 @@ export function ChatItemView({ item, files }: TChatItemViewProps): React.JSX.Ele
         <UserMessage
           text={item.text}
           attachments={item.attachments.length}
+          context={item.context ?? []}
           images={
             images.length === 0 ? undefined : (
               <View className="flex-row flex-wrap gap-2">

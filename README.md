@@ -26,11 +26,13 @@ when one hits its usage limit.
 
 ## Status
 
-**Phases 1 and 2 are built, and Phase 3a.** The daemon runs agents in worktrees; phones and browsers sign in and
+**Phases 1 and 2 are built, and Phase 3a and 3b.** The daemon runs agents in worktrees; phones and browsers sign in and
 drive any number of linked computers through the relay, end to end encrypted, from the app (tested as its web build in
 Chromium; native builds need an EAS project). The daemon also serves the app as a desktop web UI.
-Every chat is kept in Firebase, so it stays readable when its computer is off.
-19 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+Every chat is kept in Firebase, so it stays readable when its computer is off. From the phone you
+can review an agent's changes, read the code, ask about specific lines, run the repo's scripts and
+ship the work as a pull request the agent drafted.
+20 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md) and [`docs/phase-3.md`](docs/phase-3.md).
 
 | Phase | What | State |
@@ -38,7 +40,7 @@ Every chat is kept in Firebase, so it stays readable when its computer is off.
 | 0 | Spikes: kill the three biggest unknowns | partly done, see [`docs/spikes.md`](docs/spikes.md) |
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
-| 3 | Cloud history (3a); review, code, preview — judge an agent's work without a laptop | 3a ✅ built (real Firebase project pending); 3b next |
+| 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | 3a, 3b ✅ built (real Firebase, real `gh` pending); 3c next |
 | 4 | Multi-account power features and public launch | |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 

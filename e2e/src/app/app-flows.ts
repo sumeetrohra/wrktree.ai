@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 
 import type { Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
@@ -348,5 +349,167 @@ export async function cloudHistoryInApp(h: Harness, app: AppDriver): Promise<voi
         .count(),
       0,
     );
+  });
+}
+
+/** A tiny dev server for the Logs tab: prints, then serves on $PORT. */
+const DEV_SERVER = `const http = require("node:http");
+console.log("starting the dev server");
+http
+  .createServer((req, res) => res.end("ok"))
+  .listen(Number(process.env.PORT), "127.0.0.1", () => console.log("listening on " + process.env.PORT));
+`;
+
+/**
+ * Phase 3b in the app: Changes → a diff → select a line → ask the agent; Files search and a
+ * 5,000-line file; Logs start/stop; Ship: commit, push, agent-drafted PR, merge.
+ */
+export async function shipFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo with a GitHub-style origin, a dev script and a 5,000-line file");
+  const big = Array.from(
+    { length: 5000 },
+    (_, i) => `export const line${String(i + 1)} = ${String(i + 1)};`,
+  ).join("\n");
+  const repoPath = h.makeRepo(
+    "shop",
+    { scripts: { dev: "node serve.cjs" } },
+    { origin: true, files: { "serve.cjs": DEV_SERVER, "big.ts": `${big}\n` } },
+  );
+  const repo = await h.send("repo.add", { path: repoPath });
+  const profileId = await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+
+  h.step("Desktop: the agent writes NOTES.md in a new worktree (approved on the desktop)");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "notes", title: "Notes" });
+  await h.waitReady(wt.id, since);
+  const chat = await h.send("chat.create", {
+    worktreeId: wt.id,
+    agent: "fake",
+    profileId,
+    title: "Release notes",
+  });
+  await h.waitStatus(chat.id, "idle", since);
+  since = h.mark();
+  await h.send("chat.send", { chatId: chat.id, text: "#script:golden file=NOTES.md" });
+  const req = await h.waitFor(
+    (e) => e.type === "permission.requested" && e.chatId === chat.id,
+    "permission",
+    {
+      since,
+    },
+  );
+  assert.ok(req.type === "permission.requested");
+  await h.send("permission.respond", {
+    chatId: chat.id,
+    requestId: req.request.requestId,
+    decision: "allow_once",
+  });
+  await h.waitSettled(chat.id);
+
+  h.step("App: Work → the branch → Changes → NOTES.md");
+  await app.goto("/");
+  await page.getByRole("link", { name: "notes · Notes" }).click({ timeout: 30_000 });
+  await shown(page, "Changes").click();
+  await shown(page, "NOTES.md").click();
+  await page
+    .getByText("Written by the fake agent.", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await h.check("the diff shows the new lines, numbered", async () => {
+    assert.ok(
+      await page.getByText("Line three.", { exact: false }).locator("visible=true").first().isVisible(),
+    );
+  });
+
+  h.step("App: tap line 3, “Ask the agent about this”, send a question");
+  await page
+    .getByText("Written by the fake agent.", { exact: false })
+    .locator("visible=true")
+    .first()
+    .click();
+  await shown(page, "Ask the agent about this").click();
+  await page
+    .getByText("With NOTES.md:3", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await page.getByPlaceholder("Message the agent…").fill("What does this line say?");
+  await page.getByLabel("Send", { exact: true }).click();
+  await page
+    .getByText("Quoted NOTES.md:3", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await h.check("the agent got the quoted line with the question", async () => {
+    await page
+      .getByText("You said: From `NOTES.md` line 3: ``` Written by the fake agent.", { exact: false })
+      .locator("visible=true")
+      .first()
+      .waitFor({
+        timeout: 30_000,
+      });
+  });
+
+  h.step("App: Files → search “login” → open the match");
+  await page.goBack();
+  await page.goBack();
+  await shown(page, "Files").click();
+  await page.getByPlaceholder("Search file contents…").fill("login");
+  await page.getByPlaceholder("Search file contents…").press("Enter");
+  await shown(page, "src/app.ts:1").click();
+  await page
+    .getByText("export function login(user: string) {", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+
+  h.step("App: a 5,000-line file opened at line 4,000");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/wt/${wt.id}/files/big.ts?line=4000`);
+  await page
+    .getByText("export const line4000 = 4000;", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await h.check("only a window of the file is on the page", async () => {
+    assert.equal(await page.getByText("export const line1 = 1;", { exact: false }).count(), 0);
+    assert.ok((await page.getByText(/export const line\d+ =/).count()) < 1000);
+  });
+
+  h.step("App: Logs → start `dev`, watch it, stop it");
+  await app.goto(`/h/${hostId}/wt/${wt.id}/logs`);
+  await shown(page, "Start").click();
+  await page
+    .getByText("listening on", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+  await shown(page, "Stop").click();
+  await shown(page, "stopped").waitFor({ timeout: 30_000 });
+
+  h.step("App: Ship → commit, push, draft the PR with the agent, create it, merge it");
+  await shown(page, "Ship").click();
+  await page.getByPlaceholder("Commit message").fill("Add release notes");
+  await shown(page, "Commit all changes").click();
+  await shown(page, "Push").click();
+  await shown(page, "Draft with the agent").waitFor({ timeout: 30_000 });
+  await shown(page, "Draft with the agent").click();
+  await h.check("the agent's draft fills the title", async () => {
+    await page
+      .getByPlaceholder("PR title")
+      .and(page.locator('[value="Update the notes"]'))
+      .waitFor({ timeout: 30_000 });
+  });
+  await shown(page, "Create pull request").click();
+  await shown(page, "Pull request #1").waitFor({ timeout: 30_000 });
+  await shown(page, "Squash and merge").click();
+  await shown(page, "merged").waitFor({ timeout: 30_000 });
+  await h.check("origin's main has the notes", () => {
+    const notes = execFileSync("git", ["show", "main:NOTES.md"], { cwd: h.origin("shop"), encoding: "utf8" });
+    assert.match(notes, /Written by the fake agent/);
   });
 }

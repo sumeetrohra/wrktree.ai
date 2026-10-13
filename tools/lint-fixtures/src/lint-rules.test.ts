@@ -306,6 +306,7 @@ const CASES: TCase[] = [
     ["L20", "expo-image-picker"],
     ["L21", "expo-haptics"],
     ["L22", "expo-crypto"],
+    ["L25", "shiki"],
   ].map(([id, lib]) => ({
     id: `${id ?? ""} ${lib ?? ""} outside its app wrapper`,
     rule: "no-restricted-imports",
