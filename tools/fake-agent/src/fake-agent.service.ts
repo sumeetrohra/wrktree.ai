@@ -139,7 +139,7 @@ export class FakeAgent implements acp.Agent {
         if (abort.signal.aborted) throw new Cancelled();
         if ((await this.run(step, turn)) === "stop") break;
       }
-      return { stopReason: "end_turn" };
+      return { stopReason: "end_turn", usage: usageOf(session.history, turn.said) };
     } catch (e) {
       if (e instanceof Cancelled || abort.signal.aborted) return { stopReason: "cancelled" };
       throw e;
@@ -291,4 +291,16 @@ export class FakeAgent implements acp.Agent {
       await this.say(turn, `Write to ${w.path} was refused: ${errorMessage(e)}. `);
     }
   }
+}
+
+/**
+ * The session's running token totals, as ACP reports them: one "token" per character, input
+ * from the user's messages and output from the agent's replies, this turn's included.
+ */
+function usageOf(history: readonly { role: string; text: string }[], said: readonly string[]): acp.Usage {
+  const inputTokens = history.filter((h) => h.role === "user").reduce((n, h) => n + h.text.length, 0);
+  const outputTokens =
+    history.filter((h) => h.role !== "user").reduce((n, h) => n + h.text.length, 0) +
+    said.reduce((n, t) => n + t.length, 0);
+  return { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens };
 }

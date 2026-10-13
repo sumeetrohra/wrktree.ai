@@ -2,7 +2,7 @@ import { fakeAgentEntry, fakeAgentLogin } from "@agentdeck/fake-agent";
 
 import type { TAgentSpec } from "#src/shared/agent-spec.types.js";
 
-import { fileLogin, structuredLimit, textLimit } from "./agents.utils.js";
+import { fileLogin, replyLimit, structuredLimit, textLimit } from "./agents.utils.js";
 
 const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 
@@ -20,6 +20,7 @@ export const BUILT_IN_AGENTS: readonly TAgentSpec[] = [
     loginCommand: ["claude", "/login"],
     loginStatus: fileLogin(".credentials.json", "account"),
     detectLimit: textLimit,
+    detectReplyLimit: replyLimit,
   },
   {
     id: "codex",
@@ -29,6 +30,7 @@ export const BUILT_IN_AGENTS: readonly TAgentSpec[] = [
     loginCommand: ["codex", "login"],
     loginStatus: fileLogin("auth.json", "email"),
     detectLimit: textLimit,
+    detectReplyLimit: replyLimit,
   },
   {
     id: "gemini",
@@ -38,6 +40,7 @@ export const BUILT_IN_AGENTS: readonly TAgentSpec[] = [
     loginCommand: ["gemini"],
     loginStatus: fileLogin("oauth_creds.json", "email"),
     detectLimit: textLimit,
+    detectReplyLimit: replyLimit,
   },
 ];
 
@@ -50,4 +53,5 @@ export const FAKE_AGENT: TAgentSpec = {
   loginCommand: [process.execPath, fakeAgentLogin],
   loginStatus: fileLogin("fake-login.json", "account"),
   detectLimit: structuredLimit,
+  detectReplyLimit: replyLimit,
 };

@@ -7,6 +7,7 @@ import {
   cloudHistoryInApp,
   desktopWeb,
   desktopWebSignsIn,
+  limitFromApp,
   linkFromApp,
   newTaskFromApp,
   offlineFromApp,
@@ -122,6 +123,18 @@ export const appScenarios: TAppScenario[] = [
     harness: { relay: true },
     appHost: "preview.localhost",
     run: previewFromApp,
+  },
+  {
+    n: 24,
+    title: "The app: a profile at its usage limit",
+    summary:
+      "The chat shows the limit and when it resets; a message waits in the queue and goes out at the reset; Settings shows usage",
+    covers: [
+      "Phase 4a: limit banner with the reset time; queued sends resume at the reset",
+      "Phase 4a: per-profile usage in Settings (limit state, today's tokens)",
+    ],
+    harness: { relay: true },
+    run: limitFromApp,
   },
 ];
 

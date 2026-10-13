@@ -23,6 +23,8 @@ export class TurnMapper {
   private tools = new Map<string, string>();
   private planId: string | null = null;
   private turn = "";
+  /** Everything the agent said this turn (to spot a limit notice sent as the reply). */
+  private said = "";
 
   constructor(
     private readonly chatId: string,
@@ -34,6 +36,12 @@ export class TurnMapper {
   startTurn(turnId: string): void {
     this.endTurn();
     this.turn = turnId;
+    this.said = "";
+  }
+
+  /** The agent's text so far this turn. */
+  turnText(): string {
+    return this.said;
   }
 
   /** Flushes buffered text and forgets per-turn state. */
@@ -75,6 +83,7 @@ export class TurnMapper {
   }
 
   private appendText(kind: "agent_text" | "thought", text: string): void {
+    if (kind === "agent_text") this.said += text;
     if (this.open && this.open.kind !== kind) this.closeText();
     if (!this.open) {
       this.open = { kind, id: newId("item"), text, dirty: false };

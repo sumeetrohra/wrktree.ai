@@ -10,6 +10,7 @@ export const chatLifecycle: TScenario = {
   summary: "Queue while running, cancel, crash with auto-restart, give up after 3, retry, usage limits",
   covers: [
     "Chat lifecycle state machine: queued sends, cancel, crashed → auto-restart (max 3), limited → idle",
+    "Phase 4a: sends queue while a profile is limited and go out at the reset; usage per profile",
   ],
   async run(h) {
     h.step("Set up a chat");
@@ -99,12 +100,18 @@ export const chatLifecycle: TScenario = {
       });
       assert.ok(e.type === "usage.updated" && e.profileId === ids.profileId);
     });
-    await h.check("sends are refused until the reset", async () => {
-      assert.equal(await h.sendError("chat.send", { chatId: chat, text: "now?" }), "BAD_STATE");
+    await h.check("a send while limited is queued, not refused", async () => {
+      const r = await h.send("chat.send", { chatId: chat, text: "after the reset" });
+      assert.equal(r.queued, true);
     });
-    await h.waitStatus(chat, "idle", since, 10_000);
-    await h.check("after the reset time the chat is idle again", () => {
-      assert.ok(true);
+    await h.check("after the reset time the queued message goes out", async () => {
+      await h.waitText(chat, "after the reset", since, 15_000);
+      await h.waitSettled(chat);
+    });
+    await h.check("the profile's usage shows the limit lifted and today's tokens", async () => {
+      const usage = await h.send("profile.usage", { profileId: ids.profileId });
+      assert.equal(usage.limitHit, false);
+      assert.ok((usage.inputTokens ?? 0) > 0 && (usage.outputTokens ?? 0) > 0);
     });
   },
 };

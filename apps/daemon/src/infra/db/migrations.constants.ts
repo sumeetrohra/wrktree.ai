@@ -79,4 +79,12 @@ export const MIGRATIONS: readonly string[] = [
   CREATE TABLE cloud_chats (chat_id TEXT PRIMARY KEY);
   CREATE TABLE cloud_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `,
+  // 5: Phase 4a usage. ACP reports a session's cumulative tokens; the last totals per chat turn
+  // them into per-turn amounts in usage_samples.
+  `
+  CREATE TABLE usage_chat_totals (
+    chat_id TEXT PRIMARY KEY, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL
+  );
+  CREATE INDEX usage_samples_profile_at ON usage_samples (profile_id, at);
+  `,
 ];

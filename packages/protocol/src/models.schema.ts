@@ -104,11 +104,14 @@ export type TPermissionRequest = z.infer<typeof permissionRequestSchema>;
 export const permissionDecisionSchema = z.enum(["allow_once", "allow_always", "deny"]);
 export type TPermissionDecision = z.infer<typeof permissionDecisionSchema>;
 
+/** A profile's usage. Tokens are today's (local time) on this computer, where the agent reports them. */
 export const usageSnapshotSchema = z.object({
   inputTokens: z.number().optional(),
   outputTokens: z.number().optional(),
   limitHit: z.boolean(),
   resetAt: z.number().optional(),
+  /** Additive (Phase 4a): when the limit was hit. */
+  limitedAt: z.number().optional(),
 });
 export type TUsageSnapshot = z.infer<typeof usageSnapshotSchema>;
 

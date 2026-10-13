@@ -25,11 +25,25 @@ export interface IWorktreeFiles {
   filesFor: (worktreeId: string) => IAgentFiles;
 }
 
+/** Where turns and limits are counted (the usage module provides it). */
+export interface IUsageSink {
+  /** A turn ended normally; `usage` is the session's cumulative tokens when the agent reports them. */
+  turnEnded: (
+    profileId: string,
+    chatId: string,
+    usage: { inputTokens: number; outputTokens: number } | null,
+  ) => void;
+  limitHit: (profileId: string, resetAt?: number) => void;
+  /** The reset time passed. */
+  lifted: (profileId: string) => void;
+}
+
 export type TSessionDeps = {
   profiles: IProfileSource;
   worktrees: IWorktreeSource;
   blobs: IBlobReader;
   files: IWorktreeFiles;
+  usage: IUsageSink;
 };
 
 export type TPermissionDecision = "allow_once" | "allow_always" | "deny";

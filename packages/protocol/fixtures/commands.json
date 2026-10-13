@@ -735,5 +735,17 @@
       "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
     },
     "result": {}
+  },
+  "profile.usage": {
+    "args": {
+      "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "inputTokens": 1200,
+      "outputTokens": 340,
+      "limitHit": true,
+      "resetAt": 1791603600000,
+      "limitedAt": 1791600000000
+    }
   }
 }

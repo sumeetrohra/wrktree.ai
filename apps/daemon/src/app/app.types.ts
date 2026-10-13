@@ -9,6 +9,7 @@ import type { ProcsService } from "#src/modules/procs/index.js";
 import type { ProfilesService } from "#src/modules/profiles/index.js";
 import type { ReposService } from "#src/modules/repos/index.js";
 import type { SessionManager } from "#src/modules/sessions/index.js";
+import type { UsageService } from "#src/modules/usage/index.js";
 import type { WorktreesService } from "#src/modules/worktrees/index.js";
 
 import type { Remote } from "./remote.service.js";
@@ -29,6 +30,8 @@ export type TModules = {
   procs: ProcsService;
   /** Preview tunnels to worktrees' dev servers (Phase 3c). */
   preview: PreviewService;
+  /** Per-profile usage and limits (Phase 4a). */
+  usage: UsageService;
   devices: DevicesService;
   /** A one-time link to the desktop web UI, or null when none is configured. */
   webLink: () => string | null;

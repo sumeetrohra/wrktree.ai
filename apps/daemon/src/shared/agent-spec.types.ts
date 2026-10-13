@@ -11,6 +11,8 @@ export type TAgentSpec = {
   loginStatus: (dir: string) => TLoginStatus;
   /** Recognises a usage-limit failure in an adapter error. */
   detectLimit: (err: unknown) => TLimitCheck;
+  /** Recognises a usage limit the agent reported as its reply instead of an error (Phase 4a). */
+  detectReplyLimit: (reply: string) => TLimitCheck;
 };
 
 export type TLoginStatus = { loggedIn: boolean; account?: string };

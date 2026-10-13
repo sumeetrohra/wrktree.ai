@@ -19,6 +19,7 @@ import {
   permissionDecisionSchema,
   procSchema,
   profileSchema,
+  usageSnapshotSchema,
   pullRequestSchema,
   repoSchema,
   worktreeSchema,
@@ -88,6 +89,11 @@ export const commands = {
     result: profileSchema,
   },
   "profile.remove": { args: z.object({ profileId: profileIdSchema }), result: Empty },
+  /**
+   * Additive (Phase 4a): a profile's usage on this computer: whether it is at its limit and when
+   * that resets, and today's tokens (where the agent reports them).
+   */
+  "profile.usage": { args: z.object({ profileId: profileIdSchema }), result: usageSnapshotSchema },
   "profile.loginStatus": {
     args: z.object({ profileId: profileIdSchema }),
     result: z.object({ loggedIn: z.boolean(), account: z.string().optional() }),

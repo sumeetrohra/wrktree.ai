@@ -25,15 +25,18 @@ export type TChatView = {
   status: TChatStatus | null;
   pending: TPermissionRequest | null;
   queued: number;
+  /** While `limited`: when the profile's limit resets, if the agent said. */
+  resetAt: number | null;
 };
 
-const EMPTY: TChatView = { items: {}, order: [], status: null, pending: null, queued: 0 };
+const EMPTY: TChatView = { items: {}, order: [], status: null, pending: null, queued: 0, resetAt: null };
 
 const persistedSchema = z.object({
   items: z.array(chatItemSchema),
   status: chatStatusSchema.nullable(),
   pending: permissionRequestSchema.nullable(),
   queued: z.number(),
+  resetAt: z.number().nullable().optional(),
 });
 
 type TChatsState = {
@@ -67,6 +70,7 @@ function hydrate(chatId: string): TChatView {
     status: saved.status,
     pending: saved.pending,
     queued: saved.queued,
+    resetAt: saved.resetAt ?? null,
   };
 }
 
@@ -74,7 +78,13 @@ function persist(chatId: string, v: TChatView): void {
   const ids = savedChatIds();
   if (!ids.includes(chatId)) storage.set(INDEX_KEY, [...ids, chatId]);
   const recent = v.order.slice(-KEEP).flatMap((id) => (v.items[id] ? [v.items[id]] : []));
-  storage.set(storageKey(chatId), { items: recent, status: v.status, pending: v.pending, queued: v.queued });
+  storage.set(storageKey(chatId), {
+    items: recent,
+    status: v.status,
+    pending: v.pending,
+    queued: v.queued,
+    resetAt: v.resetAt,
+  });
 }
 
 function reduce(v: TChatView, e: TEvtFrame["event"]): TChatView {
@@ -88,7 +98,12 @@ function reduce(v: TChatView, e: TEvtFrame["event"]): TChatView {
       return item ? { ...v, items: { ...v.items, [e.itemId]: applyPatch(item, e.patch) } } : v;
     }
     case "chat.status":
-      return { ...v, status: e.status, queued: e.queued ?? v.queued };
+      return {
+        ...v,
+        status: e.status,
+        queued: e.queued ?? v.queued,
+        resetAt: e.status === "limited" ? (e.resetAt ?? null) : null,
+      };
     case "permission.requested":
       return { ...v, pending: e.request };
     case "permission.resolved":

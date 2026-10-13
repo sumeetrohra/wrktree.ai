@@ -9,6 +9,7 @@ import {
   ChatList,
   ChatStatusBadge,
   contextParam,
+  LimitBanner,
   QuotedLines,
   sendMessage,
   useChatView,
@@ -55,6 +56,7 @@ export function ChatPage(): React.JSX.Element {
         {view.queued > 0 ? <Text variant="small">{t("chat.queued", { count: view.queued })}</Text> : null}
         <HostBadge hostId={hostId} />
       </View>
+      {online && view.status === "limited" ? <LimitBanner resetAt={view.resetAt} /> : null}
       {fromCloud ? (
         <Text className="text-muted-foreground px-4 py-2 text-xs">{t("chat.history")}</Text>
       ) : null}

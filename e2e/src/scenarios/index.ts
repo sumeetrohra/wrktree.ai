@@ -15,6 +15,7 @@ import { relayPreview } from "./relay-preview.scenario.ts";
 import { relayProcs } from "./relay-procs.scenario.ts";
 import { relayRevoke } from "./relay-revoke.scenario.ts";
 import { relayShip } from "./relay-ship.scenario.ts";
+import { relayUsage } from "./relay-usage.scenario.ts";
 import { streamingBlobs } from "./streaming-blobs.scenario.ts";
 import { worktreeLifecycle } from "./worktree-lifecycle.scenario.ts";
 
@@ -39,6 +40,7 @@ export const relayScenarios: TScenario[] = [
   relayShip,
   relayProcs,
   relayPreview,
+  relayUsage,
 ];
 
 /** Phase 3a: chat history in Firebase (needs the emulators). */

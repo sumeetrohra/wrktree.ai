@@ -94,7 +94,12 @@
     "history": "History from the cloud. The computer is offline, so this chat is read-only.",
     "image": "Image",
     "quoted": "Quoted {{where}}",
-    "quoting": "With {{where}}"
+    "quoting": "With {{where}}",
+    "limit": {
+      "title": "This profile hit its usage limit",
+      "resets": "It resets {{when}}; queued messages send then.",
+      "unknown": "The agent didn't say when it resets."
+    }
   },
   "permission": {
     "asks": "The agent asks to",
@@ -128,7 +133,17 @@
     "title": "Settings",
     "signedInAs": "Signed in as {{email}}",
     "signedOut": "Not signed in.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "usage": {
+      "title": "Usage",
+      "limited": "At its limit · resets {{when}}",
+      "limitedUnknown": "At its limit",
+      "ok": "Available",
+      "tokens": "Today: {{input}} in · {{output}} out",
+      "noTokens": "No token counts from this agent today",
+      "noProfiles": "No profiles on this computer",
+      "profile": "{{name}} · {{agent}}"
+    }
   },
   "wake": {
     "catchingUp": "Catching up with your computer…"

@@ -6,7 +6,12 @@ export function profileHandlers(
   m: TModules,
 ): Pick<
   THandlers,
-  "profile.list" | "profile.create" | "profile.remove" | "profile.loginStatus" | "profile.loginCommand"
+  | "profile.list"
+  | "profile.create"
+  | "profile.remove"
+  | "profile.loginStatus"
+  | "profile.loginCommand"
+  | "profile.usage"
 > {
   return {
     "profile.list": (a) => m.profiles.list(a.agent),
@@ -17,5 +22,9 @@ export function profileHandlers(
     },
     "profile.loginStatus": (a) => m.profiles.loginStatus(a.profileId),
     "profile.loginCommand": (a) => m.profiles.loginCommand(a.profileId),
+    "profile.usage": (a) => {
+      m.profiles.get(a.profileId);
+      return m.usage.snapshot(a.profileId);
+    },
   };
 }

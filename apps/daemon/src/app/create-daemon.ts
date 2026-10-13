@@ -22,6 +22,7 @@ import { ProcsService } from "#src/modules/procs/index.js";
 import { ProfilesService } from "#src/modules/profiles/index.js";
 import { ReposService } from "#src/modules/repos/index.js";
 import { SessionManager } from "#src/modules/sessions/index.js";
+import { UsageService } from "#src/modules/usage/index.js";
 import { WorktreesService } from "#src/modules/worktrees/index.js";
 import { daemonConfigSchema, type TDaemonConfig } from "#src/shared/config.schema.js";
 import type { TDaemonOptions } from "#src/shared/daemon-options.types.js";
@@ -116,7 +117,9 @@ export class Daemon {
         throw new AgentdeckError("NOT_FOUND", `Worktree folder is missing: ${wt.path}`);
       return new FileJail(wt.path, repos.hiddenGlobs(repos.get(wt.repoId)));
     };
+    const usage = new UsageService(this.rt);
     const sessions = new SessionManager(this.rt, {
+      usage,
       profiles,
       worktrees,
       blobs,
@@ -220,6 +223,7 @@ export class Daemon {
       github: new GithubService(opts.gh),
       procs,
       preview,
+      usage,
       jailFor,
     };
     this.router = new Router(db, createHandlers(this.modules), log);

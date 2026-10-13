@@ -56,6 +56,8 @@ type TLive = TAdapter & {
   exited: Promise<void>;
 };
 
+/** When an agent didn't say when its limit resets: retry the queue after this long. */
+const UNKNOWN_RESET_RETRY_MS = 15 * 60 * 1000;
 const EXIT_GRACE_MS = 2000;
 const SUMMARY_MESSAGES = 20;
 
@@ -80,6 +82,8 @@ export class SessionManager {
   private readonly queues = new Map<string, TQueued[]>();
   private readonly restarts = new Map<string, number>();
   private readonly timers = new Map<string, NodeJS.Timeout>();
+  /** The reset time of each limited chat, when the agent said. */
+  private readonly resetAts = new Map<string, number>();
   readonly permissions: PermissionBroker;
 
   constructor(
@@ -146,12 +150,16 @@ export class SessionManager {
 
   private setStatus(chatId: string, status: TChatStatus, extra: { resetAt?: number } = {}): void {
     this.rt.db.prepare("UPDATE chats SET status = ?, updated_at = ? WHERE id = ?").run(status, now(), chatId);
+    // Every `limited` status carries the reset time, also when a queued send re-announces it.
+    if (status !== "limited") this.resetAts.delete(chatId);
+    else if (extra.resetAt !== undefined) this.resetAts.set(chatId, extra.resetAt);
+    const resetAt = status === "limited" ? this.resetAts.get(chatId) : undefined;
     this.rt.bus.publish(`chat:${chatId}`, {
       type: "chat.status",
       chatId,
       status,
       queued: this.queues.get(chatId)?.length ?? 0,
-      ...extra,
+      ...(resetAt === undefined ? {} : { resetAt }),
     });
   }
 
@@ -216,8 +224,9 @@ export class SessionManager {
     quote?: { context: TCodeContext[]; quoted: string },
   ): { turnId: string; queued: boolean } {
     const status = this.status(chatId);
-    if (status === "crashed" || status === "stopped" || status === "limited") {
-      throw new AgentdeckError("BAD_STATE", `Chat is ${status}`, status === "limited");
+    // A limited chat queues: the queue goes out when the limit resets (Phase 4a).
+    if (status === "crashed" || status === "stopped") {
+      throw new AgentdeckError("BAD_STATE", `Chat is ${status}`);
     }
     for (const a of attachments) this.deps.blobs.get(a.blobId);
     const turnId = newId("turn");
@@ -423,9 +432,21 @@ export class SessionManager {
     try {
       const res = await live.conn.prompt({ sessionId, prompt: this.prompt(live, msg) });
       if (live.dead) return;
+      const reply = live.mapper.turnText();
       live.mapper.endTurn();
       if (res.stopReason === "cancelled") this.system(chatId, "Turn cancelled.", "info");
       else this.restarts.set(chatId, 0);
+      const profileId = this.row(chatId).profile_id;
+      const usage = res.usage
+        ? { inputTokens: res.usage.inputTokens, outputTokens: res.usage.outputTokens }
+        : null;
+      this.deps.usage.turnEnded(profileId, chatId, usage);
+      // Some agents report the limit as their reply rather than as an error.
+      const limit = res.stopReason === "cancelled" ? { hit: false } : live.spec.detectReplyLimit(reply);
+      if (limit.hit) {
+        this.onLimit(chatId, profileId, limit.resetAt);
+        return;
+      }
       this.setStatus(chatId, "idle");
       this.drain(chatId);
     } catch (e) {
@@ -457,27 +478,22 @@ export class SessionManager {
 
   /** running → limited; back to idle once the reset time passes. */
   private onLimit(chatId: string, profileId: string, resetAt?: number): void {
-    this.rt.db
-      .prepare("INSERT INTO usage_samples (profile_id, at, limit_hit, reset_at) VALUES (?, ?, 1, ?)")
-      .run(profileId, now(), resetAt ?? null);
-    this.rt.bus.publish("global", {
-      type: "usage.updated",
-      profileId,
-      usage: resetAt === undefined ? { limitHit: true } : { limitHit: true, resetAt },
-    });
+    this.deps.usage.limitHit(profileId, resetAt);
     const when = resetAt === undefined ? "an unknown time" : new Date(resetAt).toISOString();
     this.system(chatId, `Usage limit reached for this profile. It resets at ${when}.`, "warn");
+    this.resetAts.delete(chatId);
     this.setStatus(chatId, "limited", resetAt === undefined ? {} : { resetAt });
-    if (resetAt === undefined) return;
+    // Without a reset time, try the queue again after a while; a new limit puts it back.
+    const retryAt = resetAt ?? now() + UNKNOWN_RESET_RETRY_MS;
     const t = setTimeout(
       () => {
         this.timers.delete(chatId);
         if (this.status(chatId) !== "limited") return;
-        this.rt.bus.publish("global", { type: "usage.updated", profileId, usage: { limitHit: false } });
+        this.deps.usage.lifted(profileId);
         this.setStatus(chatId, "idle");
         this.drain(chatId);
       },
-      Math.max(0, resetAt - now()),
+      Math.max(0, retryAt - now()),
     );
     this.timers.set(chatId, t);
   }

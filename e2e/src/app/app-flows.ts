@@ -600,3 +600,75 @@ export async function previewFromApp(h: Harness, app: AppDriver): Promise<void> 
   await shown(page, "Stop").click();
   await shown(page, "Start preview").waitFor({ timeout: 30_000 });
 }
+
+/**
+ * Phase 4a in the app: a chat whose profile hits its limit shows the banner with the reset time;
+ * a message typed meanwhile is queued and goes out at the reset; Settings shows each profile's
+ * limit state and today's tokens.
+ */
+export async function limitFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo and a profile");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  const profileId = await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "limits", title: "Limits" });
+  await h.waitReady(wt.id, since);
+  since = h.mark();
+  const chat = await h.send("chat.create", { worktreeId: wt.id, agent: "fake", profileId, title: "Big job" });
+  await h.waitStatus(chat.id, "idle", since);
+
+  h.step("App: open the chat; the agent hits the profile's limit (resets in 8s)");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/chat/${chat.id}`);
+  await page.getByPlaceholder("Message the agent…").fill("#script:limit resetInMs=8000");
+  await page.getByLabel("Send", { exact: true }).click();
+  await shown(page, "This profile hit its usage limit").waitFor({ timeout: 30_000 });
+  await h.check("the banner says when it resets", async () => {
+    await page
+      .getByText(/It resets in a few seconds|It resets in a minute/)
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 10_000 });
+  });
+
+  h.step("App: a message typed while limited is queued");
+  await page.getByPlaceholder("Message the agent…").fill("pick it up after the reset");
+  await page.getByLabel("Send", { exact: true }).click();
+  await page
+    .getByText("1 queued", { exact: false })
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+
+  h.step("App: Settings shows the profile at its limit");
+  await app.goto("/settings");
+  await page
+    .getByText(/At its limit · resets/)
+    .locator("visible=true")
+    .first()
+    .waitFor({ timeout: 30_000 });
+
+  h.step("At the reset the queued message goes out");
+  await h.waitText(chat.id, "pick it up after the reset", since, 30_000);
+  await h.check("Settings shows the profile available, with today's tokens", async () => {
+    await shown(page, "Available").waitFor({ timeout: 30_000 });
+    await page
+      .getByText(/Today: [\d,]+ in · [\d,]+ out/)
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 30_000 });
+  });
+  await app.goto(`/h/${hostId}/chat/${chat.id}`);
+  await h.check("the banner is gone", async () => {
+    await page
+      .getByText("You said: pick it up after the reset", { exact: false })
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 30_000 });
+    assert.equal(await shown(page, "This profile hit its usage limit").count(), 0);
+  });
+}
