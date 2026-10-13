@@ -33,3 +33,19 @@ export function node(args: readonly string[], cwd: string, env: NodeJS.ProcessEn
     stdio: ["ignore", "pipe", "inherit"],
   });
 }
+
+/** Runs a command (`[program, ...args]`, no shell) with more arguments and returns its stdout. */
+export function run(
+  command: readonly string[],
+  args: readonly string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const [program = "", ...pre] = command;
+  return execFileSync(program, [...pre, ...args], {
+    cwd,
+    env,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+}

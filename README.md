@@ -45,7 +45,7 @@ Phase 4 is built: per-profile usage and limits, handing a chat to another profil
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
 | 4 | Multi-account power features and public launch | ✅ built (store submission, npm token and the site's domain are the owner's) |
-| 5 | After launch: terminal, parallel compare, voice, video, E2E preview, single binary | 5a (terminal), 5b (parallel compare), 5c (dictation), 5d (video attachments), 5e (end-to-end encrypted preview) ✅ built; see [`docs/phase-5.md`](docs/phase-5.md) |
+| 5 | After launch: terminal, parallel compare, voice, video, E2E preview, single binary | ✅ built: terminal, parallel compare, dictation, video, end-to-end encrypted preview, single-file builds and installers; see [`docs/phase-5.md`](docs/phase-5.md) (native-build checks pending) |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be
 handed to a coding agent as a standalone unit.
@@ -56,6 +56,9 @@ handed to a coding agent as a standalone unit.
 npm install -g agentdeck    # once published; until then, run it from a checkout (below)
 agentdeck doctor
 ```
+
+Or without Node.js: each release has `agentdeck` as one file per OS, with a Homebrew formula,
+winget manifests, a `.deb` and an `.rpm` (`pnpm release sea` builds it for this computer).
 
 Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md). Security reports: [`SECURITY.md`](SECURITY.md).
 

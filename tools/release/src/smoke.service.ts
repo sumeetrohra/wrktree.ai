@@ -3,21 +3,30 @@ import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { node, npm } from "./npm.utils.js";
+import { node, npm, run } from "./npm.utils.js";
 
-/** Starts the installed daemon in a fresh home, waits for it, and asks `agentdeck status`. */
-async function daemonStarts(cli: string, dir: string): Promise<void> {
+/**
+ * Starts the daemon (`agentdeck` is how to run the CLI: `[node, script]` or `[binary]`) in a fresh
+ * home, waits for it, and asks `agentdeck status`.
+ */
+async function daemonStarts(
+  agentdeck: readonly string[],
+  dir: string,
+  whileRunning: (env: NodeJS.ProcessEnv) => void = () => undefined,
+): Promise<void> {
   const home = join(dir, "home");
   const env = { ...process.env, AGENTDECK_HOME: home, AGENTDECK_KEYSTORE: "file", AGENTDECK_KEEP_AWAKE: "0" };
-  const daemon = spawn(process.execPath, [cli, "daemon"], { env, stdio: "ignore" });
+  const [program = "", ...pre] = agentdeck;
+  const daemon = spawn(program, [...pre, "daemon"], { env, stdio: "ignore" });
   try {
     const end = Date.now() + 60_000;
     while (!existsSync(join(home, "daemon.json"))) {
       if (Date.now() > end || daemon.exitCode !== null) throw new Error("the installed daemon did not start");
       await new Promise((r) => setTimeout(r, 250));
     }
-    const status = node([cli, "status"], dir, env);
+    const status = run(agentdeck, ["status"], dir, env);
     if (!status.includes("daemon running")) throw new Error(`agentdeck status said:\n${status}`);
+    whileRunning(env);
   } finally {
     daemon.kill();
   }
@@ -38,7 +47,7 @@ export async function smoke(tarballs: Record<string, string>): Promise<void> {
   if (!existsSync(join(dir, "node_modules", "agentdeck", "dist", "web", "index.html"))) {
     process.stdout.write("note: the package has no web UI (apps/mobile was not exported)\n");
   }
-  await daemonStarts(cli, dir);
+  await daemonStarts([process.execPath, cli], dir);
   node(["--check", join(dir, "node_modules", "@agentdeck", "relay", "dist", "relay.js")], dir);
   node(
     [
@@ -49,4 +58,25 @@ export async function smoke(tarballs: Record<string, string>): Promise<void> {
     dir,
   );
   process.stdout.write(`smoke test passed in ${dir}\n`);
+}
+
+/**
+ * Runs the single-file build like a user would: `--version`, `--help`, its daemon starts (the
+ * native modules unpacked from inside it load) and `status` answers. The cache is a fresh folder.
+ */
+export async function smokeSea(bin: string, version: string): Promise<void> {
+  const dir = mkdtempSync(join(tmpdir(), "agentdeck-sea-"));
+  const env = { ...process.env, AGENTDECK_CACHE_DIR: join(dir, "cache") };
+  const v = run([bin], ["--version"], dir, env).trim();
+  if (v !== version) throw new Error(`agentdeck --version said ${v}, expected ${version}`);
+  const help = run([bin], ["--help"], dir, env);
+  if (!help.includes("agentdeck — drive coding agents")) throw new Error(`agentdeck --help said:\n${help}`);
+  process.env["AGENTDECK_CACHE_DIR"] = env.AGENTDECK_CACHE_DIR;
+  await daemonStarts([bin], dir, (daemonEnv) => {
+    // With the daemon up, every required check passes; the terminal's must too.
+    const doctor = run([bin], ["doctor"], dir, daemonEnv);
+    if (!doctor.includes("node-pty loads"))
+      throw new Error(`the terminal's native module didn't load:\n${doctor}`);
+  });
+  process.stdout.write(`single-file smoke test passed: ${bin}\n`);
 }

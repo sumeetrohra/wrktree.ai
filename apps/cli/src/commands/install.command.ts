@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { isSea } from "node:sea";
 import { parseArgs } from "node:util";
 
 import { runQuiet } from "#src/lib/process/index.js";
@@ -10,8 +11,9 @@ import { c, print } from "#src/shared/output/index.js";
 /** `agentdeck install [--dry-run]`: start the daemon at login (launchd, systemd or a scheduled task). */
 export async function installCommand(args: readonly string[]): Promise<void> {
   const { values } = parseArgs({ args: [...args], options: { "dry-run": { type: "boolean" } } });
-  const cli = resolve(process.argv[1] ?? "agentdeck");
-  const plan = planFor(process.platform, homedir(), process.execPath, cli);
+  // The single-file build (Phase 5f) is its own program; otherwise Node runs this script.
+  const self = isSea() ? [process.execPath] : [process.execPath, resolve(process.argv[1] ?? "agentdeck")];
+  const plan = planFor(process.platform, homedir(), self);
   for (const [path, contents] of Object.entries(plan.files)) {
     print(c.gray(`write ${path}`));
     if (values["dry-run"] === true) {

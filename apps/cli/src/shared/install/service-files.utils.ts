@@ -14,7 +14,7 @@ const xml = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** macOS: a LaunchAgent that starts at login and restarts on crash. */
-function launchdPlan(home: string, node: string, cli: string): TInstallPlan {
+function launchdPlan(home: string, command: readonly string[]): TInstallPlan {
   const path = join(home, "Library", "LaunchAgents", `${LABEL}.plist`);
   const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -23,9 +23,7 @@ function launchdPlan(home: string, node: string, cli: string): TInstallPlan {
   <key>Label</key><string>${LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${xml(node)}</string>
-    <string>${xml(cli)}</string>
-    <string>daemon</string>
+${[...command, "daemon"].map((a) => `    <string>${xml(a)}</string>`).join("\n")}
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
@@ -45,14 +43,14 @@ function launchdPlan(home: string, node: string, cli: string): TInstallPlan {
 const quoteSystemd = (s: string): string => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
 /** Linux: a systemd user service. */
-function systemdPlan(home: string, node: string, cli: string): TInstallPlan {
+function systemdPlan(home: string, command: readonly string[]): TInstallPlan {
   const path = join(home, ".config", "systemd", "user", "agentdeck.service");
   const unit = `[Unit]
 Description=Agentdeck daemon
 After=network-online.target
 
 [Service]
-ExecStart=${quoteSystemd(node)} ${quoteSystemd(cli)} daemon
+ExecStart=${command.map(quoteSystemd).join(" ")} daemon
 Restart=on-failure
 RestartSec=5
 
@@ -69,8 +67,8 @@ WantedBy=default.target
 }
 
 /** Windows: a scheduled task that runs at logon with the user's rights. */
-function windowsPlan(node: string, cli: string): TInstallPlan {
-  const tr = `"${node}" "${cli}" daemon`;
+function windowsPlan(command: readonly string[]): TInstallPlan {
+  const tr = `${command.map((a) => `"${a}"`).join(" ")} daemon`;
   return {
     files: {},
     commands: [
@@ -79,14 +77,18 @@ function windowsPlan(node: string, cli: string): TInstallPlan {
   };
 }
 
-export function planFor(platform: NodeJS.Platform, home: string, node: string, cli: string): TInstallPlan {
+/**
+ * `command` runs the CLI: `[node, script]`, or `[binary]` for the single-file build (Phase 5f);
+ * the service adds `daemon`.
+ */
+export function planFor(platform: NodeJS.Platform, home: string, command: readonly string[]): TInstallPlan {
   switch (platform) {
     case "darwin":
-      return launchdPlan(home, node, cli);
+      return launchdPlan(home, command);
     case "win32":
-      return windowsPlan(node, cli);
+      return windowsPlan(command);
     default:
-      return systemdPlan(home, node, cli);
+      return systemdPlan(home, command);
   }
 }
 

@@ -48,7 +48,7 @@
       "project": ["src/**/*.ts"]
     }
   },
-  "ignoreBinaries": ["ffmpeg"],
+  "ignoreBinaries": ["dpkg-deb", "ffmpeg", "rpmbuild"],
   "rules": {
     "types": "off",
     "nsTypes": "off"

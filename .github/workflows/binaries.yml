@@ -1,0 +1,74 @@
+name: Binaries
+
+# The single-file agentdeck for each OS, and installers made from them (Homebrew formula, winget
+# manifests, .deb, .rpm). A version tag makes a draft GitHub release with all of it; publishing the
+# release, the tap and the winget PR is the maintainer's.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  HUSKY: 0
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-2022]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @agentdeck/mobile export:web
+      - run: pnpm release sea
+      - run: pnpm release sea-smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentdeck-${{ matrix.os }}
+          path: |
+            release/bin/*.tar.gz
+            release/bin/*.zip
+          if-no-files-found: error
+
+  installers:
+    name: installers
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: sudo apt-get update && sudo apt-get install -y rpm
+      - uses: actions/download-artifact@v4
+        with:
+          path: archives
+          merge-multiple: true
+      - run: pnpm release installers archives
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: release/installers
+      - name: Draft release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --draft --generate-notes \
+            archives/* release/installers/*.deb release/installers/rpmbuild/RPMS/x86_64/*.rpm

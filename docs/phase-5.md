@@ -10,7 +10,7 @@ in order of value to users. Decision: no team plan, SSO or audit log for now.
 | **5c** | Voice dictation in the composer | **built** (needs a native build to try) |
 | **5d** | Video attachments (key frames to the agent) | **built** |
 | **5e** | End-to-end encrypted preview | **built** (phones need a native build to try it) |
-| **5f** | Single-binary daemon and installers | planned |
+| **5f** | Single-binary daemon and installers | **built** (publishing the tap, winget and the release is the owner's) |
 
 ## 5a: terminal
 
@@ -113,3 +113,29 @@ Pending: trying it on real phones (native build).
   `e2e/maestro/sealed-preview.yaml` and `terminal.yaml`.
 
 Pending: running those Maestro flows on simulators (native builds).
+
+## 5f: single-file agentdeck and installers
+
+- **The file:** `pnpm release sea` makes `release/bin/agentdeck(.exe)` for the OS and CPU it runs
+  on: Node's single executable application with a launcher as its main script and one asset, the
+  built npm package with its dependencies installed for that platform (native modules included),
+  pruned of sources and other platforms' prebuilt addons, packed and gzipped (about 9 MB on top of
+  Node). The first run unpacks it into the user's cache (`~/.cache/agentdeck`,
+  `~/Library/Caches/agentdeck`, `%LOCALAPPDATA%\agentdeck\cache`, once per build) and loads the CLI
+  from there with `createRequire`, the way a single executable reaches files on disk; Node 22.12+
+  loads the ES module bundle synchronously. macOS gets an ad-hoc signature (distribution signing is
+  the publisher's). `agentdeck install` writes services that run the file itself.
+- **Checked on every push:** CI builds it on Linux, macOS and Windows and runs it: `--version`,
+  `--help`, the daemon starts (SQLite loads from inside it), `status`, and `doctor` sees node-pty.
+- **Installers:** `pnpm release installers <archives>` writes a Homebrew formula (Apple silicon,
+  and Intel when built; with a `brew services` definition), winget manifests (a portable exe in a
+  zip), a `.deb` (`dpkg-deb`) and an `.rpm` (`rpmbuild`), with each archive's SHA-256. The
+  `Binaries` workflow builds all three OSes on a version tag (or by hand) and drafts a GitHub
+  release with the archives and packages; publishing it, the tap and the winget PR is the owner's.
+- **Tests:** the launcher unpacks once and runs an ES module CLI with its dependencies; pruning keeps
+  only this platform's addon; the formula, manifests, control file and spec (unit). The .deb was
+  installed and run by hand here.
+
+Pending (the owner's): a Homebrew tap repository, a winget-pkgs pull request, signing (Apple
+Developer ID and notarization, Windows Authenticode), and Linux arm64 and Intel Mac runners if
+wanted.

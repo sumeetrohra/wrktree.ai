@@ -42,6 +42,8 @@ jobs:
           GIT_COMMITTER_EMAIL: ci@agentdeck.dev
       - name: npm packages install and run (agentdeck --help, daemon starts, relay, protocol)
         run: pnpm release smoke
+      - name: Single-file agentdeck builds and runs (native modules inside; Phase 5f)
+        run: pnpm release sea && pnpm release sea-smoke
 
   checks:
     name: knip, audit, app web build

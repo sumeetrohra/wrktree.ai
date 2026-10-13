@@ -42,6 +42,20 @@ Worktrees go under `%LOCALAPPDATA%\agentdeck\wt` on Windows so paths stay short.
 
 `agentdeck uninstall` stops starting the daemon at login; your chats and settings stay.
 
+### Without Node.js: one file
+
+Each release also has `agentdeck` as a single program (Node and the native parts inside): download
+it from the release page, or
+
+```sh
+brew install agentdeck/tap/agentdeck          # macOS
+sudo apt install ./agentdeck_<version>_amd64.deb    # Debian, Ubuntu
+sudo dnf install ./agentdeck-<version>-1.x86_64.rpm # Fedora, RHEL
+winget install Agentdeck.Agentdeck            # Windows
+```
+
+The first run unpacks itself into your cache folder; then it works like the npm version.
+
 ## On your phone
 
 Install **Agentdeck** from the App Store or Google Play, or open the web app in any browser.

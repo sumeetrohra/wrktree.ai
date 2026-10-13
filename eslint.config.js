@@ -513,6 +513,8 @@ export default tseslint.config(
       "**/dist/**",
       "**/node_modules/**",
       "artifacts/**",
+      // Build output of `pnpm release` (npm packages, the single-file build's staging).
+      "release/**",
       "**/.turbo/**",
       "tools/lint-fixtures/fixtures/**",
       // Test data: a plain Node script standing in for ffmpeg, run as a program.
