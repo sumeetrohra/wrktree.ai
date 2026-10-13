@@ -13,14 +13,21 @@ export type TParsedPrompt = {
 const SCRIPT_TOKEN = /#script:([\w-]+)/;
 const VAR_TOKEN = /^(\w+)=(\S+)$/;
 
-/** `"Do it #script:golden file=NOTES.md"` → script `golden`, vars `{ file: "NOTES.md", text: "Do it" }`. */
+/**
+ * `"Do it #script:golden file=NOTES.md"` → script `golden`, vars `{ file: "NOTES.md", text: "Do it" }`.
+ * The script token counts only in the last paragraph of the last text block.
+ */
 export function parsePrompt(prompt: readonly acp.ContentBlock[]): TParsedPrompt {
-  const text = prompt.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");
+  const blocks = prompt.flatMap((b) => (b.type === "text" ? [b.text] : []));
+  const text = blocks.join("\n");
   const images = prompt.flatMap((b) =>
     b.type === "image" ? [{ mimeType: b.mimeType, bytes: Buffer.from(b.data, "base64").length }] : [],
   );
   const words = text.split(/\s+/).filter(Boolean);
-  const scriptAt = words.findIndex((w) => SCRIPT_TOKEN.test(w));
+  // Only the last paragraph of the last text block picks a script: a resume seed or a hand-off
+  // brief quotes earlier prompts, and their `#script:` tokens must not run again.
+  const lastParagraph = (blocks.at(-1) ?? "").split(/\n\s*\n/).at(-1) ?? "";
+  const scriptAt = SCRIPT_TOKEN.test(lastParagraph) ? words.findLastIndex((w) => SCRIPT_TOKEN.test(w)) : -1;
   const vars: TVars = {};
   const kept: string[] = [];
   words.forEach((w, i) => {

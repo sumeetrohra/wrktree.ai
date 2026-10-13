@@ -45,15 +45,24 @@ export class PreviewService {
     }
     if (wt.port === null) throw new AgentdeckError("BAD_STATE", "This worktree has no port");
     const port = wt.port;
-    const proc =
-      this.deps.procs.running(worktreeId, config.script) ??
-      this.deps.procs.start(worktreeId, config.script, { ...config.env, AGENTDECK_PREVIEW: "1" });
+    let proc = this.deps.procs.running(worktreeId, config.script);
+    if (!proc) {
+      // Something else on the port would be previewed instead of this worktree's app.
+      if (await this.deps.waitForPort(port, 0, () => false)) {
+        throw new AgentdeckError(
+          "CONFLICT",
+          `Port ${String(port)} is already in use by another program; stop it and try again`,
+        );
+      }
+      proc = this.deps.procs.start(worktreeId, config.script, { ...config.env, AGENTDECK_PREVIEW: "1" });
+    }
+    const procId = proc.id;
     const preview = this.previews.get(worktreeId);
     const current: TPreview =
-      preview?.procId === proc.id ? preview : { procId: proc.id, port, tokens: preview?.tokens ?? new Set() };
+      preview?.procId === procId ? preview : { procId, port, tokens: preview?.tokens ?? new Set() };
     this.previews.set(worktreeId, current);
     this.publish(worktreeId, "starting");
-    const exited = (): boolean => !this.running(proc.id);
+    const exited = (): boolean => !this.running(procId);
     if (!(await this.deps.waitForPort(port, START_MS, exited))) {
       this.publish(worktreeId, "crashed");
       throw new AgentdeckError(
@@ -93,8 +102,9 @@ export class PreviewService {
     const p = this.previews.get(worktreeId);
     if (!p) return;
     this.previews.delete(worktreeId);
-    await Promise.all([...p.tokens].map((t) => this.deps.tunnel.close(t)));
+    // The script first: closing the tunnels waits on the relay, and a stopping daemon may not.
     if (this.running(p.procId)) await this.deps.procs.stop(p.procId);
+    await Promise.all([...p.tokens].map((t) => this.deps.tunnel.close(t)));
     this.publish(worktreeId, "stopped");
   }
 

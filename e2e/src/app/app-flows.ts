@@ -673,3 +673,61 @@ export async function limitFromApp(h: Harness, app: AppDriver): Promise<void> {
     assert.equal(await shown(page, "This profile hit its usage limit").count(), 0);
   });
 }
+
+/**
+ * Phase 4b in the app: the limit banner offers "Continue on another profile"; picking one opens a
+ * new chat in the same worktree that starts from a hand-off brief.
+ */
+export async function handoffFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo and two profiles");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  const work = await h.addProfile("Work");
+  await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+  let since = h.mark();
+  const wt = await h.send("worktree.create", { repoId: repo.id, branch: "notes", title: "Notes" });
+  await h.waitReady(wt.id, since);
+  since = h.mark();
+  const chat = await h.send("chat.create", {
+    worktreeId: wt.id,
+    agent: "fake",
+    profileId: work,
+    title: "Notes",
+  });
+  await h.waitStatus(chat.id, "idle", since);
+
+  h.step("App: the agent on Work hits its limit");
+  const hostId = await h.deviceId();
+  await app.goto(`/h/${hostId}/chat/${chat.id}`);
+  await page
+    .getByPlaceholder("Message the agent…")
+    .fill("Write the changelog #script:limit resetInMs=600000");
+  await page.getByLabel("Send", { exact: true }).click();
+  await shown(page, "This profile hit its usage limit").waitFor({ timeout: 30_000 });
+
+  h.step("App: Continue on another profile → Personal");
+  await shown(page, "Continue on another profile").click();
+  await shown(page, "Personal · fake").click();
+  await h.check("a new chat opens and the agent on Personal gets the brief", async () => {
+    await page
+      .getByText("Continued from a chat on Work (fake).", { exact: false })
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 30_000 });
+    await page
+      .getByText('You said: You are taking over a task from fake (profile "Work")', { exact: false })
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 30_000 });
+  });
+  await h.check("in the same worktree, on Personal", async () => {
+    const chats = await h.send("chat.list", { worktreeId: wt.id });
+    const next = chats.find((c) => c.handedOffFrom === chat.id);
+    assert.ok(next);
+    assert.notEqual(next.profileId, work);
+    assert.match(page.url(), new RegExp(`/chat/${next.id}$`));
+  });
+}

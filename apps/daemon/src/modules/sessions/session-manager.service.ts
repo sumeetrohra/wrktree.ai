@@ -34,8 +34,22 @@ type TRow = {
   status: TChatStatus;
   resumed: number;
   model: string | null;
+  handed_off_from: string | null;
   created_at: number;
   updated_at: number;
+};
+
+/** What a hand-off brief is built from (`handoffContext`). */
+export type THandoffContext = {
+  title: string | null;
+  /** The last messages, oldest first. */
+  transcript: { role: "User" | "Agent"; text: string }[];
+  /** The latest plan's entries. */
+  plan: { text: string; status: string }[];
+  /** Approvals the agent was waiting on. */
+  pending: string[];
+  /** The user's last message, when the agent never answered it (e.g. the turn that hit the limit). */
+  unanswered: string | null;
 };
 
 /** `quoted`: worktree lines the user attached, already read and fenced (sent before the text). */
@@ -60,6 +74,12 @@ type TLive = TAdapter & {
 const UNKNOWN_RESET_RETRY_MS = 15 * 60 * 1000;
 const EXIT_GRACE_MS = 2000;
 const SUMMARY_MESSAGES = 20;
+/** A hand-off brief carries more of the conversation than a resume seed, each message clipped. */
+const HANDOFF_MESSAGES = 40;
+const HANDOFF_MESSAGE_CHARS = 2000;
+
+const clip = (text: string, max: number): string =>
+  text.length <= max ? text : `${text.slice(0, max)}… [${String(text.length - max)} more characters]`;
 
 const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -127,6 +147,7 @@ export class SessionManager {
       resumed: r.resumed === 1,
       queued: this.queues.get(r.id)?.length ?? 0,
       model: r.model,
+      handedOffFrom: r.handed_off_from,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     };
@@ -191,6 +212,8 @@ export class SessionManager {
     profileId: string;
     title?: string | undefined;
     model?: string | undefined;
+    /** Phase 4b: the chat this one continues. */
+    handedOffFrom?: string | undefined;
   }): TChat {
     const wt = this.deps.worktrees.get(args.worktreeId);
     if (wt.status !== "ready")
@@ -207,10 +230,20 @@ export class SessionManager {
     const t = now();
     this.rt.db
       .prepare(
-        `INSERT INTO chats (id, worktree_id, agent, profile_id, title, model, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'starting', ?, ?)`,
+        `INSERT INTO chats (id, worktree_id, agent, profile_id, title, model, handed_off_from, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'starting', ?, ?)`,
       )
-      .run(id, args.worktreeId, args.agent, args.profileId, args.title ?? null, args.model ?? null, t, t);
+      .run(
+        id,
+        args.worktreeId,
+        args.agent,
+        args.profileId,
+        args.title ?? null,
+        args.model ?? null,
+        args.handedOffFrom ?? null,
+        t,
+        t,
+      );
     this.rt.bus.publish(`chat:${id}`, { type: "chat.status", chatId: id, status: "starting", queued: 0 });
     void this.start(id);
     return this.get(id);
@@ -373,6 +406,61 @@ export class SessionManager {
       );
     }
     this.rt.db.prepare("UPDATE chats SET acp_session_id = ? WHERE id = ?").run(res.sessionId, live.chatId);
+  }
+
+  /** A system note in a chat (e.g. where a hand-off went). */
+  note(chatId: string, text: string, level: "info" | "warn" | "error" = "info"): void {
+    this.row(chatId);
+    this.system(chatId, text, level);
+  }
+
+  /** Removes and returns the chat's unsent messages (they move to the chat it hands off to). */
+  takeQueue(chatId: string): string[] {
+    const queued = this.queues.get(chatId) ?? [];
+    this.queues.set(chatId, []);
+    if (queued.length > 0) this.setStatus(chatId, this.status(chatId));
+    return queued.map((q) => (q.quoted ? `${q.quoted}\n\n${q.text}` : q.text));
+  }
+
+  /**
+   * The chat as a hand-off needs it, read from its event log (no model call). `queued` user
+   * messages at the end were never sent to the agent; they are left out (they move on their own).
+   */
+  handoffContext(chatId: string, queued = 0, messages = HANDOFF_MESSAGES): THandoffContext {
+    const chat = this.get(chatId);
+    const texts = new Map<string, { role: "User" | "Agent"; text: string }>();
+    let plan: THandoffContext["plan"] = [];
+    for (const { event } of this.rt.bus.replay(`chat:${chatId}`, 0)) {
+      if (event.type === "chat.item") {
+        const item = event.item;
+        if (item.kind === "user" || item.kind === "agent_text") {
+          texts.set(item.id, { role: item.kind === "user" ? "User" : "Agent", text: item.text });
+        } else if (item.kind === "plan") {
+          plan = item.entries;
+        }
+      } else if (event.type === "chat.itemPatch") {
+        const entry = texts.get(event.itemId);
+        if (entry && typeof event.patch.text === "string") entry.text = event.patch.text;
+        if (Array.isArray(event.patch.entries)) plan = event.patch.entries;
+      }
+    }
+    const all = [...texts.values()];
+    for (let left = queued; left > 0;) {
+      const i = all.findLastIndex((t) => t.role === "User");
+      if (i < 0) break;
+      all.splice(i, 1);
+      left--;
+    }
+    const last = all.at(-1);
+    return {
+      title: chat.title,
+      transcript: all
+        .slice(-messages)
+        .map((t) => ({ role: t.role, text: clip(t.text, HANDOFF_MESSAGE_CHARS) })),
+      plan,
+      pending: this.permissions.pendingFor(chatId).map((p) => p.title),
+      unanswered: last?.role === "User" ? last.text : null,
+    };
   }
 
   /** The last turns as plain text, for seeding a fresh session. */

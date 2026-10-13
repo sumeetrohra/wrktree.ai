@@ -99,6 +99,14 @@
       "title": "This profile hit its usage limit",
       "resets": "It resets {{when}}; queued messages send then.",
       "unknown": "The agent didn't say when it resets."
+    },
+    "handoff": {
+      "open": "Continue on…",
+      "fromLimit": "Continue on another profile",
+      "title": "Continue this chat on",
+      "hint": "A new chat in the same worktree starts with a summary of this one, its changes, and your queued messages.",
+      "on": "{{name}} · {{agent}}",
+      "cancel": "Cancel"
     }
   },
   "permission": {

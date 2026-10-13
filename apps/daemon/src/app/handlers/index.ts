@@ -8,6 +8,7 @@ import { deviceHandlers } from "./device.handlers.js";
 import { editorHandlers } from "./editor.handlers.js";
 import { filesHandlers } from "./files.handlers.js";
 import { gitHandlers } from "./git.handlers.js";
+import { handoffHandlers } from "./handoff.handlers.js";
 import { prHandlers } from "./pr.handlers.js";
 import { previewHandlers } from "./preview.handlers.js";
 import { procHandlers } from "./proc.handlers.js";
@@ -32,6 +33,7 @@ export function createHandlers(m: TModules): THandlers {
     ...gitHandlers(m),
     ...prHandlers(m),
     ...procHandlers(m),
+    ...handoffHandlers(m),
     ...previewHandlers(m),
     ...editorHandlers(m),
   };

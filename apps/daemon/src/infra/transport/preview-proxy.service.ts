@@ -29,29 +29,33 @@ function flatHeaders(h: IncomingHttpHeaders): Record<string, string> {
   return out;
 }
 
-/** Resolves once something accepts TCP connections on `localhost:<port>`, false after `ms`. */
+/** Whether something accepts TCP connections on `localhost:<port>` right now. */
+function portOpen(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const s = connect({ host: LOOPBACK, port });
+    s.once("connect", () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once("error", () => {
+      s.destroy();
+      resolve(false);
+    });
+  });
+}
+
+/** Resolves once something listens on `localhost:<port>` (checked at least once), false after `ms`. */
 export async function waitForPort(
   port: number,
   ms: number,
   gaveUp: () => boolean = () => false,
 ): Promise<boolean> {
   const end = Date.now() + ms;
-  while (Date.now() < end && !gaveUp()) {
-    const open = await new Promise<boolean>((resolve) => {
-      const s = connect({ host: LOOPBACK, port });
-      s.once("connect", () => {
-        s.destroy();
-        resolve(true);
-      });
-      s.once("error", () => {
-        s.destroy();
-        resolve(false);
-      });
-    });
-    if (open) return true;
+  for (;;) {
+    if (await portOpen(port)) return true;
+    if (Date.now() >= end || gaveUp()) return false;
     await new Promise((r) => setTimeout(r, 200));
   }
-  return false;
 }
 
 /**

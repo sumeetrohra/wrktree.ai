@@ -33,8 +33,8 @@ Every chat is kept in Firebase, so it stays readable when its computer is off. F
 can review an agent's changes, read the code, ask about specific lines, run the repo's scripts and
 ship the work as a pull request the agent drafted, and open the app it is building in a preview
 tunnelled through the relay, with hot reload.
-Phase 4 is under way: per-profile usage and limits are built.
-24 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
+Phase 4 is under way: per-profile usage and limits, and handing a chat to another profile, are built.
+26 end-to-end scenarios plus unit, contract and lint-rule tests pass on every push; see
 [`docs/phase-1.md`](docs/phase-1.md), [`docs/phase-2.md`](docs/phase-2.md), [`docs/phase-3.md`](docs/phase-3.md) and
 [`docs/phase-4.md`](docs/phase-4.md).
 
@@ -44,7 +44,7 @@ Phase 4 is under way: per-profile usage and limits are built.
 | 1 | Daemon core, usable from a local CLI client | ✅ built |
 | 2 | Relay, crypto, mobile MVP — the phone becomes the daily driver | ✅ built (real-device acceptance pending EAS) |
 | 3 | Cloud history (3a); review, code, ship (3b); preview (3c) — judge an agent's work without a laptop | ✅ built (real Firebase, real `gh` and a deployed preview domain pending) |
-| 4 | Multi-account power features and public launch | 4a (usage and limits) ✅ built; 4b–4g next |
+| 4 | Multi-account power features and public launch | 4a (usage and limits), 4b (hand-off) ✅ built; 4c–4g next |
 | 5 | After launch: teams, parallel compare, voice, E2E preview, terminal | |
 
 Each phase has a task checklist and acceptance criteria in the spec, written so it can be

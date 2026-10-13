@@ -7,6 +7,7 @@ import {
   cloudHistoryInApp,
   desktopWeb,
   desktopWebSignsIn,
+  handoffFromApp,
   limitFromApp,
   linkFromApp,
   newTaskFromApp,
@@ -135,6 +136,14 @@ export const appScenarios: TAppScenario[] = [
     ],
     harness: { relay: true },
     run: limitFromApp,
+  },
+  {
+    n: 26,
+    title: "The app: continue a limited chat on another profile",
+    summary: "The limit banner offers another profile; a new chat in the same worktree picks up from a brief",
+    covers: ["Phase 4b: hand-off from the limit banner, same worktree, brief without a model call"],
+    harness: { relay: true },
+    run: handoffFromApp,
   },
 ];
 

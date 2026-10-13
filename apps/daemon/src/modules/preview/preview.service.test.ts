@@ -12,7 +12,7 @@ import { openDb } from "#src/infra/db/index.js";
 import { PreviewService } from "./preview.service.js";
 import type { IPreviewDeps } from "./preview.types.js";
 
-function setup(opts: { config?: boolean; listens?: boolean; exits?: boolean } = {}) {
+function setup(opts: { config?: boolean; listens?: boolean; exits?: boolean; taken?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "preview-"));
   const bus = new EventBus(join(dir, "events"), openDb(join(dir, "db")));
   const wt: TWorktree = {
@@ -77,7 +77,9 @@ function setup(opts: { config?: boolean; listens?: boolean; exits?: boolean } = 
         return Promise.resolve();
       },
     },
-    waitForPort: (_port, _ms, gaveUp) => Promise.resolve(opts.listens !== false && !gaveUp()),
+    // Before the script starts, the port is free unless `taken`; after, it listens unless told not to.
+    waitForPort: (_port, ms, gaveUp) =>
+      Promise.resolve(ms === 0 ? opts.taken === true : opts.listens !== false && !gaveUp()),
   };
   const statuses = (): string[] =>
     bus
@@ -119,9 +121,15 @@ describe("PreviewService", () => {
     const t = setup();
     await t.svc.start(t.wt.id, "relay-d_phone");
     await t.svc.stop(t.wt.id);
-    expect(t.log.slice(-2)).toEqual(["close tok1", expect.stringMatching(/^stop proc_/)]);
+    expect(t.log.slice(-2)).toEqual([expect.stringMatching(/^stop proc_/), "close tok1"]);
     expect(t.svc.portOf("tok1")).toBeNull();
     expect(t.statuses().at(-1)).toBe("stopped");
+  });
+
+  it("won't preview a port another program already holds", async () => {
+    const t = setup({ taken: true });
+    await expect(t.svc.start(t.wt.id, "local-1")).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(t.log).toEqual([]);
   });
 
   it("reports a script that exits or never listens as crashed", async () => {

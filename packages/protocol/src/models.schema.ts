@@ -78,6 +78,8 @@ export const chatSchema = z.object({
   queued: z.number().int().nonnegative(),
   /** Additive: the model asked for at `chat.create`, null for the agent's default. */
   model: z.string().nullable().optional(),
+  /** Additive (Phase 4b): the chat this one continues (`chat.handoff`). */
+  handedOffFrom: chatIdSchema.nullable().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

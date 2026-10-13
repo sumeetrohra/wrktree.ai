@@ -56,6 +56,14 @@ export async function createChat(
   return chat;
 }
 
+/** Continues the chat on another profile (Phase 4b); the new chat starts with a hand-off brief. */
+export async function handoffChat(hostId: string, chatId: string, profileId: string): Promise<TChat> {
+  const chat = await daemonCall(hostId, "chat.handoff", { chatId, profileId });
+  rememberHost(chat.id, hostId);
+  await queryClient.invalidateQueries({ queryKey: chatsKeys.list(hostId, chat.worktreeId) });
+  return chat;
+}
+
 /** A chat's status in the list follows `chat.status` events, without refetching. Call once at startup. */
 export function startChatListSync(): void {
   onDaemonEvent((_hostId, { event: e }) => {

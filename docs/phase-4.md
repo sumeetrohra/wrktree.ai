@@ -7,7 +7,7 @@ and a public launch. Decisions: MIT everywhere, no billing or plan limits, store
 | Milestone | What | Status |
 |---|---|---|
 | **4a** | Usage and limits per profile | **built** |
-| **4b** | Hand-off to another profile or agent | planned |
+| **4b** | Hand-off to another profile or agent | **built** |
 | **4c** | Shared config (MCP, skills, instructions) | planned |
 | **4d** | Windows hardening, keep-awake, `uninstall`/`status`/`doctor` | planned |
 | **4e** | Open source files, npm packages, docker-compose | planned |
@@ -65,3 +65,34 @@ resets. Every `chat.status` `limited` event carries `resetAt`.
 Unit tests cover the reset-time shapes above, the reply heuristic and the counting rules.
 Pending: samples from real Claude Code, Codex and Gemini limits (the shapes above are from their
 documented messages).
+
+## 4b: hand-off to another profile or agent
+
+`chat.handoff {chatId, profileId, agent?, model?}` continues a chat in the **same worktree** on
+another profile (and so possibly another agent), or the same profile with another model. It
+returns the new chat, whose `handedOffFrom` names the old one (migration 6).
+
+The new chat's first message is a **brief built without a model call** (the old agent is usually
+the one at its limit), from `app/handoff.utils.ts`:
+
+- who it takes over from and why (limit, or the user moved it), and the task title;
+- the conversation so far (last 40 messages, each clipped at 2,000 characters);
+- the agent's last plan;
+- the worktree's changes against its base (up to 50 files, untracked ones included);
+- approvals it was waiting on;
+- what the user wants next: their last message if the agent never answered it, else "continue".
+
+Messages the user had queued on the old chat move to the new one, after the brief and in order;
+the old chat gets a note saying where the work went, the new one where it came from. Handing off
+to the same profile and model is refused.
+
+In the app, the limit banner offers **Continue on another profile**, and every chat has
+**Continue on…** in its header: pick a profile, and the new chat opens.
+
+| # | Scenario | Checks |
+|---|---|---|
+| 25 | Hand a limited chat to another profile | on Work the agent writes NOTES.md, then hits its limit with a message queued; hand-off to Personal: same worktree, `handedOffFrom`, the title; the brief names Work and the limit, quotes the conversation and lists NOTES.md; the queued message follows as its own turn (not in the brief); the old chat says where the work went; the same profile is refused |
+| 26 (app) | The app: continue a limited chat on another profile | the limit banner → Continue on another profile → Personal; the new chat opens, notes where it came from, and its agent gets the brief |
+
+The fake agent only reads a `#script:` token from the last paragraph of a prompt's last text
+block, so a brief (or a resume seed) quoting earlier scripted prompts doesn't rerun them.

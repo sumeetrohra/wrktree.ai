@@ -7,6 +7,7 @@ import { pathJail } from "./path-jail.scenario.ts";
 import { permissions } from "./permissions.scenario.ts";
 import { relayChat } from "./relay-chat.scenario.ts";
 import { relayCloud } from "./relay-cloud.scenario.ts";
+import { relayHandoff } from "./relay-handoff.scenario.ts";
 import { relayLogin } from "./relay-login.scenario.ts";
 import { relayMultiHost } from "./relay-multi-host.scenario.ts";
 import { relayOffline } from "./relay-offline.scenario.ts";
@@ -41,6 +42,7 @@ export const relayScenarios: TScenario[] = [
   relayProcs,
   relayPreview,
   relayUsage,
+  relayHandoff,
 ];
 
 /** Phase 3a: chat history in Firebase (needs the emulators). */

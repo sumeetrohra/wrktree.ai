@@ -2,12 +2,14 @@ export {
   askAboutLines,
   contextParam,
   createChat,
+  handoffChat,
   sendMessage,
   startChatListSync,
   useChatsQuery,
 } from "./api/chats.queries";
 export { ChatList } from "./components/chat-list";
 export { ChatStatusBadge } from "./components/chat-status-badge";
+export { HandoffSheet } from "./components/handoff-sheet";
 export { LimitBanner } from "./components/limit-banner";
 export { QuotedLines } from "./components/quoted-lines";
 export { chatNeedingAttention, startChatStoreSync, useChatView, type TChatView } from "./stores/chat.store";

@@ -144,6 +144,21 @@ export const commands = {
   "chat.cancel": { args: z.object({ chatId: chatIdSchema }), result: Empty },
   /** Additive: user retry from `crashed`. */
   "chat.retry": { args: z.object({ chatId: chatIdSchema }), result: chatSchema },
+  /**
+   * Additive (Phase 4b): continue a chat on another profile (or agent, or model) in the same
+   * worktree. The new chat starts with a hand-off brief built without a model call (transcript,
+   * last plan, the worktree's changes, a pending approval) and the old chat's unsent messages.
+   */
+  "chat.handoff": {
+    args: z.object({
+      chatId: chatIdSchema,
+      profileId: profileIdSchema,
+      /** Must match the profile's agent when given. */
+      agent: z.string().optional(),
+      model: z.string().optional(),
+    }),
+    result: chatSchema,
+  },
 
   "permission.respond": {
     args: z.object({

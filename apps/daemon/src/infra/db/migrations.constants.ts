@@ -87,4 +87,8 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX usage_samples_profile_at ON usage_samples (profile_id, at);
   `,
+  // 6: Phase 4b hand-off. The chat a chat continues.
+  `
+  ALTER TABLE chats ADD COLUMN handed_off_from TEXT;
+  `,
 ];
