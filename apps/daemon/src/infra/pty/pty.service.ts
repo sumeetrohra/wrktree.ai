@@ -1,4 +1,6 @@
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 import { AgentdeckError } from "@agentdeck/protocol";
 import type * as NodePty from "node-pty";
@@ -22,8 +24,30 @@ let loaded: Promise<TPtyModule | null> | null = null;
  * still runs everything but the terminal.
  */
 function ptyModule(): Promise<TPtyModule | null> {
-  loaded ??= import("node-pty").catch(() => null);
+  loaded ??= import("node-pty")
+    .then((m) => {
+      makeSpawnHelperExecutable();
+      return m;
+    })
+    .catch(() => null);
   return loaded;
+}
+
+/**
+ * On macOS node-pty starts shells through a bundled `spawn-helper` program, which some package
+ * managers unpack without its execute bit (spawning then fails with "posix_spawnp failed").
+ */
+function makeSpawnHelperExecutable(): void {
+  if (process.platform !== "darwin") return;
+  try {
+    const root = dirname(createRequire(import.meta.url).resolve("node-pty/package.json"));
+    for (const dir of [join("prebuilds", `darwin-${process.arch}`), join("build", "Release")]) {
+      const helper = join(root, dir, "spawn-helper");
+      if (existsSync(helper) && (statSync(helper).mode & 0o111) === 0) chmodSync(helper, 0o755);
+    }
+  } catch {
+    // Not fatal: spawning reports its own error.
+  }
 }
 
 /** The user's shell: `$SHELL` (or bash, then sh) on macOS and Linux, PowerShell on Windows. */
