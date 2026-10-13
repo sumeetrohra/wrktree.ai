@@ -9,6 +9,7 @@ import {
   permissionDecisionSchema,
   permissionRequestSchema,
   procSchema,
+  compareSchema,
   terminalSchema,
   usageSnapshotSchema,
   worktreeSchema,
@@ -72,6 +73,8 @@ export const daemonEventSchema = z.discriminatedUnion("type", [
     status: z.enum(["starting", "ready", "crashed", "stopped"]),
     url: z.string().optional(),
   }),
+  /** Additive (Phase 5): a compare started, an entry's chat started, or a winner was picked (`repo:<id>`). */
+  z.object({ type: z.literal("compare.updated"), compare: compareSchema }),
   /** Additive (Phase 5): terminal output, coalesced (topic `term:<id>`). */
   z.object({ type: z.literal("term.output"), termId: termIdSchema, data: z.string() }),
   /** Additive: a terminal opened, resized or exited (topics `term:<id>` and `repo:<id>`). */

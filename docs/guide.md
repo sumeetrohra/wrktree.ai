@@ -18,6 +18,13 @@
 - **Ask about lines:** in a diff or file, tap a line (long-press for a range), then "Ask the
   agent about this".
 
+## Compare agents
+
+**New task → Compare agents** gives one task to two to four profiles at once (say Claude Code
+and Codex, or two models). Each works in its own worktree from the same base; the compare page
+shows them side by side with what each changed. Open a chat or its Changes to judge, then **Keep
+this one**: the others are archived.
+
 ## Review and ship
 
 A worktree has tabs: **Chats, Changes, Files, Logs, Terminal, Preview, Ship**.

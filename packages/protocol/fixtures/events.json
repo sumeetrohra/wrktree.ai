@@ -199,5 +199,34 @@
       "startedAt": 1760000000000,
       "endedAt": null
     }
+  },
+  {
+    "type": "compare.updated",
+    "compare": {
+      "id": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Dark mode",
+      "prompt": "Add a dark mode toggle",
+      "baseRef": "main",
+      "createdAt": 1760000000000,
+      "winner": null,
+      "entries": [
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "error": null
+        },
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "agent": "codex",
+          "model": "gpt-5",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "chatId": null,
+          "error": null
+        }
+      ]
+    }
   }
 ]

@@ -16,6 +16,7 @@ import { LocalTransport, waitForPort } from "#src/infra/transport/index.js";
 import { AgentRegistry } from "#src/modules/agents/index.js";
 import { BlobStore } from "#src/modules/blobs/index.js";
 import { CloudSync } from "#src/modules/cloud/index.js";
+import { CompareService } from "#src/modules/compare/index.js";
 import { DevicesService } from "#src/modules/devices/index.js";
 import { FileJail } from "#src/modules/files/index.js";
 import { GitService } from "#src/modules/git/index.js";
@@ -36,6 +37,7 @@ import { DAEMON_VERSION } from "#src/shared/version.constants.js";
 
 import type { TModules } from "./app.types.js";
 import { cloudStoreFor } from "./cloud-store.utils.js";
+import { advanceCompare } from "./compare.utils.js";
 import { createHandlers } from "./handlers/index.js";
 import { Remote } from "./remote.service.js";
 
@@ -248,6 +250,7 @@ export class Daemon {
       preview,
       usage,
       terminals,
+      compare: new CompareService(this.rt),
       remoteTerminal: () => {
         const env = readDaemonEnv().AGENTDECK_REMOTE_TERMINAL;
         return env === undefined ? configOf(opts.home)?.remoteTerminal === true : env === "1";
@@ -288,8 +291,17 @@ export class Daemon {
     this.modules.profiles.syncShared();
     this.startKeepAwake();
     this.modules.sessions.boot();
+    this.startCompares();
     this.rt.log.info({ port: this.port }, "daemon listening");
     return this.port;
+  }
+
+  /** Starts each compare's chats as their worktrees become ready, including any left waiting. */
+  private startCompares(): void {
+    this.rt.bus.on(({ event: e }) => {
+      if (e.type === "worktree.updated") advanceCompare(this.modules, e.worktree);
+    });
+    for (const wt of this.modules.worktrees.all()) advanceCompare(this.modules, wt);
   }
 
   /** Holds a "don't sleep" lock while any chat is running or waiting for approval (Phase 4d). */

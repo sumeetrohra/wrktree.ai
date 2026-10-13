@@ -916,5 +916,146 @@
       },
       "cursor": 7
     }
+  },
+  "compare.start": {
+    "args": {
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "branch": "dark-mode",
+      "title": "Dark mode",
+      "prompt": "Add a dark mode toggle",
+      "targets": [
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude"
+        },
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "agent": "codex",
+          "model": "gpt-5"
+        }
+      ]
+    },
+    "result": {
+      "id": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Dark mode",
+      "prompt": "Add a dark mode toggle",
+      "baseRef": "main",
+      "createdAt": 1760000000000,
+      "winner": null,
+      "entries": [
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "error": null
+        },
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "agent": "codex",
+          "model": "gpt-5",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "chatId": null,
+          "error": null
+        }
+      ]
+    }
+  },
+  "compare.list": {
+    "args": {
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": [
+      {
+        "id": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+        "title": "Dark mode",
+        "prompt": "Add a dark mode toggle",
+        "baseRef": "main",
+        "createdAt": 1760000000000,
+        "winner": null,
+        "entries": [
+          {
+            "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+            "agent": "claude",
+            "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+            "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+            "error": null
+          },
+          {
+            "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+            "agent": "codex",
+            "model": "gpt-5",
+            "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+            "chatId": null,
+            "error": null
+          }
+        ]
+      }
+    ]
+  },
+  "compare.get": {
+    "args": {
+      "compareId": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Dark mode",
+      "prompt": "Add a dark mode toggle",
+      "baseRef": "main",
+      "createdAt": 1760000000000,
+      "winner": null,
+      "entries": [
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "error": null
+        },
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "agent": "codex",
+          "model": "gpt-5",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "chatId": null,
+          "error": null
+        }
+      ]
+    }
+  },
+  "compare.pick": {
+    "args": {
+      "compareId": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8"
+    },
+    "result": {
+      "id": "cmp_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "repoId": "repo_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "title": "Dark mode",
+      "prompt": "Add a dark mode toggle",
+      "baseRef": "main",
+      "createdAt": 1760000000000,
+      "winner": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+      "entries": [
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "agent": "claude",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "chatId": "chat_01J9Z8Y7X6W5V4T3S2R1Q0P9N8",
+          "error": null
+        },
+        {
+          "profileId": "prof_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "agent": "codex",
+          "model": "gpt-5",
+          "worktreeId": "wt_01J9Z8Y7X6W5V4T3S2R1Q0P9N9",
+          "chatId": null,
+          "error": null
+        }
+      ]
+    }
   }
 }

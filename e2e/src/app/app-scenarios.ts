@@ -10,6 +10,7 @@ import {
   handoffFromApp,
   limitFromApp,
   sharedConfigFromApp,
+  compareFromApp,
   terminalFromApp,
   linkFromApp,
   newTaskFromApp,
@@ -163,6 +164,14 @@ export const appScenarios: TAppScenario[] = [
     covers: ["Phase 5: the Terminal tab (xterm.js), sealed end to end like chats; SEC25"],
     harness: { relay: true },
     run: terminalFromApp,
+  },
+  {
+    n: 33,
+    title: "The app: compare agents on one task",
+    summary: "New task → Compare agents; the compare page shows each attempt's status and changes; keep one",
+    covers: ["Phase 5: parallel compare in the app (start, side by side, keep one)"],
+    harness: { relay: true },
+    run: compareFromApp,
   },
 ];
 

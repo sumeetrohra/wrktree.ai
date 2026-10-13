@@ -11,6 +11,8 @@ export const chatIdSchema = prefixed("chat");
 export const cmdIdSchema = prefixed("cmd");
 export const deviceIdSchema = z.string().min(1);
 export const procIdSchema = z.string().min(1);
+/** Additive (Phase 5): one task given to several agents side by side. */
+export const compareIdSchema = z.string().min(1);
 /** Additive (Phase 5): a terminal on the computer. */
 export const termIdSchema = z.string().min(1);
 /** sha256 hex of the blob's bytes, or a client upload id while a blob is in flight. */
@@ -24,3 +26,4 @@ export type TCmdId = z.infer<typeof cmdIdSchema>;
 export type TDeviceId = z.infer<typeof deviceIdSchema>;
 export type TProcId = z.infer<typeof procIdSchema>;
 export type TTermId = z.infer<typeof termIdSchema>;
+export type TCompareId = z.infer<typeof compareIdSchema>;

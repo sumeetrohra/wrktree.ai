@@ -1,5 +1,6 @@
 import type { EventBus } from "#src/infra/bus/index.js";
 import type { BlobStore } from "#src/modules/blobs/index.js";
+import type { CompareService } from "#src/modules/compare/index.js";
 import type { DevicesService } from "#src/modules/devices/index.js";
 import type { FileJail } from "#src/modules/files/index.js";
 import type { GitService } from "#src/modules/git/index.js";
@@ -33,6 +34,8 @@ export type TModules = {
   preview: PreviewService;
   /** Per-profile usage and limits (Phase 4a). */
   usage: UsageService;
+  /** One task given to several agents (Phase 5). */
+  compare: CompareService;
   /** Shells in worktrees (Phase 5). */
   terminals: TerminalsService;
   /** Whether other devices may use terminals here (config.json `remoteTerminal`; SEC25). */

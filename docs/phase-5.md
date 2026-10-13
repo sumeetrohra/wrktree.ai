@@ -6,7 +6,7 @@ in order of value to users. Decision: no team plan, SSO or audit log for now.
 | Milestone | What | Status |
 |---|---|---|
 | **5a** | Terminal tab | **built** (phones need a native build to try it) |
-| **5b** | Parallel compare: one task, several agents, side by side | planned |
+| **5b** | Parallel compare: one task, several agents, side by side | **built** |
 | **5c** | Voice dictation in the composer | planned |
 | **5d** | Video attachments (key frames to the agent) | planned |
 | **5e** | End-to-end encrypted preview | planned |
@@ -35,3 +35,21 @@ in order of value to users. Decision: no team plan, SSO or audit log for now.
   resize, close, refused again); app E2E 31 (typing in xterm.js, Ctrl-C from the key bar, close).
 
 Pending: trying the WebView terminal on real phones (native build).
+
+## 5b: parallel compare
+
+- **Protocol (additive):** `compare.start {repoId, baseRef?, branch, title, prompt, targets}` with
+  2–4 targets (profile, agent, optional model), `compare.list`, `compare.get`, `compare.pick`, and
+  the `compare.updated` event on `repo:<id>`.
+- **Daemon:** `modules/compare` keeps the record (migration 7). The app layer creates one
+  worktree per target from the same base (`<branch>-1`, `<branch>-2`, …; if one can't be
+  created, the ones already made are deleted again), and starts each chat with the prompt as soon
+  as its worktree is ready, from the bus, so the phone can go offline right after starting.
+  An entry whose setup fails, or whose chat can't start, records why. Picking one archives the
+  others (restorable like any archived worktree).
+- **App:** New task has *One agent* and *Compare agents*. The compare page shows a card per
+  attempt (who, chat status, changed files with line counts, refreshed every few seconds) with
+  *Open chat*, *Changes* and *Keep this one*; the repo page lists its compares.
+- **Tests:** the record (unit); E2E 32 from phone-sim (two profiles, both answer in their own
+  worktree, keep one, the other archived; wrong agent and existing branches refused with nothing
+  left behind); app E2E 33 (start from New task, cards, a changed file, keep one).

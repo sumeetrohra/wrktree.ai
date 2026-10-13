@@ -4,6 +4,7 @@ import type { TModules } from "../app.types.js";
 
 import { blobHandlers } from "./blob.handlers.js";
 import { chatHandlers } from "./chat.handlers.js";
+import { compareHandlers } from "./compare.handlers.js";
 import { configHandlers } from "./config.handlers.js";
 import { deviceHandlers } from "./device.handlers.js";
 import { editorHandlers } from "./editor.handlers.js";
@@ -40,5 +41,6 @@ export function createHandlers(m: TModules): THandlers {
     ...previewHandlers(m),
     ...editorHandlers(m),
     ...termHandlers(m),
+    ...compareHandlers(m),
   };
 }

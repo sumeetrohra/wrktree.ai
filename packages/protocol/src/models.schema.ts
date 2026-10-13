@@ -5,6 +5,7 @@ import {
   deviceIdSchema,
   procIdSchema,
   termIdSchema,
+  compareIdSchema,
   profileIdSchema,
   repoIdSchema,
   worktreeIdSchema,
@@ -269,6 +270,38 @@ export const terminalSchema = z.object({
   endedAt: z.number().nullable(),
 });
 export type TTerminal = z.infer<typeof terminalSchema>;
+
+/** Additive (Phase 5): who works on one entry of a compare. */
+export const compareTargetSchema = z.object({
+  profileId: profileIdSchema,
+  agent: z.string(),
+  model: z.string().optional(),
+});
+export type TCompareTarget = z.infer<typeof compareTargetSchema>;
+
+/**
+ * Additive (Phase 5): one task given to several agents (or profiles, or models) at once, each in
+ * its own worktree from the same base. `chatId` is set once that worktree is ready and the chat
+ * has the prompt; `winner` once the user picked one (the others are archived).
+ */
+export const compareSchema = z.object({
+  id: compareIdSchema,
+  repoId: repoIdSchema,
+  title: z.string(),
+  prompt: z.string(),
+  baseRef: z.string(),
+  createdAt: z.number(),
+  winner: worktreeIdSchema.nullable(),
+  entries: z.array(
+    compareTargetSchema.extend({
+      worktreeId: worktreeIdSchema,
+      chatId: chatIdSchema.nullable(),
+      /** Why the chat couldn't start (setup failed, profile gone). */
+      error: z.string().nullable(),
+    }),
+  ),
+});
+export type TCompare = z.infer<typeof compareSchema>;
 
 /** The pull request of a worktree's branch, as `gh` reports it. */
 export const pullRequestSchema = z.object({

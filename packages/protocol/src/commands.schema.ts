@@ -7,6 +7,7 @@ import {
   profileIdSchema,
   repoIdSchema,
   termIdSchema,
+  compareIdSchema,
   worktreeIdSchema,
 } from "./ids.schema.js";
 import {
@@ -26,6 +27,8 @@ import {
   pullRequestSchema,
   repoSchema,
   terminalSchema,
+  compareSchema,
+  compareTargetSchema,
   worktreeSchema,
 } from "./models.schema.js";
 
@@ -401,6 +404,30 @@ export const commands = {
   "profile.removeOverride": {
     args: z.object({ profileId: profileIdSchema, name: z.string().min(1).max(200) }),
     result: Empty,
+  },
+
+  /**
+   * Additive (Phase 5): give one task to 2–4 agents, profiles or models side by side. Each gets its
+   * own worktree from `baseRef` (branches `<branch>-1`, `<branch>-2`, …); the computer starts each
+   * chat with `prompt` as soon as its worktree is ready, so the phone may go offline meanwhile.
+   */
+  "compare.start": {
+    args: z.object({
+      repoId: repoIdSchema,
+      baseRef: gitRefSchema.optional(),
+      branch: gitRefSchema,
+      title: z.string().min(1).max(200),
+      prompt: z.string().min(1).max(100_000),
+      targets: z.array(compareTargetSchema).min(2).max(4),
+    }),
+    result: compareSchema,
+  },
+  "compare.list": { args: z.object({ repoId: repoIdSchema }), result: z.array(compareSchema) },
+  "compare.get": { args: z.object({ compareId: compareIdSchema }), result: compareSchema },
+  /** Keep one entry's worktree; the others are archived (restorable, like any archived worktree). */
+  "compare.pick": {
+    args: z.object({ compareId: compareIdSchema, worktreeId: worktreeIdSchema }),
+    result: compareSchema,
   },
 
   /**

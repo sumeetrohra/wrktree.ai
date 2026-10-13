@@ -91,4 +91,16 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE chats ADD COLUMN handed_off_from TEXT;
   `,
+  // 7: Phase 5 compare. One task given to several agents, one worktree (and chat) each.
+  `
+  CREATE TABLE compares (
+    id TEXT PRIMARY KEY, repo_id TEXT NOT NULL, title TEXT NOT NULL, prompt TEXT NOT NULL,
+    base_ref TEXT NOT NULL, created_at INTEGER NOT NULL, winner TEXT
+  );
+  CREATE TABLE compare_entries (
+    compare_id TEXT NOT NULL, idx INTEGER NOT NULL, worktree_id TEXT NOT NULL UNIQUE,
+    profile_id TEXT NOT NULL, agent TEXT NOT NULL, model TEXT, chat_id TEXT, error TEXT,
+    PRIMARY KEY (compare_id, idx)
+  );
+  `,
 ];

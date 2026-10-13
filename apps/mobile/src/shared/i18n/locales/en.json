@@ -62,7 +62,11 @@
     "repo": "Repository",
     "model": "Model (optional)",
     "modelPlaceholder": "the agent's default",
-    "noHosts": "No computer is online."
+    "noHosts": "No computer is online.",
+    "mode": {
+      "single": "One agent",
+      "compare": "Compare agents"
+    }
   },
   "chats": {
     "title": "Chats",
@@ -326,5 +330,25 @@
       "left": "←",
       "right": "→"
     }
+  },
+  "compare": {
+    "heading": "Compares",
+    "profiles": "Who works on it (2 to 4)",
+    "pickTwo": "Pick two to four profiles.",
+    "start": "Start with {{n}} agents",
+    "who": "{{name}} · {{agent}}",
+    "preparing": "Preparing",
+    "kept": "Kept",
+    "noChanges": "No changes yet",
+    "changed": "{{files}} files, +{{added}} −{{removed}}",
+    "fileLine": "{{path}}  +{{added}} −{{removed}}",
+    "openChat": "Open chat",
+    "changes": "Changes",
+    "keep": "Keep this one",
+    "pickHint": "Each works in its own worktree. Keep the best; the others are archived.",
+    "pickedHint": "Kept one; the others are archived (restore them from the repo if you need them).",
+    "listItem": "{{title}} · {{n}} agents",
+    "listItemKept": "{{title}} · {{n}} agents · kept one",
+    "whoModel": "{{name}} · {{agent}} · {{model}}"
   }
 }

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import type { Harness } from "../harness.ts";
 import { PhoneSim } from "../phone-sim.ts";
@@ -828,5 +830,69 @@ export async function terminalFromApp(h: Harness, app: AppDriver): Promise<void>
       async () => (await h.send("term.list", { worktreeId: wt.id })).terminals,
       (ts) => ts.length > 0 && ts.every((x) => x.status === "exited"),
     );
+  });
+}
+
+/** Phase 5 in the app: one task for two profiles, their attempts side by side, keep one. */
+export async function compareFromApp(h: Harness, app: AppDriver): Promise<void> {
+  const { page } = app;
+  h.step("Desktop: a repo and two profiles");
+  h.makeRepo("shop");
+  const repo = await h.send("repo.add", { path: `${h.src}/shop` });
+  await h.addProfile("Work");
+  await h.addProfile("Personal");
+  await signInApp(h, app);
+  await linkFromApp(h, app, "laptop");
+
+  h.step("App: New task → Compare agents (both profiles picked) → start");
+  const hostId = await h.deviceId();
+  await app.goto(`/new?hostId=${hostId}&repoId=${repo.id}`);
+  await shown(page, "Compare agents").click();
+  await page.getByPlaceholder("Fix the login redirect").fill("Dark mode");
+  await page.getByPlaceholder("Describe the task…").fill("add a dark mode toggle");
+  await shown(page, "Start with 2 agents").click();
+
+  h.step("App: the compare page, one card per agent");
+  await shown(page, "Dark mode").waitFor({ timeout: 30_000 });
+  await h.check("both agents got the task and finished their turn", async () => {
+    await eventually(
+      "two idle cards",
+      () => page.getByText("idle", { exact: true }).locator("visible=true").count(),
+      (n) => n === 2,
+    );
+    await shown(page, "Work · fake").waitFor();
+    await shown(page, "Personal · fake").waitFor();
+  });
+
+  h.step("Desktop: Work's attempt leaves a file behind");
+  const [compare] = await h.send("compare.list", { repoId: repo.id });
+  assert.ok(compare);
+  const workWt = (await h.send("worktree.list", { repoId: repo.id })).find(
+    (w) => w.id === compare.entries[0]?.worktreeId,
+  );
+  assert.ok(workWt);
+  writeFileSync(join(workWt.path, "dark.css"), "body { color-scheme: dark; }\n");
+  await h.check("its card shows the changed file; the other shows none", async () => {
+    await page
+      .getByText(/^dark\.css /)
+      .locator("visible=true")
+      .first()
+      .waitFor({ timeout: 30_000 });
+    await shown(page, "No changes yet").waitFor();
+  });
+
+  h.step("App: Keep Work's version");
+  await page.getByText("Keep this one", { exact: true }).locator("visible=true").first().click();
+  await h.check("kept; the other worktree is archived", async () => {
+    await shown(page, "Kept").waitFor({ timeout: 30_000 });
+    await eventually(
+      "the other archived",
+      async () => (await h.send("worktree.list", { repoId: repo.id })).filter((w) => w.archivedAt !== null),
+      (archived) => archived.length === 1 && archived[0]?.id === compare.entries[1]?.worktreeId,
+    );
+  });
+  await h.check("the repo lists the compare", async () => {
+    await app.goto(`/h/${hostId}/repo/${repo.id}`);
+    await shown(page, "Dark mode · 2 agents · kept one").waitFor({ timeout: 30_000 });
   });
 }

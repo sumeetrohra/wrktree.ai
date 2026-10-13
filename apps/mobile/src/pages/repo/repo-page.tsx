@@ -1,9 +1,10 @@
 import { repoIdSchema } from "@agentdeck/protocol";
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 import { z } from "zod";
 
+import { CompareList, useComparesQuery } from "@/modules/compare";
 import { HostBadge } from "@/modules/hosts";
 import { useReposQuery } from "@/modules/repos";
 import { useWorktreesQuery, WorktreeList } from "@/modules/worktrees";
@@ -19,6 +20,7 @@ export function RepoPage(): React.JSX.Element {
   const { hostId, repoId } = paramsSchema.parse(useLocalSearchParams());
   const repo = useReposQuery(hostId).data?.find((r) => r.id === repoId);
   const worktrees = useWorktreesQuery(hostId, repoId);
+  const compares = useComparesQuery(hostId, repoId);
   return (
     <ScrollView contentContainerClassName="gap-4 p-4" className="bg-background">
       <View className="flex-row items-center justify-between">
@@ -31,6 +33,14 @@ export function RepoPage(): React.JSX.Element {
       </View>
       <HostBadge hostId={hostId} />
       {worktrees.isPending ? <Skeleton className="h-16 w-full" /> : null}
+      {compares.data ? (
+        <CompareList
+          compares={compares.data}
+          onOpen={(c) => {
+            router.push({ pathname: "/h/[hostId]/compare/[compareId]", params: { hostId, compareId: c.id } });
+          }}
+        />
+      ) : null}
       {worktrees.isSuccess ? <WorktreeList hostId={hostId} worktrees={worktrees.data} /> : null}
     </ScrollView>
   );

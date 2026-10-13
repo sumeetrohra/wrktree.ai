@@ -1,4 +1,5 @@
 import { startChatListSync, startChatStoreSync } from "@/modules/chats";
+import { startCompareSync } from "@/modules/compare";
 import { startPreviewSync } from "@/modules/preview";
 import { startProcsSync } from "@/modules/procs";
 import { startUsageSync } from "@/modules/profiles";
@@ -20,6 +21,7 @@ startProcsSync();
 startPreviewSync();
 startUsageSync();
 startTerminalSync();
+startCompareSync();
 
 /** The app shell: providers, the connections, and every module's event sync. */
 export function RootPage(): React.JSX.Element {
