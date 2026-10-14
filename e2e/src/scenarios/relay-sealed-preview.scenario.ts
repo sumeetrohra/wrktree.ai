@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { PhoneSim } from "../phone-sim.ts";
 import type { TScenario } from "../scenario.ts";
 
 import { isEvent, signedInPhone } from "./relay-helpers.ts";
@@ -89,13 +90,21 @@ export const relaySealedPreview: TScenario = {
       assert.ok(!h.relayLog.join("\n").includes(CANARY));
     });
 
-    h.step("Another client, and after the preview stops");
-    await h.check("the token is useless to any other client (here the desktop's own)", async () => {
+    h.step("Another device on the account, another client, and after the preview stops");
+    // A second phone, signed in while the computer is running.
+    const tablet = new PhoneSim(h.relayUrl, "iPad");
+    await tablet.signIn("me");
+    await tablet.use(await h.deviceId()).connect();
+    await h.check("the token is useless on another device, and to the desktop's own client", async () => {
+      await assert.rejects(
+        tablet.call("preview.fetch", { token, method: "GET", path: "/", headers: {} }),
+        /NOT_FOUND/,
+      );
+      await assert.rejects(tablet.call("preview.wsSend", { wsId, data: "x", binary: false }), /NOT_FOUND/);
       await assert.rejects(
         h.send("preview.fetch", { token, method: "GET", path: "/", headers: {} }),
         /NOT_FOUND/,
       );
-      await assert.rejects(h.send("preview.wsSend", { wsId, data: "x", binary: false }), /NOT_FOUND/);
     });
     await phone.call("preview.stop", { worktreeId: wt.id });
     await h.check("and dead once the preview stops", async () => {

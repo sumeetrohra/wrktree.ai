@@ -109,7 +109,7 @@ Pending: trying it on real phones (native build).
 - **Tests:** the local HTTP/WebSocket codec and the bridge against fakes (unit); the WebSocket
   handshake against RFC 6455's sample (crypto); `EventBus.emit` (unit); E2E 36 from phone-sim (page
   and hot-reload socket through sealed commands, the page never on the wire in the clear, the
-  token useless to another client and after stopping). Maestro flows for a native build:
+  token useless to a second phone, to another client and after stopping). Maestro flows for a native build:
   `e2e/maestro/sealed-preview.yaml` and `terminal.yaml`.
 
 Pending: running those Maestro flows on simulators (native builds).
@@ -139,3 +139,10 @@ Pending: running those Maestro flows on simulators (native builds).
 Pending (the owner's): a Homebrew tap repository, a winget-pkgs pull request, signing (Apple
 Developer ID and notarization, Windows Authenticode), and Linux arm64 and Intel Mac runners if
 wanted.
+
+## Fixes after 5f
+
+- **A phone added while the computer runs** was refused on its first try when it knocked within
+  2 seconds of the computer's last device-list refresh: the on-demand refresh was skipped instead
+  of delayed. It now waits out the window and refreshes (`Remote.refresh`), so the handshake goes
+  through; E2E 36 signs in a second phone mid-scenario.

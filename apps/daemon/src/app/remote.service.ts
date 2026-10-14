@@ -155,7 +155,12 @@ export class Remote {
   /** Re-reads the account's devices; drops sessions of devices that left it. */
   private refresh(onDemand: boolean): Promise<void> {
     if (this.refreshing) return this.refreshing;
-    if (onDemand && Date.now() - this.lastRefresh < ON_DEMAND_MS) return Promise.resolve();
+    const since = Date.now() - this.lastRefresh;
+    if (onDemand && since < ON_DEMAND_MS) {
+      // Too soon to ask the relay again: ask once the window has passed, not never (a device that
+      // registered just after the last refresh would otherwise be refused until the next one).
+      return new Promise<void>((r) => setTimeout(r, ON_DEMAND_MS - since)).then(() => this.refresh(true));
+    }
     const { api, linked } = this;
     if (!api || !linked) return Promise.resolve();
     this.lastRefresh = Date.now();
